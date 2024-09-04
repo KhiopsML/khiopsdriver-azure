@@ -1,0 +1,14 @@
+{
+    "name": "azure-driver",
+    "version-string": "latest",
+    "description": "Setting up C++ for Google Cloud with CMake and vcpkg",
+    "dependencies": [
+        {"name": "boost-uuid"},
+        {"name": "boost-process"},
+        {"name": "fmt"},
+        {"name": "azure-identity-cpp"},
+        {"name": "azure-storage-blobs-cpp"},
+        {"name": "spdlog"}
+    ]
+}
+
