@@ -20,6 +20,7 @@
 // Include the necessary SDK headers
 #include <azure/core.hpp>
 #include <azure/storage/blobs.hpp>
+#include <azure/identity/default_azure_credential.hpp>
 
 using namespace azureplugin;
 
@@ -35,12 +36,26 @@ bool bIsConnected = false;
 // Add appropriate using namespace directives
 using namespace Azure::Storage;
 using namespace Azure::Storage::Blobs;
+using namespace Azure::Identity;
 
 // Secrets should be stored & retrieved from secure locations such as Azure::KeyVault. For
 // convenience and brevity of samples, the secrets are retrieved from environment variables.
 std::string GetEndpointUrl() { return std::getenv("AZURE_STORAGE_ACCOUNT_URL"); }
 std::string GetAccountName() { return std::getenv("AZURE_STORAGE_ACCOUNT_NAME"); }
 std::string GetAccountKey() { return std::getenv("AZURE_STORAGE_ACCOUNT_KEY"); }
+
+ BlobServiceClient GetClient() {
+    // Initialize an instance of DefaultAzureCredential
+    auto defaultAzureCredential = std::make_shared<DefaultAzureCredential>();
+
+    auto accountURL = "https://<storage-account-name>.blob.core.windows.net";
+
+    //BlobServiceClient blobServiceClient(accountURL, defaultAzureCredential);
+
+    std::string connectionString = "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;";
+    BlobServiceClient blobServiceClient = BlobServiceClient::CreateFromConnectionString(connectionString);
+    return blobServiceClient;
+ }
 
 // Global bucket name
 std::string globalBucketName;
@@ -227,29 +242,46 @@ struct ParseUriResult
     std::string object;
 };
 
-Azure::Response<ParseUriResult> ParseGcsUri(const std::string &gcs_uri)
+// Parses URI in the following forms: 
+//  - when accessing a real cloud service:
+//      https://myaccount.blob.core.windows.net/mycontainer/myblob.txt
+//  - when a storage emulator like Azurite is used, the URI will have a different form:
+//    http[s]://127.0.0.1:10000/myaccount/mycontainer/myblob.txt
+Azure::Response<ParseUriResult> ParseAzureUri(const std::string &azure_uri)
 {
-    char const *prefix = "gs://";
-    const size_t prefix_size{std::strlen(prefix)};
-    if (gcs_uri.compare(0, prefix_size, prefix) != 0)
+    Azure::Core::Url parsed_uri(azure_uri);
+
+    if (parsed_uri.GetScheme() != "https" && parsed_uri.GetScheme() != "http")
     {
         return Azure::Response<ParseUriResult>({}, std::unique_ptr<Azure::Core::Http::RawResponse>(new Azure::Core::Http::RawResponse(1, 0, Azure::Core::Http::HttpStatusCode::BadRequest, "Invalid Azure URI")));
     }
-
-    const size_t pos = gcs_uri.find('/', prefix_size);
-    if (pos == std::string::npos)
-    {
-        return Azure::Response<ParseUriResult>({}, std::unique_ptr<Azure::Core::Http::RawResponse>(new Azure::Core::Http::RawResponse(1, 0, Azure::Core::Http::HttpStatusCode::BadRequest, "Invalid Azure URI, missing object name: " + gcs_uri)));
+    size_t bkt_pos = 0;
+    size_t obj_pos = parsed_uri.GetPath().find('/');
+    
+    std::string host = parsed_uri.GetHost();
+    std::string az_domain = ".blob.core.windows.net";
+    if (host.length() >= az_domain.length() && host.compare(host.length() - az_domain.length(), az_domain.length(), az_domain) == 0) {
+        std::cout << "Provided URI is a production one." << std::endl;
+    } else {
+        std::cout << "Provided URI is a testing one." << std::endl;
+        bkt_pos = obj_pos+1;
+        obj_pos = parsed_uri.GetPath().find('/', bkt_pos);
     }
 
-    return Azure::Response<ParseUriResult>({gcs_uri.substr(prefix_size, pos - prefix_size), gcs_uri.substr(pos + 1)},NULL);
+    if (obj_pos == std::string::npos)
+    {
+        return Azure::Response<ParseUriResult>({}, std::unique_ptr<Azure::Core::Http::RawResponse>(new Azure::Core::Http::RawResponse(1, 0, Azure::Core::Http::HttpStatusCode::BadRequest, "Invalid Azure URI, missing object name: " + azure_uri)));
+    }
+
+    return Azure::Response<ParseUriResult>({parsed_uri.GetPath().substr(bkt_pos, obj_pos-bkt_pos), parsed_uri.GetPath().substr(obj_pos + 1)},NULL);
 }
 
-
-/*
-gc::StatusOr<ParseUriResult> GetBucketAndObjectNames(const char *sFilePathName)//, std::string &bucket, std::string &object)
+Azure::Response<ParseUriResult>  GetBucketAndObjectNames(const char *sFilePathName)//, std::string &bucket, std::string &object)
 {
-    auto maybe_parse_res = ParseGcsUri(sFilePathName);
+    auto maybe_parse_res = ParseAzureUri(sFilePathName);
+
+    std::cout << "Bucket: " << maybe_parse_res.Value.bucket << ", Object: " << maybe_parse_res.Value.object << std::endl;
+    /*
     if (!maybe_parse_res)
     {
         return maybe_parse_res;
@@ -267,9 +299,10 @@ gc::StatusOr<ParseUriResult> GetBucketAndObjectNames(const char *sFilePathName)/
             maybe_parse_res->bucket = globalBucketName;
         }
     }
+    */
     return maybe_parse_res;
 }
-*/
+
 std::string ToLower(const std::string &str)
 {
     std::string low{str};
@@ -475,6 +508,18 @@ int driver_connect()
 
     // Initialize variables from environment
     globalBucketName = GetEnvironmentVariableOrDefault("AZURE_BUCKET_NAME", "");
+
+    // Tester la connexion
+    try {
+        auto blobServiceClient = GetClient();
+        auto properties = blobServiceClient.GetProperties();
+        std::cout << "Connexion valide." << std::endl;
+        bIsConnected = true;
+        return kSuccess;
+    } catch (const std::exception& e) {
+        std::cerr << "Erreur de connexion : " << e.what() << std::endl;
+        return kFailure;
+    }
 /*
     gc::Options options{};
 
@@ -504,8 +549,7 @@ int driver_connect()
     // Create client with configured options
     client = gcs::Client{std::move(options)};
 */
-    bIsConnected = true;
-    return kSuccess;
+
 }
 
 int driver_disconnect()
@@ -528,14 +572,14 @@ int driver_disconnect()
         }
     }
     active_handles.clear();
-
+*/
     bIsConnected = false;
 
-    if (failures.empty())
-    {
+    //if (failures.empty())
+    //{
         return kSuccess;
-    }
-
+    //}
+/*
     std::ostringstream os;
     os << "Errors occured during disconnection:\n";
     for (const auto &status : failures)
@@ -597,10 +641,25 @@ int driver_fileExists(const char *sFilePathName)
     ERROR_ON_NULL_ARG(sFilePathName, "Error passing null pointer to fileExists.", kFalse);
 
     spdlog::debug("fileExist {}", sFilePathName);
-/*
-    auto maybe_parsed_names = GetBucketAndObjectNames(sFilePathName);
-    ERROR_ON_NAMES(maybe_parsed_names, kFalse);
 
+    auto maybe_parsed_names = GetBucketAndObjectNames(sFilePathName);
+/*
+    ERROR_ON_NAMES(maybe_parsed_names, kFalse);
+*/
+    try {
+        GetClient().GetBlobContainerClient(maybe_parsed_names.Value.bucket)
+                   .GetBlockBlobClient(maybe_parsed_names.Value.object)
+                   .GetProperties();
+        spdlog::debug("file {} exists!", sFilePathName);
+        return kTrue;
+    } catch (const Azure::Core::RequestFailedException& e) {
+        if (e.StatusCode == Azure::Core::Http::HttpStatusCode::NotFound) {
+            return kFalse; // Le blob n'existe pas
+        }
+        throw; // Relancer l'exception pour d'autres erreurs
+    }
+
+/*
     auto maybe_list = ListObjects(maybe_parsed_names->bucket, maybe_parsed_names->object);
     if (!maybe_list) {
         if (maybe_list.status().code() != gc::StatusCode::kNotFound) {
@@ -609,8 +668,6 @@ int driver_fileExists(const char *sFilePathName)
         return kFalse;
     }
 */
-    spdlog::debug("file {} exists!", sFilePathName);
-    return kTrue; // L'objet existe
 }
 
 int driver_dirExists(const char *sFilePathName)
@@ -701,7 +758,8 @@ long long int driver_getFileSize(const char *filename)
 
     spdlog::debug("getFileSize {}", filename);
 
-    auto maybe_names = ParseGcsUri(filename);
+    auto maybe_names = GetBucketAndObjectNames(filename);
+
     ERROR_ON_NAMES(maybe_names, -1);
 
     return 0;
@@ -1203,6 +1261,18 @@ int driver_remove(const char *filename)
     spdlog::debug("remove {}", filename);
 
     assert(driver_isConnected());
+
+    auto maybe_names = GetBucketAndObjectNames(filename);
+
+    std::string blobName = maybe_names.Value.object;
+    std::cout << "Deleting blob: " << blobName << std::endl;
+    std::string containerName = maybe_names.Value.bucket;
+    auto containerClient = GetClient().GetBlobContainerClient(containerName);
+
+    // Create the block blob client
+    BlockBlobClient blobClient = containerClient.GetBlockBlobClient(blobName);
+    blobClient.Delete();
+
 /*
     auto maybe_names = GetBucketAndObjectNames(filename);
     ERROR_ON_NAMES(maybe_names, kFailure);

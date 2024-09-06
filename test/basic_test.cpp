@@ -28,27 +28,27 @@ using ::testing::Return;
 using LOReturnType = gc::StatusOr<gcs::internal::ListObjectsResponse>;
 */
 
-TEST(GCSDriverTest, GetDriverName)
+TEST(AzureDriverTest, GetDriverName)
 {
-    ASSERT_STREQ(driver_getDriverName(), "GCS driver");
+    ASSERT_STREQ(driver_getDriverName(), "Azure driver");
 }
 
-TEST(GCSDriverTest, GetVersion)
+TEST(AzureDriverTest, GetVersion)
 {
     ASSERT_STREQ(driver_getVersion(), "0.1.0");
 }
 
-TEST(GCSDriverTest, GetScheme)
+TEST(AzureDriverTest, GetScheme)
 {
-    ASSERT_STREQ(driver_getScheme(), "gs");
+    ASSERT_STREQ(driver_getScheme(), "https");
 }
 
-TEST(GCSDriverTest, IsReadOnly)
+TEST(AzureDriverTest, IsReadOnly)
 {
     ASSERT_EQ(driver_isReadOnly(), kFalse);
 }
 
-TEST(GCSDriverTest, Connect)
+TEST(AzureDriverTest, Connect)
 {
     //check connection state before call to connect
     ASSERT_EQ(driver_isConnected(), kFalse);
@@ -62,52 +62,52 @@ TEST(GCSDriverTest, Connect)
     ASSERT_EQ(driver_isConnected(), kFalse);
 }
 
-TEST(GCSDriverTest, Disconnect)
+TEST(AzureDriverTest, Disconnect)
 {
     ASSERT_EQ(driver_connect(), kSuccess);
     ASSERT_EQ(driver_disconnect(), kSuccess);
     ASSERT_EQ(driver_isConnected(), kFalse);
 }
 
-TEST(GCSDriverTest, GetFileSize)
+TEST(AzureDriverTest, GetFileSize)
 {
 	ASSERT_EQ(driver_connect(), kSuccess);
-	ASSERT_EQ(driver_getFileSize("gs://data-test-khiops-driver-gcs/khiops_data/samples/Adult/Adult.txt"), 5585568);
+	ASSERT_EQ(driver_getFileSize("http://127.0.0.1:10000/devstoreaccount1/data-test-khiops-driver-azure/khiops_data/samples/Adult/Adult.txt"), 5585568);
 	ASSERT_EQ(driver_disconnect(), kSuccess);
 }
 
-TEST(GCSDriverTest, GetMultipartFileSize)
+TEST(AzureDriverTest, GetMultipartFileSize)
 {
 	ASSERT_EQ(driver_connect(), kSuccess);
-	ASSERT_EQ(driver_getFileSize("gs://data-test-khiops-driver-gcs/khiops_data/bq_export/Adult/Adult-split-00000000000*.txt"), 5585568);
+	ASSERT_EQ(driver_getFileSize("gs://data-test-khiops-driver-azure/khiops_data/bq_export/Adult/Adult-split-00000000000*.txt"), 5585568);
 	ASSERT_EQ(driver_disconnect(), kSuccess);
 }
 
-TEST(GCSDriverTest, GetFileSizeNonexistentFailure)
+TEST(AzureDriverTest, GetFileSizeNonexistentFailure)
 {
 	ASSERT_EQ(driver_connect(), kSuccess);
-	ASSERT_EQ(driver_getFileSize("gs://data-test-khiops-driver-gcs/khiops_data/samples/non_existent_file.txt"), -1);
+	ASSERT_EQ(driver_getFileSize("gs://data-test-khiops-driver-azure/khiops_data/samples/non_existent_file.txt"), -1);
     ASSERT_STRNE(driver_getlasterror(), NULL);
 	ASSERT_EQ(driver_disconnect(), kSuccess);
 }
 
-TEST(GCSDriverTest, FileExists)
+TEST(AzureDriverTest, FileExists)
 {
 	ASSERT_EQ(driver_connect(), kSuccess);
-	ASSERT_EQ(driver_exist("gs://data-test-khiops-driver-gcs/khiops_data/samples/Adult/Adult.txt"), kSuccess);
+	ASSERT_EQ(driver_exist("http://127.0.0.1:10000/devstoreaccount1/data-test-khiops-driver-azure/khiops_data/samples/Adult/Adult.txt"), kSuccess);
 	ASSERT_EQ(driver_disconnect(), kSuccess);
 }
 
-TEST(GCSDriverTest, DirExists)
+TEST(AzureDriverTest, DirExists)
 {
 	ASSERT_EQ(driver_connect(), kSuccess);
-	ASSERT_EQ(driver_exist("gs://data-test-khiops-driver-gcs/khiops_data/samples/Adult/"), kSuccess);
+	ASSERT_EQ(driver_exist("gs://data-test-khiops-driver-azure/khiops_data/samples/Adult/"), kSuccess);
 	ASSERT_EQ(driver_disconnect(), kSuccess);
 }
 
 #ifndef _WIN32
 // Setting of environment variables does not work on Windows
-TEST(GCSDriverTest, DriverConnectMissingCredentialsFailure)
+TEST(AzureDriverTest, DriverConnectMissingCredentialsFailure)
 {
     auto env = boost::this_process::environment();
     env["GCP_TOKEN"] = "/tmp/notoken.json";
@@ -134,42 +134,42 @@ void cleanup_bad_credentials() {
     env.erase("GCP_TOKEN");
 }
 
-TEST(GCSDriverTest, GetFileSizeInvalidCredentialsFailure)
+TEST(AzureDriverTest, GetFileSizeInvalidCredentialsFailure)
 {
     setup_bad_credentials();
 	ASSERT_EQ(driver_connect(), kSuccess);
-	ASSERT_EQ(driver_getFileSize("gs://data-test-khiops-driver-gcs/khiops_data/samples/Adult/Adult.txt"), -1);
+	ASSERT_EQ(driver_getFileSize("gs://data-test-khiops-driver-azure/khiops_data/samples/Adult/Adult.txt"), -1);
     ASSERT_STRNE(driver_getlasterror(), NULL);
 	ASSERT_EQ(driver_disconnect(), kSuccess);
     cleanup_bad_credentials();
 }
 #endif
 
-TEST(GCSDriverTest, RmDir)
+TEST(AzureDriverTest, RmDir)
 {
     ASSERT_EQ(driver_connect(), kSuccess);
 	ASSERT_EQ(driver_rmdir("dummy"), kSuccess);
 	ASSERT_EQ(driver_disconnect(), kSuccess);
 }
 
-TEST(GCSDriverTest, mkDir)
+TEST(AzureDriverTest, mkDir)
 {
 	ASSERT_EQ(driver_connect(), kSuccess);
 	ASSERT_EQ(driver_mkdir("dummy"), kSuccess);
 	ASSERT_EQ(driver_disconnect(), kSuccess);
 }
 
-TEST(GCSDriverTest, GetSystemPreferredBufferSize)
+TEST(AzureDriverTest, GetSystemPreferredBufferSize)
 {
 	ASSERT_EQ(driver_getSystemPreferredBufferSize(), 4 * 1024 * 1024);
 }
 
-constexpr const char* test_dir_name = "gs://data-test-khiops-driver-gcs/khiops_data/bq_export/Adult/";
+constexpr const char* test_dir_name = "gs://data-test-khiops-driver-azure/khiops_data/bq_export/Adult/";
 
-constexpr const char* test_single_file = "gs://data-test-khiops-driver-gcs/khiops_data/samples/Adult/Adult.txt";
-constexpr const char* test_range_file_one_header = "gs://data-test-khiops-driver-gcs/khiops_data/split/Adult/Adult-split-0[0-5].txt";
-constexpr const char* test_glob_file_header_each = "gs://data-test-khiops-driver-gcs/khiops_data/bq_export/Adult/*.txt";
-constexpr const char* test_double_glob_header_each = "gs://data-test-khiops-driver-gcs/khiops_data/split/Adult_subsplit/**/Adult-split-*.txt";
+constexpr const char* test_single_file = "gs://data-test-khiops-driver-azure/khiops_data/samples/Adult/Adult.txt";
+constexpr const char* test_range_file_one_header = "gs://data-test-khiops-driver-azure/khiops_data/split/Adult/Adult-split-0[0-5].txt";
+constexpr const char* test_glob_file_header_each = "gs://data-test-khiops-driver-azure/khiops_data/bq_export/Adult/*.txt";
+constexpr const char* test_double_glob_header_each = "gs://data-test-khiops-driver-azure/khiops_data/split/Adult_subsplit/**/Adult-split-*.txt";
 
 constexpr std::array<const char*, 4> test_files = {
     test_single_file,
