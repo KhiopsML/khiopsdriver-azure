@@ -34,9 +34,13 @@ jobs:
             triplet: x64-osx
           - os: macos-14
             triplet: arm64-osx
-    permissions:
-      contents: 'read'
-      id-token: 'write'
+
+    services:
+      # Label used to access the service container
+      azurite:
+        # Docker Hub image
+        image: mcr.microsoft.com/azure-storage/azurite
+          
     env:
       # Indicates the location of the vcpkg as a Git submodule of the project repository.
       # Not using "VCPKG_ROOT" because a variable with the same name is defined in the VS's
@@ -48,10 +52,22 @@ jobs:
       # Let's use GitHub Action cache as storage for the vcpkg Binary Caching feature.
       VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
       # Allow setting triplet to something else than platform's default
-      VCPKG_DEFAULT_TRIPLET: ${{ matrix.triplet }} 
-
+      VCPKG_DEFAULT_TRIPLET: ${{ matrix.triplet }}
+      AZURITE_HOST: azurite
 
     steps:
+
+      - name: Azure CLI script
+        uses: azure/cli@v2
+        with:
+          azcliversion: latest
+          inlineScript: |
+            # Populate storage emulator
+            az storage container create -n data-test-khiops-driver-azure --connection-string "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://${AZURITE_HOST}:10000/devstoreaccount1;"
+            # Copy local files to azure storage emulator
+            az storage blob upload-batch --destination data-test-khiops-driver-azure/khiops_data --source $PWD/khiops_data --connection-string "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://${AZURITE_HOST}:10000/devstoreaccount1;"
+
+
     # Set env vars needed for vcpkg to leverage the GitHub Action cache as a storage
     # for Binary Caching.
       - uses: actions/github-script@v7
@@ -94,13 +110,6 @@ jobs:
         with:
           toolset: 14.0
 
-      # Retrieve google credentials through WIF
-      # see https://github.com/google-github-actions/auth?tab=readme-ov-file#workload-identity-federation-through-a-service-account
-      - uses: google-github-actions/auth@v2
-        with:
-          service_account: 'khiops-gcs-driver-test-sa@ino-olr-dak-ideal-sbx.iam.gserviceaccount.com'
-          workload_identity_provider: 'projects/322269704080/locations/global/workloadIdentityPools/github/providers/my-repo'
-          
       - name: Build debug version and run sanitizer checks
         if: matrix.os == 'ubuntu-latest'
         run: |
