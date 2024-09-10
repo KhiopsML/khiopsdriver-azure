@@ -34,13 +34,7 @@ jobs:
             triplet: x64-osx
           - os: macos-14
             triplet: arm64-osx
-
-    services:
-      # Label used to access the service container
-      azurite:
-        # Docker Hub image
-        image: mcr.microsoft.com/azure-storage/azurite
-          
+         
     env:
       # Indicates the location of the vcpkg as a Git submodule of the project repository.
       # Not using "VCPKG_ROOT" because a variable with the same name is defined in the VS's
@@ -53,23 +47,11 @@ jobs:
       VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
       # Allow setting triplet to something else than platform's default
       VCPKG_DEFAULT_TRIPLET: ${{ matrix.triplet }}
-      AZURITE_HOST: azurite
 
     steps:
 
-      - name: Azure CLI script
-        uses: azure/cli@v2
-        with:
-          azcliversion: latest
-          inlineScript: |
-            # Populate storage emulator
-            az storage container create -n data-test-khiops-driver-azure --connection-string "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://${AZURITE_HOST}:10000/devstoreaccount1;"
-            # Copy local files to azure storage emulator
-            az storage blob upload-batch --destination data-test-khiops-driver-azure/khiops_data --source $PWD/khiops_data --connection-string "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://${AZURITE_HOST}:10000/devstoreaccount1;"
-
-
-    # Set env vars needed for vcpkg to leverage the GitHub Action cache as a storage
-    # for Binary Caching.
+      # Set env vars needed for vcpkg to leverage the GitHub Action cache as a storage
+      # for Binary Caching.
       - uses: actions/github-script@v7
         with:
           script: |
@@ -82,6 +64,17 @@ jobs:
       - name: "Create directory '${{ env.VCPKG_DEFAULT_BINARY_CACHE }}'"
         run: mkdir -p $VCPKG_DEFAULT_BINARY_CACHE
         shell: bash
+
+      # Populate storage emulator
+      - name: Azure CLI script
+        uses: azure/cli@v2
+        with:
+          azcliversion: latest
+          inlineScript: |
+            az storage container create -n data-test-khiops-driver-azure --connection-string "${{ steps.azuright.outputs.connstring }}"
+            az storage blob upload-batch --destination data-test-khiops-driver-azure/khiops_data --source $PWD/khiops_data --connection-string "${{ steps.azuright.outputs.connstring }}"
+
+
 
       # Setup the build machine with the most recent versions of CMake and Ninja. Both are cached if not already: on subsequent runs both will be quickly restored from GitHub cache service.
       - uses: lukka/get-cmake@v3.30.1
