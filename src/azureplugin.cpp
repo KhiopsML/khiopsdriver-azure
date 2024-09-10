@@ -276,7 +276,7 @@ Azure::Response<ParseUriResult> ParseAzureUri(const std::string &azure_uri)
     return Azure::Response<ParseUriResult>({parsed_uri.GetPath().substr(bkt_pos, obj_pos-bkt_pos), parsed_uri.GetPath().substr(obj_pos + 1)},NULL);
 }
 
-Azure::Response<ParseUriResult>  GetBucketAndObjectNames(const char *sFilePathName)//, std::string &bucket, std::string &object)
+Azure::Response<ParseUriResult> GetBucketAndObjectNames(const char *sFilePathName)//, std::string &bucket, std::string &object)
 {
     auto maybe_parse_res = ParseAzureUri(sFilePathName);
 
@@ -697,59 +697,6 @@ gc::StatusOr<std::string> ReadHeader(const std::string &bucket_name, const std::
     }
     return line;
 }
-
-gc::StatusOr<long long> GetFileSize(const std::string &bucket_name, const std::string &object_name)
-{
-    auto maybe_list = ListObjects(bucket_name, object_name);
-    RETURN_STATUS_ON_ERROR(maybe_list);
-
-    auto list_it = maybe_list->begin();
-    const auto list_end = maybe_list->end();
-
-    const auto first_object_metadata = std::move(*list_it);
-    long long total_size = static_cast<long long>(first_object_metadata->size());
-
-    list_it++;
-    if (list_end == list_it)
-    {
-        // unique file
-        return total_size;
-    }
-
-    // multifile
-    // check headers
-    auto maybe_header = ReadHeader(bucket_name, first_object_metadata->name());
-    RETURN_STATUS_ON_ERROR(maybe_header);
-    
-    const std::string& header = *maybe_header;
-    const long long header_size = static_cast<long long>(header.size());
-    int header_to_subtract{0};
-    bool same_header{true};
-
-    for (; list_it != list_end; list_it++)
-    {
-        RETURN_STATUS_ON_ERROR(*list_it);
-        
-        if (same_header)
-        {
-            auto maybe_curr_header = ReadHeader(bucket_name, (*list_it)->name());
-            RETURN_STATUS_ON_ERROR(maybe_curr_header);
-
-            same_header = (header == *maybe_curr_header);
-            if (same_header)
-            {
-                header_to_subtract++;
-            }
-        }
-        total_size += static_cast<long long>((*list_it)->size());
-    }
-
-    if (!same_header)
-    {
-        header_to_subtract = 0;
-    }
-    return total_size - header_to_subtract * header_size;
-}
 */
 
 long long int driver_getFileSize(const char *filename)
@@ -758,17 +705,21 @@ long long int driver_getFileSize(const char *filename)
 
     spdlog::debug("getFileSize {}", filename);
 
-    auto maybe_names = GetBucketAndObjectNames(filename);
+    auto maybe_parsed_names = GetBucketAndObjectNames(filename);
 
     ERROR_ON_NAMES(maybe_names, -1);
 
-    return 0;
-/*
-    auto maybe_file_size = GetFileSize(maybe_names->bucket, maybe_names->object);
-    RETURN_ON_ERROR(maybe_file_size, "Error getting file size", -1);
-
-    return *maybe_file_size;
-    */
+    try {
+        Azure::Response<Models::BlobProperties> props = GetClient().GetBlobContainerClient(maybe_parsed_names.Value.bucket)
+                   .GetBlockBlobClient(maybe_parsed_names.Value.object)
+                   .GetProperties();
+        return props.Value.BlobSize;
+    } catch (const Azure::Core::RequestFailedException& e) {
+        if (e.StatusCode == Azure::Core::Http::HttpStatusCode::NotFound) {
+            return -1; // Le blob n'existe pas
+        }
+        throw; // Relancer l'exception pour d'autres erreurs
+    }
 }
 /*
 gc::StatusOr<ReaderPtr> MakeReaderPtr(std::string bucketname, std::string objectname)
