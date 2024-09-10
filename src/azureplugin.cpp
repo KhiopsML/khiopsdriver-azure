@@ -43,19 +43,9 @@ using namespace Azure::Identity;
 std::string GetEndpointUrl() { return std::getenv("AZURE_STORAGE_ACCOUNT_URL"); }
 std::string GetAccountName() { return std::getenv("AZURE_STORAGE_ACCOUNT_NAME"); }
 std::string GetAccountKey() { return std::getenv("AZURE_STORAGE_ACCOUNT_KEY"); }
+std::string GetConnectionString() { return std::getenv("AZURE_STORAGE_CONNECTION_STRING"); }
 
- BlobServiceClient GetClient() {
-    // Initialize an instance of DefaultAzureCredential
-    auto defaultAzureCredential = std::make_shared<DefaultAzureCredential>();
 
-    auto accountURL = "https://<storage-account-name>.blob.core.windows.net";
-
-    //BlobServiceClient blobServiceClient(accountURL, defaultAzureCredential);
-
-    std::string connectionString = "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;";
-    BlobServiceClient blobServiceClient = BlobServiceClient::CreateFromConnectionString(connectionString);
-    return blobServiceClient;
- }
 
 // Global bucket name
 std::string globalBucketName;
@@ -335,6 +325,21 @@ std::string GetEnvironmentVariableOrDefault(const std::string &variable_name,
     }
 
     return default_value;
+}
+ 
+BlobServiceClient GetClient() {
+    // Initialize an instance of DefaultAzureCredential
+    auto defaultAzureCredential = std::make_shared<DefaultAzureCredential>();
+
+    auto accountURL = "https://<storage-account-name>.blob.core.windows.net";
+
+    //BlobServiceClient blobServiceClient(accountURL, defaultAzureCredential);
+
+    std::string connectionString = GetEnvironmentVariableOrDefault(
+        "AZURE_STORAGE_CONNECTION_STRING",
+        "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;"
+    );
+    return BlobServiceClient::CreateFromConnectionString(connectionString);
 }
 
 bool WillSizeCountProductOverflow(size_t size, size_t count)
