@@ -69,18 +69,29 @@ jobs:
       - name: Install Azurite
         id: azuright
         uses: potatoqualitee/azuright@v1.1
-        with:
-          self-signed-cert: true
+        #with:
+        #  self-signed-cert: true
 
       # Populate storage emulator
+      - name:  Install
+        run:   |
+            if [ matrix.os == 'ubuntu-latest' ]; then
+              curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+            elif [ matrix.os == 'windows-latest' ]; then
+              winget install -e --id Microsoft.AzureCLI
+            else
+              brew update && brew install azure-cli
+            fi
+            az storage container create -n data-test-khiops-driver-azure --connection-string "${{ steps.azuright.outputs.connstring }}"
+            az storage blob upload-batch --destination data-test-khiops-driver-azure/khiops_data --source $PWD/khiops_data --connection-string "${{ steps.azuright.outputs.connstring }}"
+
+        shell: bash
+
       - name: Azure CLI script
         uses: azure/cli@v2
         with:
           azcliversion: latest
           inlineScript: |
-            az storage container create -n data-test-khiops-driver-azure --connection-string "${{ steps.azuright.outputs.connstring }}"
-            az storage blob upload-batch --destination data-test-khiops-driver-azure/khiops_data --source $PWD/khiops_data --connection-string "${{ steps.azuright.outputs.connstring }}"
-
 
       # Setup the build machine with the most recent versions of CMake and Ninja. Both are cached if not already: on subsequent runs both will be quickly restored from GitHub cache service.
       - uses: lukka/get-cmake@v3.30.1
