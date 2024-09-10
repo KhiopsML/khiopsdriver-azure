@@ -61,9 +61,16 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: true
+
       - name: "Create directory '${{ env.VCPKG_DEFAULT_BINARY_CACHE }}'"
         run: mkdir -p $VCPKG_DEFAULT_BINARY_CACHE
         shell: bash
+
+      - name: Install Azurite
+        id: azuright
+        uses: potatoqualitee/azuright@v1.1
+        with:
+          self-signed-cert: true
 
       # Populate storage emulator
       - name: Azure CLI script
@@ -73,7 +80,6 @@ jobs:
           inlineScript: |
             az storage container create -n data-test-khiops-driver-azure --connection-string "${{ steps.azuright.outputs.connstring }}"
             az storage blob upload-batch --destination data-test-khiops-driver-azure/khiops_data --source $PWD/khiops_data --connection-string "${{ steps.azuright.outputs.connstring }}"
-
 
 
       # Setup the build machine with the most recent versions of CMake and Ninja. Both are cached if not already: on subsequent runs both will be quickly restored from GitHub cache service.
