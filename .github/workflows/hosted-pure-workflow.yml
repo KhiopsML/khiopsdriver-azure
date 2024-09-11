@@ -78,7 +78,7 @@ jobs:
             if [ "$RUNNER_OS" == "Linux" ]; then
               curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
             elif [ "$RUNNER_OS" == "Windows" ]; then
-              ps1 scripts\install_azurecli.ps1
+              pwsh scripts\install_azurecli.ps1
             else
               brew update && brew install azure-cli
             fi
