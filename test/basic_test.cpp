@@ -73,6 +73,7 @@ TEST(AzureDriverTest, GetFileSize)
 {
 	ASSERT_EQ(driver_connect(), kSuccess);
 	ASSERT_EQ(driver_getFileSize("http://127.0.0.1:10000/devstoreaccount1/data-test-khiops-driver-azure/khiops_data/samples/Adult/Adult.txt"), 5585568);
+	//ASSERT_EQ(driver_getFileSize("https://myaccount.file.core.windows.net/myshare/myfolder/myfile.txt"), 5585568);
 	ASSERT_EQ(driver_disconnect(), kSuccess);
 }
 
@@ -86,7 +87,7 @@ TEST(AzureDriverTest, GetMultipartFileSize)
 TEST(AzureDriverTest, GetFileSizeNonexistentFailure)
 {
 	ASSERT_EQ(driver_connect(), kSuccess);
-	ASSERT_EQ(driver_getFileSize("gs://data-test-khiops-driver-azure/khiops_data/samples/non_existent_file.txt"), -1);
+    ASSERT_EQ(driver_getFileSize("http://127.0.0.1:10000/devstoreaccount1/data-test-khiops-driver-azure/khiops_data/samples/non_existent_file.txt"), -1);
     ASSERT_STRNE(driver_getlasterror(), NULL);
 	ASSERT_EQ(driver_disconnect(), kSuccess);
 }
@@ -101,7 +102,7 @@ TEST(AzureDriverTest, FileExists)
 TEST(AzureDriverTest, DirExists)
 {
 	ASSERT_EQ(driver_connect(), kSuccess);
-	ASSERT_EQ(driver_exist("gs://data-test-khiops-driver-azure/khiops_data/samples/Adult/"), kSuccess);
+	ASSERT_EQ(driver_exist("http://127.0.0.1:10000/devstoreaccount1/data-test-khiops-driver-azure/khiops_data/samples/Adult/"), kSuccess);
 	ASSERT_EQ(driver_disconnect(), kSuccess);
 }
 

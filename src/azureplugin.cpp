@@ -20,6 +20,9 @@
 // Include the necessary SDK headers
 #include <azure/core.hpp>
 #include <azure/storage/blobs.hpp>
+// Include to support file shares
+#include <azure/storage/files/shares.hpp>
+
 #include <azure/identity/default_azure_credential.hpp>
 
 using namespace azureplugin;
@@ -36,6 +39,7 @@ bool bIsConnected = false;
 // Add appropriate using namespace directives
 using namespace Azure::Storage;
 using namespace Azure::Storage::Blobs;
+using namespace Azure::Storage::Files::Shares;
 using namespace Azure::Identity;
 
 // Secrets should be stored & retrieved from secure locations such as Azure::KeyVault. For
@@ -225,9 +229,15 @@ gc::StatusOr<long long> ReadBytesInFile(MultiPartFile &multifile, char *buffer, 
     return read_status.ok() ? bytes_read : gc::StatusOr<long long>{read_status};
 }
 */
+enum Service {
+  UNKNOWN = 0,
+  BLOB,
+  SHARE
+};
 
 struct ParseUriResult
 {
+    Service service;
     std::string bucket;
     std::string object;
 };
@@ -237,6 +247,8 @@ struct ParseUriResult
 //      https://myaccount.blob.core.windows.net/mycontainer/myblob.txt
 //  - when a storage emulator like Azurite is used, the URI will have a different form:
 //    http[s]://127.0.0.1:10000/myaccount/mycontainer/myblob.txt
+// Note: file service URIs e.g. https://myaccount.file.core.windows.net/myshare/myfolder/myfile.txt
+//       are not supported at this time...
 Azure::Response<ParseUriResult> ParseAzureUri(const std::string &azure_uri)
 {
     Azure::Core::Url parsed_uri(azure_uri);
@@ -247,11 +259,21 @@ Azure::Response<ParseUriResult> ParseAzureUri(const std::string &azure_uri)
     }
     size_t bkt_pos = 0;
     size_t obj_pos = parsed_uri.GetPath().find('/');
+    Service service = UNKNOWN;
     
     std::string host = parsed_uri.GetHost();
-    std::string az_domain = ".blob.core.windows.net";
+    std::string az_domain = ".core.windows.net";
     if (host.length() >= az_domain.length() && host.compare(host.length() - az_domain.length(), az_domain.length(), az_domain) == 0) {
         std::cout << "Provided URI is a production one." << std::endl;
+        std::string blob_domain = ".blob.core.windows.net";
+        std::string file_domain = ".file.core.windows.net";
+        if (host.length() >= blob_domain.length() && host.compare(host.length() - blob_domain.length(), blob_domain.length(), blob_domain) == 0) {
+            std::cout << "Provided URI is a blob one." << std::endl;
+            service = BLOB;
+        } else if (host.length() >= file_domain.length() && host.compare(host.length() - file_domain.length(), file_domain.length(), file_domain) == 0) {
+            std::cout << "Provided URI is a file one." << std::endl;
+            service = SHARE;
+        }
     } else {
         std::cout << "Provided URI is a testing one." << std::endl;
         bkt_pos = obj_pos+1;
@@ -263,10 +285,10 @@ Azure::Response<ParseUriResult> ParseAzureUri(const std::string &azure_uri)
         return Azure::Response<ParseUriResult>({}, std::unique_ptr<Azure::Core::Http::RawResponse>(new Azure::Core::Http::RawResponse(1, 0, Azure::Core::Http::HttpStatusCode::BadRequest, "Invalid Azure URI, missing object name: " + azure_uri)));
     }
 
-    return Azure::Response<ParseUriResult>({parsed_uri.GetPath().substr(bkt_pos, obj_pos-bkt_pos), parsed_uri.GetPath().substr(obj_pos + 1)},NULL);
+    return Azure::Response<ParseUriResult>({service, parsed_uri.GetPath().substr(bkt_pos, obj_pos-bkt_pos), parsed_uri.GetPath().substr(obj_pos + 1)},NULL);
 }
 
-Azure::Response<ParseUriResult> GetBucketAndObjectNames(const char *sFilePathName)//, std::string &bucket, std::string &object)
+Azure::Response<ParseUriResult> GetServiceBucketAndObjectNames(const char *sFilePathName)//, std::string &bucket, std::string &object)
 {
     auto maybe_parse_res = ParseAzureUri(sFilePathName);
 
@@ -327,19 +349,24 @@ std::string GetEnvironmentVariableOrDefault(const std::string &variable_name,
     return default_value;
 }
  
-BlobServiceClient GetClient() {
-    // Initialize an instance of DefaultAzureCredential
-    auto defaultAzureCredential = std::make_shared<DefaultAzureCredential>();
-
-    auto accountURL = "https://<storage-account-name>.blob.core.windows.net";
-
-    //BlobServiceClient blobServiceClient(accountURL, defaultAzureCredential);
+BlobServiceClient GetBlobServiceClient() {
+    // TODO Should allow different auth options like described in: https://learn.microsoft.com/en-us/azure/storage/blobs/authorize-data-operations-cli
 
     std::string connectionString = GetEnvironmentVariableOrDefault(
         "AZURE_STORAGE_CONNECTION_STRING",
         "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;"
     );
     return BlobServiceClient::CreateFromConnectionString(connectionString);
+}
+
+ShareServiceClient GetShareServiceClient() {
+    // TODO Should allow different auth options like described in: https://learn.microsoft.com/en-us/azure/storage/blobs/authorize-data-operations-cli
+
+    std::string connectionString = GetEnvironmentVariableOrDefault(
+        "AZURE_STORAGE_CONNECTION_STRING",
+        "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;"
+    );
+    return ShareServiceClient::CreateFromConnectionString(connectionString);
 }
 
 bool WillSizeCountProductOverflow(size_t size, size_t count)
@@ -516,7 +543,7 @@ int driver_connect()
 
     // Tester la connexion
     try {
-        auto blobServiceClient = GetClient();
+        auto blobServiceClient = GetBlobServiceClient();
         auto properties = blobServiceClient.GetProperties();
         std::cout << "Connexion valide." << std::endl;
         bIsConnected = true;
@@ -647,16 +674,23 @@ int driver_fileExists(const char *sFilePathName)
 
     spdlog::debug("fileExist {}", sFilePathName);
 
-    auto maybe_parsed_names = GetBucketAndObjectNames(sFilePathName);
+    auto maybe_parsed_names = GetServiceBucketAndObjectNames(sFilePathName);
 /*
     ERROR_ON_NAMES(maybe_parsed_names, kFalse);
 */
     try {
-        GetClient().GetBlobContainerClient(maybe_parsed_names.Value.bucket)
-                   .GetBlockBlobClient(maybe_parsed_names.Value.object)
-                   .GetProperties();
+        if (maybe_parsed_names.Value.service == SHARE) {
+            GetShareServiceClient().GetShareClient(maybe_parsed_names.Value.bucket)
+                    .GetRootDirectoryClient().GetFileClient(maybe_parsed_names.Value.object)
+                    .GetProperties();
+        } else {
+            GetBlobServiceClient().GetBlobContainerClient(maybe_parsed_names.Value.bucket)
+                    .GetBlockBlobClient(maybe_parsed_names.Value.object)
+                    .GetProperties();
+        }
         spdlog::debug("file {} exists!", sFilePathName);
         return kTrue;
+
     } catch (const Azure::Core::RequestFailedException& e) {
         if (e.StatusCode == Azure::Core::Http::HttpStatusCode::NotFound) {
             return kFalse; // Le blob n'existe pas
@@ -710,17 +744,25 @@ long long int driver_getFileSize(const char *filename)
 
     spdlog::debug("getFileSize {}", filename);
 
-    auto maybe_parsed_names = GetBucketAndObjectNames(filename);
+    auto maybe_parsed_names = GetServiceBucketAndObjectNames(filename);
 
     ERROR_ON_NAMES(maybe_names, -1);
 
     try {
-        Azure::Response<Models::BlobProperties> props = GetClient().GetBlobContainerClient(maybe_parsed_names.Value.bucket)
-                   .GetBlockBlobClient(maybe_parsed_names.Value.object)
-                   .GetProperties();
-        return props.Value.BlobSize;
+        if (maybe_parsed_names.Value.service == SHARE) {
+            auto props = GetShareServiceClient().GetShareClient(maybe_parsed_names.Value.bucket)
+                    .GetRootDirectoryClient().GetFileClient(maybe_parsed_names.Value.object)
+                    .GetProperties();
+            return props.Value.FileSize;
+        } else {
+            auto props = GetBlobServiceClient().GetBlobContainerClient(maybe_parsed_names.Value.bucket)
+                    .GetBlockBlobClient(maybe_parsed_names.Value.object)
+                    .GetProperties();
+            return props.Value.BlobSize;
+        }
     } catch (const Azure::Core::RequestFailedException& e) {
         if (e.StatusCode == Azure::Core::Http::HttpStatusCode::NotFound) {
+            LogError(e.ReasonPhrase);
             return -1; // Le blob n'existe pas
         }
         throw; // Relancer l'exception pour d'autres erreurs
@@ -1218,12 +1260,12 @@ int driver_remove(const char *filename)
 
     assert(driver_isConnected());
 
-    auto maybe_names = GetBucketAndObjectNames(filename);
+    auto maybe_names = GetServiceBucketAndObjectNames(filename);
 
     std::string blobName = maybe_names.Value.object;
     std::cout << "Deleting blob: " << blobName << std::endl;
     std::string containerName = maybe_names.Value.bucket;
-    auto containerClient = GetClient().GetBlobContainerClient(containerName);
+    auto containerClient = GetBlobServiceClient().GetBlobContainerClient(containerName);
 
     // Create the block blob client
     BlockBlobClient blobClient = containerClient.GetBlockBlobClient(blobName);

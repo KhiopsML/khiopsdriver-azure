@@ -21,6 +21,7 @@ enable_testing()
 find_package(fmt CONFIG REQUIRED)
 find_package(azure-identity-cpp CONFIG REQUIRED)
 find_package(azure-storage-blobs-cpp CONFIG REQUIRED)
+find_package(azure-storage-files-shares-cpp CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 
 # Hide symbols in the shared libraries
@@ -54,7 +55,7 @@ endif()
 add_library(khiopsdriver_file_azure SHARED src/azureplugin.h src/azureplugin_internal.h src/azureplugin.cpp)
 
 target_link_options(khiopsdriver_file_azure PRIVATE $<$<CONFIG:RELEASE>:-s>) # stripping
-target_link_libraries(khiopsdriver_file_azure PRIVATE Azure::azure-identity Azure::azure-storage-blobs spdlog::spdlog)
+target_link_libraries(khiopsdriver_file_azure PRIVATE Azure::azure-identity Azure::azure-storage-blobs Azure::azure-storage-files-shares spdlog::spdlog)
 target_compile_options(khiopsdriver_file_azure
 	PRIVATE $<$<CXX_COMPILER_ID:MSVC>:-Wall>
 	PRIVATE $<$<CXX_COMPILER_ID:AppleClang,Clang,GNU>:-Wall;-Wextra;-pedantic>
