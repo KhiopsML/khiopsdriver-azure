@@ -179,7 +179,7 @@ void *get_shared_library_function(void *library_handle, const char *function_nam
 }
 
 
-TEST(GCSPluginTest, GetVersion)
+TEST(AzurePluginTest, GetVersion)
 {
 	auto library_handle = init_plugin();
 
@@ -188,11 +188,11 @@ TEST(GCSPluginTest, GetVersion)
 	deinit_plugin(library_handle);
 }
 
-TEST(GCSPluginTest, GetScheme)
+TEST(AzurePluginTest, GetScheme)
 {
 	auto library_handle = init_plugin();
 
-	ASSERT_STREQ(ptr_driver_getScheme(), "gs");
+	ASSERT_STREQ(ptr_driver_getScheme(), "https");
 
 	deinit_plugin(library_handle);
 }
