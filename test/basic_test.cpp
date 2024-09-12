@@ -80,7 +80,7 @@ TEST(AzureDriverTest, GetFileSize)
 TEST(AzureDriverTest, GetMultipartFileSize)
 {
 	ASSERT_EQ(driver_connect(), kSuccess);
-	ASSERT_EQ(driver_getFileSize("gs://data-test-khiops-driver-azure/khiops_data/bq_export/Adult/Adult-split-00000000000*.txt"), 5585568);
+	ASSERT_EQ(driver_getFileSize("http://127.0.0.1:10000/devstoreaccount1/data-test-khiops-driver-azure/khiops_data/bq_export/Adult/Adult-split-00000000000*.txt"), 5585568);
 	ASSERT_EQ(driver_disconnect(), kSuccess);
 }
 
@@ -139,7 +139,7 @@ TEST(AzureDriverTest, GetFileSizeInvalidCredentialsFailure)
 {
     setup_bad_credentials();
 	ASSERT_EQ(driver_connect(), kSuccess);
-	ASSERT_EQ(driver_getFileSize("gs://data-test-khiops-driver-azure/khiops_data/samples/Adult/Adult.txt"), -1);
+	ASSERT_EQ(driver_getFileSize("http://127.0.0.1:10000/devstoreaccount1/data-test-khiops-driver-azure/khiops_data/samples/Adult/Adult.txt"), -1);
     ASSERT_STRNE(driver_getlasterror(), NULL);
 	ASSERT_EQ(driver_disconnect(), kSuccess);
     cleanup_bad_credentials();
@@ -165,12 +165,12 @@ TEST(AzureDriverTest, GetSystemPreferredBufferSize)
 	ASSERT_EQ(driver_getSystemPreferredBufferSize(), 4 * 1024 * 1024);
 }
 
-constexpr const char* test_dir_name = "gs://data-test-khiops-driver-azure/khiops_data/bq_export/Adult/";
+constexpr const char* test_dir_name = "http://127.0.0.1:10000/devstoreaccount1/data-test-khiops-driver-azure/khiops_data/bq_export/Adult/";
 
-constexpr const char* test_single_file = "gs://data-test-khiops-driver-azure/khiops_data/samples/Adult/Adult.txt";
-constexpr const char* test_range_file_one_header = "gs://data-test-khiops-driver-azure/khiops_data/split/Adult/Adult-split-0[0-5].txt";
-constexpr const char* test_glob_file_header_each = "gs://data-test-khiops-driver-azure/khiops_data/bq_export/Adult/*.txt";
-constexpr const char* test_double_glob_header_each = "gs://data-test-khiops-driver-azure/khiops_data/split/Adult_subsplit/**/Adult-split-*.txt";
+constexpr const char* test_single_file = "http://127.0.0.1:10000/devstoreaccount1/data-test-khiops-driver-azure/khiops_data/samples/Adult/Adult.txt";
+constexpr const char* test_range_file_one_header = "http://127.0.0.1:10000/devstoreaccount1/data-test-khiops-driver-azure/khiops_data/split/Adult/Adult-split-0[0-5].txt";
+constexpr const char* test_glob_file_header_each = "http://127.0.0.1:10000/devstoreaccount1/data-test-khiops-driver-azure/khiops_data/bq_export/Adult/*.txt";
+constexpr const char* test_double_glob_header_each = "http://127.0.0.1:10000/devstoreaccount1/data-test-khiops-driver-azure/khiops_data/split/Adult_subsplit/**/Adult-split-*.txt";
 
 constexpr std::array<const char*, 4> test_files = {
     test_single_file,
