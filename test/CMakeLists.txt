@@ -27,7 +27,11 @@ target_compile_options(basic_test
 target_include_directories(basic_test
   PRIVATE ${${PROJECT_NAME}_SOURCE_DIR}/src)
 
-target_link_libraries(basic_test PRIVATE GTest::gtest GTest::gmock GTest::gmock_main Azure::azure-identity Azure::azure-storage-blobs khiopsdriver_file_azure)
+if(WIN32)
+  target_link_libraries(basic_test PRIVATE GTest::gtest GTest::gmock GTest::gmock_main Azure::azure-identity Azure::azure-storage-blobs khiopsdriver_file_azure bcrypt)
+else ()
+  target_link_libraries(basic_test PRIVATE GTest::gtest GTest::gmock GTest::gmock_main Azure::azure-identity Azure::azure-storage-blobs khiopsdriver_file_azure)
+endif ()
 
 gtest_discover_tests(basic_test)
 
