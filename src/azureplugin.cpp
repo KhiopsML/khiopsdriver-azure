@@ -27,14 +27,12 @@
 
 using namespace azureplugin;
 
-constexpr const char *version = "0.1.0";
-constexpr const char *driver_name = "Azure driver";
-constexpr const char *driver_scheme = "https";
+constexpr const char* version = "0.1.0";
+constexpr const char* driver_name = "Azure driver";
+constexpr const char* driver_scheme = "https";
 constexpr long long preferred_buffer_size = 4 * 1024 * 1024;
 
-bool bIsConnected = false;
-
-
+int bIsConnected = kFalse;
 
 // Add appropriate using namespace directives
 using namespace Azure::Storage;
@@ -44,12 +42,22 @@ using namespace Azure::Identity;
 
 // Secrets should be stored & retrieved from secure locations such as Azure::KeyVault. For
 // convenience and brevity of samples, the secrets are retrieved from environment variables.
-std::string GetEndpointUrl() { return std::getenv("AZURE_STORAGE_ACCOUNT_URL"); }
-std::string GetAccountName() { return std::getenv("AZURE_STORAGE_ACCOUNT_NAME"); }
-std::string GetAccountKey() { return std::getenv("AZURE_STORAGE_ACCOUNT_KEY"); }
-std::string GetConnectionString() { return std::getenv("AZURE_STORAGE_CONNECTION_STRING"); }
-
-
+std::string GetEndpointUrl()
+{
+	return std::getenv("AZURE_STORAGE_ACCOUNT_URL");
+}
+std::string GetAccountName()
+{
+	return std::getenv("AZURE_STORAGE_ACCOUNT_NAME");
+}
+std::string GetAccountKey()
+{
+	return std::getenv("AZURE_STORAGE_ACCOUNT_KEY");
+}
+std::string GetConnectionString()
+{
+	return std::getenv("AZURE_STORAGE_CONNECTION_STRING");
+}
 
 // Global bucket name
 std::string globalBucketName;
@@ -59,73 +67,130 @@ std::string lastError;
 
 HandleContainer active_handles;
 
+enum class Service
+{
+	UNKNOWN,
+	BLOB,
+	SHARE
+};
+
+template <typename T> struct DriverResult
+{
+	Azure::Response<T> response_;
+	bool success_{false};
+
+	DriverResult() = default;
+	DriverResult(Azure::Response<T>&& response, bool success) : response_{std::move(response)}, success_{success} {}
+
+	const T& GetValue() const
+	{
+		return response_.Value;
+	}
+
+	T& GetValue()
+	{
+		return response_.Value;
+	}
+
+	T&& TakeValue()
+	{
+		return std::move(response_.Value);
+	}
+
+	const decltype(response_.RawResponse)& GetRawResponse() const
+	{
+		return response_.RawResponse;
+	}
+
+	const std::string& GetReasonPhrase() const
+	{
+		return GetRawResponse()->GetReasonPhrase();
+	}
+
+	operator bool() const
+	{
+		return success_;
+	}
+};
+
+#define KH_AZ_CONNECTION_ERROR(err_val)                                                                                \
+	if (kFalse == bIsConnected)                                                                                    \
+	{                                                                                                              \
+		LogError("Error: driver not connected.");                                                              \
+		return (err_val);                                                                                      \
+	}
+
 #define RETURN_STATUS(x) return std::move((x)).status();
 
-#define RETURN_STATUS_ON_ERROR(x)   \
-if (!(x))                           \
-{                                   \
-    RETURN_STATUS((x));             \
-}                                   \
+#define RETURN_STATUS_ON_ERROR(x)                                                                                      \
+	if (!(x))                                                                                                      \
+	{                                                                                                              \
+		RETURN_STATUS((x));                                                                                    \
+	}
 
-#define ERROR_ON_NULL_ARG(arg, msg, err_val)        \
-if (!(arg))                                         \
-{                                                   \
-    LogError((msg));                                \
-    return (err_val);                               \
-}                                                   \
+#define ERROR_ON_NULL_ARG(arg, msg, err_val)                                                                           \
+	if (!(arg))                                                                                                    \
+	{                                                                                                              \
+		LogError((msg));                                                                                       \
+		return (err_val);                                                                                      \
+	}
 
-void LogError(const std::string &msg)
+void LogError(const std::string& msg)
 {
-    lastError = msg;
-    spdlog::error(lastError);
+	lastError = msg;
+	spdlog::error(lastError);
+}
+
+void LogException(std::string&& msg, std::string&& what)
+{
+	std::ostringstream oss;
+	oss << std::move(msg) << " " << std::move(what);
+	LogError(oss.str());
 }
 
 #define LogBadStatus(a, b)
 
-/*
-void LogBadStatus(const gc::Status &status, const std::string &msg)
+template <typename T> void LogBadResult(const DriverResult<T>& result, const std::string& msg)
 {
-    std::ostringstream os;
-    os << msg << ": " << status;
-    LogError(os.str());
-}
-*/
-void InitHandle(Handle &h, ReaderPtr &&r_ptr)
-{
-    h.var.reader = std::move(r_ptr);
+	std::ostringstream oss;
+	oss << msg << ": " << result.GetReasonPhrase();
+	LogError(oss.str());
 }
 
-void InitHandle(Handle &h, WriterPtr &&w_ptr)
+void InitHandle(Handle& h, ReaderPtr&& r_ptr)
 {
-    h.var.writer = std::move(w_ptr);
+	h.var.reader = std::move(r_ptr);
 }
 
-template <typename VariantPtr, HandleType Type>
-HandlePtr MakeHandleFromVariant(VariantPtr &&var_ptr)
+void InitHandle(Handle& h, WriterPtr&& w_ptr)
 {
-    HandlePtr h{new Handle(Type)};
-    InitHandle(*h, std::move(var_ptr));
-    return h;
+	h.var.writer = std::move(w_ptr);
 }
 
-template <typename VariantPtr, HandleType Type>
-Handle *InsertHandle(VariantPtr &&var_ptr)
+template <typename VariantPtr, HandleType Type> HandlePtr MakeHandleFromVariant(VariantPtr&& var_ptr)
 {
-    return active_handles.insert(active_handles.end(),
-                                 MakeHandleFromVariant<VariantPtr, Type>(std::move(var_ptr)))
-        ->get();
+	HandlePtr h{new Handle(Type)};
+	InitHandle(*h, std::move(var_ptr));
+	return h;
 }
 
-HandleIt FindHandle(void *handle)
+template <typename VariantPtr, HandleType Type> Handle* InsertHandle(VariantPtr&& var_ptr)
 {
-    return std::find_if(active_handles.begin(), active_handles.end(), [handle](const HandlePtr &act_h_ptr)
-                        { return handle == static_cast<void *>(act_h_ptr.get()); });
+	return active_handles.insert(active_handles.end(), MakeHandleFromVariant<VariantPtr, Type>(std::move(var_ptr)))
+	    ->get();
+}
+
+HandleIt FindHandle(void* handle)
+{
+	return std::find_if(active_handles.begin(), active_handles.end(),
+			    [handle](const HandlePtr& act_h_ptr)
+			    { return handle == static_cast<void*>(act_h_ptr.get()); });
 }
 
 void EraseRemove(HandleIt pos)
 {
-    *pos = std::move(active_handles.back());
-    active_handles.pop_back();
+	*pos = std::move(active_handles.back());
+	active_handles.pop_back();
 }
 
 // Definition of helper functions
@@ -229,71 +294,112 @@ gc::StatusOr<long long> ReadBytesInFile(MultiPartFile &multifile, char *buffer, 
     return read_status.ok() ? bytes_read : gc::StatusOr<long long>{read_status};
 }
 */
-enum Service {
-  UNKNOWN = 0,
-  BLOB,
-  SHARE
-};
+
+std::unique_ptr<Azure::Core::Http::RawResponse> MakeRawHttpResponsePtr(Azure::Core::Http::HttpStatusCode code,
+								       const std::string& reason)
+{
+	return std::unique_ptr<Azure::Core::Http::RawResponse>(new Azure::Core::Http::RawResponse(1, 0, code, reason));
+}
+
+template <typename T>
+DriverResult<T> MakeDriverHttpFailure(Azure::Core::Http::HttpStatusCode code, const std::string& reason)
+{
+	return {Azure::Response<T>({}, MakeRawHttpResponsePtr(code, reason)), false};
+}
+
+template <typename T> DriverResult<T> MakeDriverSuccess(T&& value)
+{
+	return {Azure::Response<T>(std::move(value), nullptr), true};
+}
 
 struct ParseUriResult
 {
-    Service service;
-    std::string bucket;
-    std::string object;
+	Service service;
+	std::string bucket;
+	std::string object;
 };
 
-// Parses URI in the following forms: 
+// Parses URI in the following forms:
 //  - when accessing a real cloud service:
 //      https://myaccount.blob.core.windows.net/mycontainer/myblob.txt
 //  - when a storage emulator like Azurite is used, the URI will have a different form:
 //    http[s]://127.0.0.1:10000/myaccount/mycontainer/myblob.txt
 // Note: file service URIs e.g. https://myaccount.file.core.windows.net/myshare/myfolder/myfile.txt
 //       are not supported at this time...
-Azure::Response<ParseUriResult> ParseAzureUri(const std::string &azure_uri)
+DriverResult<ParseUriResult> ParseAzureUri(const std::string& azure_uri)
 {
-    Azure::Core::Url parsed_uri(azure_uri);
+	auto compare_suffix = [](const std::string& full, const std::string& suffix)
+	{
+		const size_t full_length = full.length();
+		const size_t suffix_length = suffix.length();
+		return (full_length >= suffix_length &&
+			full.compare(full_length - suffix_length, suffix_length, suffix) == 0);
+	};
 
-    if (parsed_uri.GetScheme() != "https" && parsed_uri.GetScheme() != "http")
-    {
-        return Azure::Response<ParseUriResult>({}, std::unique_ptr<Azure::Core::Http::RawResponse>(new Azure::Core::Http::RawResponse(1, 0, Azure::Core::Http::HttpStatusCode::BadRequest, "Invalid Azure URI")));
-    }
-    size_t bkt_pos = 0;
-    size_t obj_pos = parsed_uri.GetPath().find('/');
-    Service service = UNKNOWN;
-    
-    std::string host = parsed_uri.GetHost();
-    std::string az_domain = ".core.windows.net";
-    if (host.length() >= az_domain.length() && host.compare(host.length() - az_domain.length(), az_domain.length(), az_domain) == 0) {
-        std::cout << "Provided URI is a production one." << std::endl;
-        std::string blob_domain = ".blob.core.windows.net";
-        std::string file_domain = ".file.core.windows.net";
-        if (host.length() >= blob_domain.length() && host.compare(host.length() - blob_domain.length(), blob_domain.length(), blob_domain) == 0) {
-            std::cout << "Provided URI is a blob one." << std::endl;
-            service = BLOB;
-        } else if (host.length() >= file_domain.length() && host.compare(host.length() - file_domain.length(), file_domain.length(), file_domain) == 0) {
-            std::cout << "Provided URI is a file one." << std::endl;
-            service = SHARE;
-        }
-    } else {
-        std::cout << "Provided URI is a testing one." << std::endl;
-        bkt_pos = obj_pos+1;
-        obj_pos = parsed_uri.GetPath().find('/', bkt_pos);
-    }
+	const Azure::Core::Url parsed_uri(azure_uri);
 
-    if (obj_pos == std::string::npos)
-    {
-        return Azure::Response<ParseUriResult>({}, std::unique_ptr<Azure::Core::Http::RawResponse>(new Azure::Core::Http::RawResponse(1, 0, Azure::Core::Http::HttpStatusCode::BadRequest, "Invalid Azure URI, missing object name: " + azure_uri)));
-    }
+	if (parsed_uri.GetScheme() != "https" && parsed_uri.GetScheme() != "http")
+	{
+		return MakeDriverHttpFailure<ParseUriResult>(Azure::Core::Http::HttpStatusCode::BadRequest,
+							     "Invalid Azure URI");
+	}
 
-    return Azure::Response<ParseUriResult>({service, parsed_uri.GetPath().substr(bkt_pos, obj_pos-bkt_pos), parsed_uri.GetPath().substr(obj_pos + 1)},NULL);
+	size_t bkt_pos = 0;
+	size_t obj_pos = parsed_uri.GetPath().find('/');
+	Service service = Service::UNKNOWN;
+
+	const std::string host = parsed_uri.GetHost();
+	constexpr auto az_domain = ".core.windows.net";
+
+	if (compare_suffix(host, az_domain))
+	{
+		spdlog::debug("Provided URI is a production one.");
+
+		constexpr auto blob_domain = ".blob.core.windows.net";
+		constexpr auto file_domain = ".file.core.windows.net";
+
+		if (compare_suffix(host, blob_domain))
+		{
+			spdlog::debug("Provided URI is a blob one.");
+			service = Service::BLOB;
+		}
+		else if (compare_suffix(host, file_domain))
+		{
+			spdlog::debug("Provided URI is a file one.");
+			service = Service::SHARE;
+		}
+	}
+	else
+	{
+		spdlog::debug("Provided URI is a testing one.");
+		bkt_pos = obj_pos + 1;
+		obj_pos = parsed_uri.GetPath().find('/', bkt_pos);
+	}
+
+	if (obj_pos == std::string::npos)
+	{
+		return MakeDriverHttpFailure<ParseUriResult>(Azure::Core::Http::HttpStatusCode::BadRequest,
+							     "Invalid Azure URI, missing object name: " + azure_uri);
+	}
+
+	ParseUriResult res{service, parsed_uri.GetPath().substr(bkt_pos, obj_pos - bkt_pos),
+			   parsed_uri.GetPath().substr(obj_pos + 1)};
+
+	return MakeDriverSuccess<ParseUriResult>(std::move(res));
 }
 
-Azure::Response<ParseUriResult> GetServiceBucketAndObjectNames(const char *sFilePathName)//, std::string &bucket, std::string &object)
+DriverResult<ParseUriResult> GetServiceBucketAndObjectNames(const char* sFilePathName)
 {
-    auto maybe_parse_res = ParseAzureUri(sFilePathName);
+	auto maybe_parse_res = ParseAzureUri(sFilePathName);
 
-    std::cout << "Bucket: " << maybe_parse_res.Value.bucket << ", Object: " << maybe_parse_res.Value.object << std::endl;
-    /*
+	if (maybe_parse_res)
+	{
+		const ParseUriResult& val = maybe_parse_res.GetValue();
+		spdlog::debug("Bucket: {}, Object: {}", val.bucket, val.object);
+	}
+
+	// std::cout << "Bucket: " << val.bucket << ", Object: " << val.object << "\n";
+	/*
     if (!maybe_parse_res)
     {
         return maybe_parse_res;
@@ -312,67 +418,58 @@ Azure::Response<ParseUriResult> GetServiceBucketAndObjectNames(const char *sFile
         }
     }
     */
-    return maybe_parse_res;
+	return maybe_parse_res;
 }
 
-std::string ToLower(const std::string &str)
+std::string ToLower(const std::string& str)
 {
-    std::string low{str};
-    const size_t cnt = low.length();
-    for (size_t i = 0; i < cnt; i++)
-    {
-        low[i] = static_cast<char>(std::tolower(static_cast<unsigned char>(low[i]))); // see https://en.cppreference.com/w/cpp/string/byte/tolower
-    }
-    return low;
+	std::string low{str};
+	const size_t cnt = low.length();
+	for (size_t i = 0; i < cnt; i++)
+	{
+		low[i] = static_cast<char>(std::tolower(
+		    static_cast<unsigned char>(low[i]))); // see https://en.cppreference.com/w/cpp/string/byte/tolower
+	}
+	return low;
 }
 
-std::string GetEnvironmentVariableOrDefault(const std::string &variable_name,
-                                            const std::string &default_value)
+std::string GetEnvironmentVariableOrDefault(const std::string& variable_name, const std::string& default_value)
 {
-    char *value = getenv(variable_name.c_str());
+	char* value = std::getenv(variable_name.c_str());
 
-    if (value && std::strlen(value) > 0)
-    {
-        return value;
-    }
+	if (value && std::strlen(value) > 0)
+	{
+		return value;
+	}
 
-    const std::string low_key = ToLower(variable_name);
-    if (low_key.find("token") || low_key.find("password") || low_key.find("key") || low_key.find("secret"))
-    {
-        spdlog::debug("No {} specified, using **REDACTED** as default.", variable_name);
-    }
-    else
-    {
-        spdlog::debug("No {} specified, using '{}' as default.", variable_name, default_value);
-    }
+	const std::string low_key = ToLower(variable_name);
+	if (low_key.find("token") || low_key.find("password") || low_key.find("key") || low_key.find("secret"))
+	{
+		spdlog::debug("No {} specified, using **REDACTED** as default.", variable_name);
+	}
+	else
+	{
+		spdlog::debug("No {} specified, using '{}' as default.", variable_name, default_value);
+	}
 
-    return default_value;
-}
- 
-BlobServiceClient GetBlobServiceClient() {
-    // TODO Should allow different auth options like described in: https://learn.microsoft.com/en-us/azure/storage/blobs/authorize-data-operations-cli
-
-    std::string connectionString = GetEnvironmentVariableOrDefault(
-        "AZURE_STORAGE_CONNECTION_STRING",
-        "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;"
-    );
-    return BlobServiceClient::CreateFromConnectionString(connectionString);
+	return default_value;
 }
 
-ShareServiceClient GetShareServiceClient() {
-    // TODO Should allow different auth options like described in: https://learn.microsoft.com/en-us/azure/storage/blobs/authorize-data-operations-cli
-
-    std::string connectionString = GetEnvironmentVariableOrDefault(
-        "AZURE_STORAGE_CONNECTION_STRING",
-        "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;"
-    );
-    return ShareServiceClient::CreateFromConnectionString(connectionString);
+template <typename ServiceClientType> ServiceClientType GetServiceClient()
+{
+	// TODO Should allow different auth options like described in: https://learn.microsoft.com/en-us/azure/storage/blobs/authorize-data-operations-cli
+	const std::string connectionString =
+	    GetEnvironmentVariableOrDefault("AZURE_STORAGE_CONNECTION_STRING",
+					    "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey="
+					    "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/"
+					    "KBHBeksoGMGw==;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;");
+	return ServiceClientType::CreateFromConnectionString(connectionString);
 }
 
 bool WillSizeCountProductOverflow(size_t size, size_t count)
 {
-    constexpr size_t max_prod_usable{static_cast<size_t>(std::numeric_limits<tOffset>::max())};
-    return (max_prod_usable / size < count || max_prod_usable / count < size);
+	constexpr size_t max_prod_usable{static_cast<size_t>(std::numeric_limits<tOffset>::max())};
+	return (max_prod_usable / size < count || max_prod_usable / count < size);
 }
 
 /*
@@ -506,87 +603,60 @@ void *test_addWriterHandle(bool appendMode, bool create_with_mock_client, std::s
     return InsertHandle<WriterPtr, HandleType::kWrite>(std::move(writer_struct));
 }
 */
-const char *driver_getDriverName()
+const char* driver_getDriverName()
 {
-    return driver_name;
+	return driver_name;
 }
 
-const char *driver_getVersion()
+const char* driver_getVersion()
 {
-    return version;
+	return version;
 }
 
-const char *driver_getScheme()
+const char* driver_getScheme()
 {
-    return driver_scheme;
+	return driver_scheme;
 }
 
 int driver_isReadOnly()
 {
-    return kFalse;
+	return kFalse;
 }
 
 int driver_connect()
 {
-    const std::string loglevel = GetEnvironmentVariableOrDefault("AZURE_DRIVER_LOGLEVEL", "info");
-    if (loglevel == "debug")
-        spdlog::set_level(spdlog::level::debug);
-    else if (loglevel == "trace")
-        spdlog::set_level(spdlog::level::trace);
-    else
-        spdlog::set_level(spdlog::level::info);
+	const std::string loglevel = GetEnvironmentVariableOrDefault("AZURE_DRIVER_LOGLEVEL", "info");
+	if (loglevel == "debug")
+		spdlog::set_level(spdlog::level::debug);
+	else if (loglevel == "trace")
+		spdlog::set_level(spdlog::level::trace);
+	else
+		spdlog::set_level(spdlog::level::info);
 
-    spdlog::debug("Connect {}", loglevel);
+	spdlog::debug("Connect {}", loglevel);
 
-    // Initialize variables from environment
-    globalBucketName = GetEnvironmentVariableOrDefault("AZURE_BUCKET_NAME", "");
+	// Initialize variables from environment
+	globalBucketName = GetEnvironmentVariableOrDefault("AZURE_BUCKET_NAME", "");
 
-    // Tester la connexion
-    try {
-        auto blobServiceClient = GetBlobServiceClient();
-        auto properties = blobServiceClient.GetProperties();
-        std::cout << "Connexion valide." << std::endl;
-        bIsConnected = true;
-        return kSuccess;
-    } catch (const std::exception& e) {
-        std::cerr << "Erreur de connexion : " << e.what() << std::endl;
-        return kFailure;
-    }
-/*
-    gc::Options options{};
-
-    // Add project ID if defined
-    std::string project = GetEnvironmentVariableOrDefault("CLOUD_ML_PROJECT_ID", "");
-    if (!project.empty())
-    {
-        options.set<gc::UserProjectOption>(std::move(project));
-    }
-
-    std::string gcp_token_filename = GetEnvironmentVariableOrDefault("GCP_TOKEN", "");
-    if (!gcp_token_filename.empty())
-    {
-        // Initialize from token file
-        std::ifstream t(gcp_token_filename);
-        std::stringstream buffer;
-        buffer << t.rdbuf();
-        if (t.fail())
-        {
-            LogError("Error initializing token from file");
-            return kFailure;
-        }
-        std::shared_ptr<gc::Credentials> creds = gc::MakeServiceAccountCredentials(buffer.str());
-        options.set<gc::UnifiedCredentialsOption>(std::move(creds));
-    }
-
-    // Create client with configured options
-    client = gcs::Client{std::move(options)};
-*/
-
+	// Tester la connexion
+	const auto blobServiceClient = GetServiceClient<BlobServiceClient>();
+	try
+	{
+		blobServiceClient.GetProperties();
+		spdlog::debug("Connexion valide.");
+		bIsConnected = kTrue;
+		return kSuccess;
+	}
+	catch (const std::exception& e)
+	{
+		LogException("Connection error.", e.what());
+		return kFailure;
+	}
 }
 
 int driver_disconnect()
 {
-    /*
+	/*
     // loop on the still active handles to close as necessary and remove. clear() on the container would do it
     // but the procedures would fail silently.
     std::vector<gc::Status> failures;
@@ -605,13 +675,13 @@ int driver_disconnect()
     }
     active_handles.clear();
 */
-    bIsConnected = false;
+	bIsConnected = kFalse;
 
-    //if (failures.empty())
-    //{
-        return kSuccess;
-    //}
-/*
+	//if (failures.empty())
+	//{
+	return kSuccess;
+	//}
+	/*
     std::ostringstream os;
     os << "Errors occured during disconnection:\n";
     for (const auto &status : failures)
@@ -620,153 +690,149 @@ int driver_disconnect()
     }
     LogError(os.str());
     */
-    return kFailure;
+	// return kFailure;
 }
 
 int driver_isConnected()
 {
-    return bIsConnected ? 1 : 0;
+	return bIsConnected;
 }
 
 long long int driver_getSystemPreferredBufferSize()
 {
-    return preferred_buffer_size; // 4 Mo
+	return preferred_buffer_size; // 4 Mo
 }
 
-int driver_exist(const char *filename)
+int driver_exist(const char* filename)
 {
-    ERROR_ON_NULL_ARG(filename, "Error passing null pointer to exist", kFalse);
+	KH_AZ_CONNECTION_ERROR(kFalse);
 
-    spdlog::debug("exist {}", filename);
+	ERROR_ON_NULL_ARG(filename, "Error passing null pointer to exist", kFalse);
 
-    std::string file_uri = filename;
-    spdlog::debug("exist file_uri {}", file_uri);
-    spdlog::debug("exist last char {}", file_uri.back());
+	spdlog::debug("exist {}", filename);
 
-    if (file_uri.back() == '/')
-    {
-        return driver_dirExists(filename);
-    }
-    else
-    {
-        return driver_fileExists(filename);
-    }
+	std::string file_uri = filename;
+	spdlog::debug("exist file_uri {}", file_uri);
+	spdlog::debug("exist last char {}", file_uri.back());
+
+	if (file_uri.back() == '/')
+	{
+		return driver_dirExists(filename);
+	}
+	else
+	{
+		return driver_fileExists(filename);
+	}
 }
 
+#define RETURN_ON_ERROR(driver_result, msg, err_val)                                                                   \
+	if (!(driver_result))                                                                                          \
+	{                                                                                                              \
+		LogBadResult((driver_result), (msg));                                                                  \
+		return (err_val);                                                                                      \
+	}
 
-#define RETURN_ON_ERROR(status_or, msg, err_val)
- /*                       \
-{                                                                       \
-    if (!(status_or))                                                   \
-    {                                                                   \
-        LogBadStatus((status_or).status(), (msg));                      \
-        return (err_val);                                               \
-    }                                                                   \
-}                                                                       \
-*/
+#define ERROR_ON_NAMES(names_result, err_val) RETURN_ON_ERROR((names_result), "Error parsing URL", (err_val))
 
-#define ERROR_ON_NAMES(status_or_names, err_val) RETURN_ON_ERROR((status_or_names), "Error parsing URL", (err_val))
-
-
-int driver_fileExists(const char *sFilePathName)
+int driver_fileExists(const char* sFilePathName)
 {
-    ERROR_ON_NULL_ARG(sFilePathName, "Error passing null pointer to fileExists.", kFalse);
+	KH_AZ_CONNECTION_ERROR(kFalse);
 
-    spdlog::debug("fileExist {}", sFilePathName);
+	ERROR_ON_NULL_ARG(sFilePathName, "Error passing null pointer to fileExists.", kFalse);
 
-    auto maybe_parsed_names = GetServiceBucketAndObjectNames(sFilePathName);
-/*
-    ERROR_ON_NAMES(maybe_parsed_names, kFalse);
-*/
-    try {
-        if (maybe_parsed_names.Value.service == SHARE) {
-            GetShareServiceClient().GetShareClient(maybe_parsed_names.Value.bucket)
-                    .GetRootDirectoryClient().GetFileClient(maybe_parsed_names.Value.object)
-                    .GetProperties();
-        } else {
-            GetBlobServiceClient().GetBlobContainerClient(maybe_parsed_names.Value.bucket)
-                    .GetBlockBlobClient(maybe_parsed_names.Value.object)
-                    .GetProperties();
-        }
-        spdlog::debug("file {} exists!", sFilePathName);
-        return kTrue;
+	spdlog::debug("fileExist {}", sFilePathName);
 
-    } catch (const Azure::Core::RequestFailedException& e) {
-        if (e.StatusCode == Azure::Core::Http::HttpStatusCode::NotFound) {
-            return kFalse; // Le blob n'existe pas
-        }
-        throw; // Relancer l'exception pour d'autres erreurs
-    }
+	auto maybe_parsed_names = ParseAzureUri(sFilePathName);
+	if (!maybe_parsed_names)
+	{
+		std::ostringstream oss;
+		oss << "Error while parsing Uri. " << maybe_parsed_names.GetReasonPhrase();
+		LogError(oss.str());
+	}
 
-/*
-    auto maybe_list = ListObjects(maybe_parsed_names->bucket, maybe_parsed_names->object);
-    if (!maybe_list) {
-        if (maybe_list.status().code() != gc::StatusCode::kNotFound) {
-            LogBadStatus((maybe_list).status(), ("Error checking if file exists"));
-        }
-        return kFalse;
-    }
-*/
+	const auto& val = maybe_parsed_names.GetValue();
+	if (Service::BLOB != val.service)
+	{
+		LogError("Error checking blob's existence: not a URL of a blob service.");
+		return kFalse;
+	}
+
+	const auto& blob_client =
+	    GetServiceClient<BlobServiceClient>().GetBlobContainerClient(val.bucket).GetBlobClient(val.object);
+
+	try
+	{
+		// GetProperties throws in case of error, even if the error is NotFound.
+		blob_client.GetProperties();
+		spdlog::debug("file {} exists.", sFilePathName);
+		return kTrue;
+	}
+	catch (const Azure::Storage::StorageException& e)
+	{
+		if (e.StatusCode == Azure::Core::Http::HttpStatusCode::NotFound)
+		{
+			spdlog::debug("File not found. {}", e.what());
+		}
+		else
+		{
+			LogException("Error while checking file's presence.", e.what());
+		}
+		return kFalse;
+	}
+	catch (const std::exception& e)
+	{
+		LogException("Error while checking file's presence.", e.what());
+		return kFalse;
+	}
 }
 
-int driver_dirExists(const char *sFilePathName)
+int driver_dirExists(const char* sFilePathName)
 {
-    ERROR_ON_NULL_ARG(sFilePathName, "Error passing null pointer to dirExists", kFalse);
+	KH_AZ_CONNECTION_ERROR(kFalse);
 
-    spdlog::debug("dirExist {}", sFilePathName);
-    return kTrue;
+	ERROR_ON_NULL_ARG(sFilePathName, "Error passing null pointer to dirExists", kFalse);
+
+	spdlog::debug("dirExist {}", sFilePathName);
+	return kTrue;
 }
-/*
-gc::StatusOr<std::string> ReadHeader(const std::string &bucket_name, const std::string &filename)
+
+long long int driver_getFileSize(const char* filename)
 {
-    gcs::ObjectReadStream stream = client.ReadObject(bucket_name, filename);
-    std::string line;
-    std::getline(stream, line, '\n');
-    if (stream.bad())
-    {
-        return stream.status();
-    }
-    if (!stream.eof())
-    {
-        line.push_back('\n');
-    }
-    if (line.empty())
-    {
-        return gc::Status{gc::StatusCode::kInternal, "Got an empty header"};
-    }
-    return line;
-}
-*/
+	KH_AZ_CONNECTION_ERROR(kBadSize);
 
-long long int driver_getFileSize(const char *filename)
-{
-    ERROR_ON_NULL_ARG(filename, "Error passing null pointer to getFileSize.", -1);
+	ERROR_ON_NULL_ARG(filename, "Error passing null pointer to getFileSize.", kBadSize);
 
-    spdlog::debug("getFileSize {}", filename);
+	spdlog::debug("getFileSize {}", filename);
 
-    auto maybe_parsed_names = GetServiceBucketAndObjectNames(filename);
+	const auto maybe_parsed_names = ParseAzureUri(filename);
+	ERROR_ON_NAMES(maybe_parsed_names, kBadSize);
 
-    ERROR_ON_NAMES(maybe_names, -1);
+	const auto& val = maybe_parsed_names.GetValue();
 
-    try {
-        if (maybe_parsed_names.Value.service == SHARE) {
-            auto props = GetShareServiceClient().GetShareClient(maybe_parsed_names.Value.bucket)
-                    .GetRootDirectoryClient().GetFileClient(maybe_parsed_names.Value.object)
-                    .GetProperties();
-            return props.Value.FileSize;
-        } else {
-            auto props = GetBlobServiceClient().GetBlobContainerClient(maybe_parsed_names.Value.bucket)
-                    .GetBlockBlobClient(maybe_parsed_names.Value.object)
-                    .GetProperties();
-            return props.Value.BlobSize;
-        }
-    } catch (const Azure::Core::RequestFailedException& e) {
-        if (e.StatusCode == Azure::Core::Http::HttpStatusCode::NotFound) {
-            LogError(e.ReasonPhrase);
-            return -1; // Le blob n'existe pas
-        }
-        throw; // Relancer l'exception pour d'autres erreurs
-    }
+	if (Service::BLOB != val.service)
+	{
+		LogError("Functionality not implemented for this type of service.");
+		return kBadSize;
+	}
+
+	// if (val.service == SHARE) {
+	//     auto props = GetShareServiceClient().GetShareClient(val.bucket)
+	//             .GetRootDirectoryClient().GetFileClient(val.object)
+	//             .GetProperties();
+	//     return props.Value.FileSize;
+
+	const auto blob_client =
+	    GetServiceClient<BlobServiceClient>().GetBlobContainerClient(val.bucket).GetBlockBlobClient(val.object);
+	try
+	{
+		const auto props = blob_client.GetProperties();
+		return props.Value.BlobSize;
+	}
+	catch (const std::exception& e)
+	{
+		LogException("Error while getting file size.", e.what());
+		return kBadSize;
+	}
 }
 /*
 gc::StatusOr<ReaderPtr> MakeReaderPtr(std::string bucketname, std::string objectname)
@@ -891,22 +957,22 @@ gc::StatusOr<Handle *> RegisterWriterForAppend(std::string &&bucket, std::string
     return maybe_handle;
 }
 */
-void *driver_fopen(const char *filename, char mode)
+void* driver_fopen(const char* filename, char mode)
 {
-    assert(driver_isConnected());
+	assert(driver_isConnected());
 
-    ERROR_ON_NULL_ARG(filename, "Error passing null pointer to fopen.", nullptr);
+	ERROR_ON_NULL_ARG(filename, "Error passing null pointer to fopen.", nullptr);
 
-    spdlog::debug("fopen {} {}", filename, mode);
+	spdlog::debug("fopen {} {}", filename, mode);
 
-    // auto maybe_names = GetBucketAndObjectNames(filename);
-    // ERROR_ON_NAMES(maybe_names, nullptr);
+	// auto maybe_names = GetBucketAndObjectNames(filename);
+	// ERROR_ON_NAMES(maybe_names, nullptr);
 
-    // auto& names = *maybe_names;
+	// auto& names = *maybe_names;
 
-    // gc::StatusOr<Handle *> maybe_handle;
-    std::string err_msg;
-/*
+	// gc::StatusOr<Handle *> maybe_handle;
+	std::string err_msg;
+	/*
     switch (mode)
     {
     case 'r':
@@ -973,28 +1039,28 @@ void *driver_fopen(const char *filename, char mode)
 
     return *maybe_handle;
     */
-   return NULL;
+	return NULL;
 }
 
-#define ERROR_NO_STREAM(handle_it, errval)       \
-if ((handle_it) == active_handles.end())         \
-{                                                \
-    LogError("Cannot identify stream");          \
-    return (errval);                             \
-}                                                \
+#define ERROR_NO_STREAM(handle_it, errval)                                                                             \
+	if ((handle_it) == active_handles.end())                                                                       \
+	{                                                                                                              \
+		LogError("Cannot identify stream");                                                                    \
+		return (errval);                                                                                       \
+	}
 
-int driver_fclose(void *stream)
+int driver_fclose(void* stream)
 {
-    assert(driver_isConnected());
+	assert(driver_isConnected());
 
-    ERROR_ON_NULL_ARG(stream, "Error passing null pointer to fclose", kCloseEOF);
+	ERROR_ON_NULL_ARG(stream, "Error passing null pointer to fclose", kCloseEOF);
 
-    spdlog::debug("fclose {}", (void *)stream);
+	spdlog::debug("fclose {}", (void*)stream);
 
-    auto stream_it = FindHandle(stream);
-    ERROR_NO_STREAM(stream_it, kCloseEOF);
-    auto &h_ptr = *stream_it;
-/*
+	auto stream_it = FindHandle(stream);
+	ERROR_NO_STREAM(stream_it, kCloseEOF);
+	auto& h_ptr = *stream_it;
+	/*
     gc::Status status;
 
     if (HandleType::kRead != h_ptr->type)
@@ -1010,211 +1076,211 @@ int driver_fclose(void *stream)
         return kFailure;
     }
 */
-    return kCloseSuccess;
+	return kCloseSuccess;
 }
 
-int driver_fseek(void *stream, long long int offset, int whence)
+int driver_fseek(void* stream, long long int offset, int whence)
 {
-    constexpr long long max_val = std::numeric_limits<long long>::max();
+	constexpr long long max_val = std::numeric_limits<long long>::max();
 
-    ERROR_ON_NULL_ARG(stream, "Error passing null pointer to fseek", -1);
+	ERROR_ON_NULL_ARG(stream, "Error passing null pointer to fseek", -1);
 
-    // confirm stream's presence
-    auto to_stream = FindHandle(stream);
-    ERROR_NO_STREAM(to_stream, -1);
+	// confirm stream's presence
+	auto to_stream = FindHandle(stream);
+	ERROR_NO_STREAM(to_stream, -1);
 
-    auto &stream_h = *to_stream;
+	auto& stream_h = *to_stream;
 
-    if (HandleType::kRead != stream_h->type)
-    {
-        LogError("Cannot seek on not reading stream");
-        return -1;
-    }
+	if (HandleType::kRead != stream_h->type)
+	{
+		LogError("Cannot seek on not reading stream");
+		return -1;
+	}
 
-    spdlog::debug("fseek {} {} {}", stream, offset, whence);
+	spdlog::debug("fseek {} {} {}", stream, offset, whence);
 
-    MultiPartFile &h = stream_h->GetReader();
+	MultiPartFile& h = stream_h->GetReader();
 
-    tOffset computed_offset{0};
+	tOffset computed_offset{0};
 
-    switch (whence)
-    {
-    case std::ios::beg:
-        computed_offset = offset;
-        break;
-    case std::ios::cur:
-        if (offset > max_val - h.offset_)
-        {
-            LogError("Signed overflow prevented");
-            return -1;
-        }
-        computed_offset = h.offset_ + offset;
-        break;
-    case std::ios::end:
-        if (h.total_size_ > 0)
-        {
-            long long minus1 = h.total_size_ - 1;
-            if (offset > max_val - minus1)
-            {
-                LogError("Signed overflow prevented");
-                return -1;
-            }
-        }
-        if ((offset == std::numeric_limits<long long>::min()) && (h.total_size_ == 0))
-        {
-            LogError("Signed overflow prevented");
-            return -1;
-        }
+	switch (whence)
+	{
+	case std::ios::beg:
+		computed_offset = offset;
+		break;
+	case std::ios::cur:
+		if (offset > max_val - h.offset_)
+		{
+			LogError("Signed overflow prevented");
+			return -1;
+		}
+		computed_offset = h.offset_ + offset;
+		break;
+	case std::ios::end:
+		if (h.total_size_ > 0)
+		{
+			long long minus1 = h.total_size_ - 1;
+			if (offset > max_val - minus1)
+			{
+				LogError("Signed overflow prevented");
+				return -1;
+			}
+		}
+		if ((offset == std::numeric_limits<long long>::min()) && (h.total_size_ == 0))
+		{
+			LogError("Signed overflow prevented");
+			return -1;
+		}
 
-        computed_offset = (h.total_size_ == 0) ? offset : h.total_size_ - 1 + offset;
-        break;
-    default:
-        LogError("Invalid seek mode " + std::to_string(whence));
-        return -1;
-    }
+		computed_offset = (h.total_size_ == 0) ? offset : h.total_size_ - 1 + offset;
+		break;
+	default:
+		LogError("Invalid seek mode " + std::to_string(whence));
+		return -1;
+	}
 
-    if (computed_offset < 0)
-    {
-        LogError("Invalid seek offset " + std::to_string(computed_offset));
-        return -1;
-    }
-    h.offset_ = computed_offset;
-    return 0;
+	if (computed_offset < 0)
+	{
+		LogError("Invalid seek offset " + std::to_string(computed_offset));
+		return -1;
+	}
+	h.offset_ = computed_offset;
+	return 0;
 }
 
-const char *driver_getlasterror()
+const char* driver_getlasterror()
 {
-    spdlog::debug("getlasterror");
+	spdlog::debug("getlasterror");
 
-    if (!lastError.empty())
-    {
-        return lastError.c_str();
-    }
-    return NULL;
+	if (!lastError.empty())
+	{
+		return lastError.c_str();
+	}
+	return NULL;
 }
 
-long long int driver_fread(void *ptr, size_t size, size_t count, void *stream)
+long long int driver_fread(void* ptr, size_t size, size_t count, void* stream)
 {
-    ERROR_ON_NULL_ARG(stream, "Error passing null stream pointer to fread", -1);
-    ERROR_ON_NULL_ARG(ptr, "Error passing null buffer pointer to fread", -1);
+	ERROR_ON_NULL_ARG(stream, "Error passing null stream pointer to fread", -1);
+	ERROR_ON_NULL_ARG(ptr, "Error passing null buffer pointer to fread", -1);
 
-    if (0 == size)
-    {
-        LogError("Error passing size of 0");
-        return -1;
-    }
+	if (0 == size)
+	{
+		LogError("Error passing size of 0");
+		return -1;
+	}
 
-    // confirm stream's presence
-    auto to_stream = FindHandle(stream);
-    if (to_stream == active_handles.end())
-    {
-        LogError("Cannot identify stream");
-        return -1;
-    }
+	// confirm stream's presence
+	auto to_stream = FindHandle(stream);
+	if (to_stream == active_handles.end())
+	{
+		LogError("Cannot identify stream");
+		return -1;
+	}
 
-    auto &stream_h = *to_stream;
+	auto& stream_h = *to_stream;
 
-    if (HandleType::kRead != stream_h->type)
-    {
-        LogError("Cannot read on not reading stream");
-        return -1;
-    }
+	if (HandleType::kRead != stream_h->type)
+	{
+		LogError("Cannot read on not reading stream");
+		return -1;
+	}
 
-    spdlog::debug("fread {} {} {} {}", ptr, size, count, stream);
+	spdlog::debug("fread {} {} {} {}", ptr, size, count, stream);
 
-    MultiPartFile &h = stream_h->GetReader();
+	MultiPartFile& h = stream_h->GetReader();
 
-    const tOffset offset = h.offset_;
+	const tOffset offset = h.offset_;
 
-    // fast exit for 0 read
-    if (0 == count)
-    {
-        return 0;
-    }
+	// fast exit for 0 read
+	if (0 == count)
+	{
+		return 0;
+	}
 
-    // prevent overflow
-    if (WillSizeCountProductOverflow(size, count))
-    {
-        LogError("product size * count is too large, would overflow");
-        return -1;
-    }
+	// prevent overflow
+	if (WillSizeCountProductOverflow(size, count))
+	{
+		LogError("product size * count is too large, would overflow");
+		return -1;
+	}
 
-    tOffset to_read{static_cast<tOffset>(size * count)};
-    if (offset > std::numeric_limits<long long>::max() - to_read)
-    {
-        LogError("signed overflow prevented on reading attempt");
-        return -1;
-    }
-    // end of overflow prevention
+	tOffset to_read{static_cast<tOffset>(size * count)};
+	if (offset > std::numeric_limits<long long>::max() - to_read)
+	{
+		LogError("signed overflow prevented on reading attempt");
+		return -1;
+	}
+	// end of overflow prevention
 
-    // special case: if offset >= total_size, error if not 0 byte required. 0 byte required is already done above
-    const tOffset total_size = h.total_size_;
-    if (offset >= total_size)
-    {
-        LogError("Error trying to read more bytes while already out of bounds");
-        return -1;
-    }
+	// special case: if offset >= total_size, error if not 0 byte required. 0 byte required is already done above
+	const tOffset total_size = h.total_size_;
+	if (offset >= total_size)
+	{
+		LogError("Error trying to read more bytes while already out of bounds");
+		return -1;
+	}
 
-    // normal cases
-    if (offset + to_read > total_size)
-    {
-        to_read = total_size - offset;
-        spdlog::debug("offset {}, req len {} exceeds file size ({}) -> reducing len to {}",
-                      offset, to_read, total_size, to_read);
-    }
-    else
-    {
-        spdlog::debug("offset = {} to_read = {}", offset, to_read);
-    }
-/*
+	// normal cases
+	if (offset + to_read > total_size)
+	{
+		to_read = total_size - offset;
+		spdlog::debug("offset {}, req len {} exceeds file size ({}) -> reducing len to {}", offset, to_read,
+			      total_size, to_read);
+	}
+	else
+	{
+		spdlog::debug("offset = {} to_read = {}", offset, to_read);
+	}
+	/*
     auto maybe_read = ReadBytesInFile(h, reinterpret_cast<char *>(ptr), to_read);
     RETURN_ON_ERROR(maybe_read, "Error while reading from file", -1);
 
     return *maybe_read;
     */
-   return 0;
+	return 0;
 }
 
-long long int driver_fwrite(const void *ptr, size_t size, size_t count, void *stream)
+long long int driver_fwrite(const void* ptr, size_t size, size_t count, void* stream)
 {
-    ERROR_ON_NULL_ARG(stream, "Error passing null stream pointer to fwrite", -1);
-    ERROR_ON_NULL_ARG(ptr, "Error passing null buffer pointer to fwrite", -1);
+	ERROR_ON_NULL_ARG(stream, "Error passing null stream pointer to fwrite", -1);
+	ERROR_ON_NULL_ARG(ptr, "Error passing null buffer pointer to fwrite", -1);
 
-    if (0 == size)
-    {
-        LogError("Error passing size 0 to fwrite");
-        return -1;
-    }
+	if (0 == size)
+	{
+		LogError("Error passing size 0 to fwrite");
+		return -1;
+	}
 
-    spdlog::debug("fwrite {} {} {} {}", ptr, size, count, stream);
+	spdlog::debug("fwrite {} {} {} {}", ptr, size, count, stream);
 
-    auto stream_it = FindHandle(stream);
-    ERROR_NO_STREAM(stream_it, -1);
-    Handle &stream_h = **stream_it;
+	auto stream_it = FindHandle(stream);
+	ERROR_NO_STREAM(stream_it, -1);
+	Handle& stream_h = **stream_it;
 
-    const HandleType type = stream_h.type;
+	const HandleType type = stream_h.type;
 
-    if (HandleType::kRead == type)
-    {
-        LogError("Cannot write on not writing stream");
-        return -1;
-    }
+	if (HandleType::kRead == type)
+	{
+		LogError("Cannot write on not writing stream");
+		return -1;
+	}
 
-    // fast exit for 0
-    if (0 == count)
-    {
-        return 0;
-    }
+	// fast exit for 0
+	if (0 == count)
+	{
+		return 0;
+	}
 
-    // prevent integer overflow
-    if (WillSizeCountProductOverflow(size, count))
-    {
-        LogError("Error on write: product size * count is too large, would overflow");
-        return -1;
-    }
+	// prevent integer overflow
+	if (WillSizeCountProductOverflow(size, count))
+	{
+		LogError("Error on write: product size * count is too large, would overflow");
+		return -1;
+	}
 
-    const long long to_write = static_cast<long long>(size * count);
-/*
+	const long long to_write = static_cast<long long>(size * count);
+	/*
     gcs::ObjectWriteStream &writer = stream_h.GetWriter().writer_;
     writer.write(static_cast<const char *>(ptr), to_write);
     if (writer.bad())
@@ -1225,23 +1291,23 @@ long long int driver_fwrite(const void *ptr, size_t size, size_t count, void *st
     spdlog::debug("Write status after write: good {}, bad {}, fail {}",
                   writer.good(), writer.bad(), writer.fail());
 */
-    return to_write;
+	return to_write;
 }
 
-int driver_fflush(void *stream)
+int driver_fflush(void* stream)
 {
-    ERROR_ON_NULL_ARG(stream, "Error passing null stream pointer to fflush", -1);
+	ERROR_ON_NULL_ARG(stream, "Error passing null stream pointer to fflush", -1);
 
-    auto stream_it = FindHandle(stream);
-    ERROR_NO_STREAM(stream_it, -1);
-    Handle &stream_h = **stream_it;
+	auto stream_it = FindHandle(stream);
+	ERROR_NO_STREAM(stream_it, -1);
+	Handle& stream_h = **stream_it;
 
-    if (HandleType::kWrite != stream_h.type)
-    {
-        LogError("Cannot flush on not writing stream");
-        return -1;
-    }
-/*
+	if (HandleType::kWrite != stream_h.type)
+	{
+		LogError("Cannot flush on not writing stream");
+		return -1;
+	}
+	/*
     auto &out_stream = stream_h.GetWriter().writer_;
     if (!out_stream.flush())
     {
@@ -1249,29 +1315,30 @@ int driver_fflush(void *stream)
         return -1;
     }
 */
-    return 0;
+	return 0;
 }
 
-int driver_remove(const char *filename)
+int driver_remove(const char* filename)
 {
-    ERROR_ON_NULL_ARG(filename, "Error passing null pointer to remove", kFailure);
+	ERROR_ON_NULL_ARG(filename, "Error passing null pointer to remove", kFailure);
 
-    spdlog::debug("remove {}", filename);
+	spdlog::debug("remove {}", filename);
 
-    assert(driver_isConnected());
+	assert(driver_isConnected());
 
-    auto maybe_names = GetServiceBucketAndObjectNames(filename);
+	auto maybe_names = GetServiceBucketAndObjectNames(filename);
+	const auto& val = maybe_names.GetValue();
 
-    std::string blobName = maybe_names.Value.object;
-    std::cout << "Deleting blob: " << blobName << std::endl;
-    std::string containerName = maybe_names.Value.bucket;
-    auto containerClient = GetBlobServiceClient().GetBlobContainerClient(containerName);
+	std::string blobName = val.object;
+	std::cout << "Deleting blob: " << blobName << std::endl;
+	std::string containerName = val.bucket;
+	auto containerClient = GetServiceClient<BlobServiceClient>().GetBlobContainerClient(containerName);
 
-    // Create the block blob client
-    BlockBlobClient blobClient = containerClient.GetBlockBlobClient(blobName);
-    blobClient.Delete();
+	// Create the block blob client
+	BlockBlobClient blobClient = containerClient.GetBlockBlobClient(blobName);
+	blobClient.Delete();
 
-/*
+	/*
     auto maybe_names = GetBucketAndObjectNames(filename);
     ERROR_ON_NAMES(maybe_names, kFailure);
     auto& names = *maybe_names;
@@ -1283,53 +1350,53 @@ int driver_remove(const char *filename)
         return kFailure;
     }
 */
-    return kSuccess;
+	return kSuccess;
 }
 
-int driver_rmdir(const char *filename)
+int driver_rmdir(const char* filename)
 {
-    ERROR_ON_NULL_ARG(filename, "Error passing null pointer to rmdir", kFailure);
+	ERROR_ON_NULL_ARG(filename, "Error passing null pointer to rmdir", kFailure);
 
-    spdlog::debug("rmdir {}", filename);
+	spdlog::debug("rmdir {}", filename);
 
-    assert(driver_isConnected());
-    spdlog::debug("Remove dir (does nothing...)");
-    return kSuccess;
+	assert(driver_isConnected());
+	spdlog::debug("Remove dir (does nothing...)");
+	return kSuccess;
 }
 
-int driver_mkdir(const char *filename)
+int driver_mkdir(const char* filename)
 {
-    ERROR_ON_NULL_ARG(filename, "Error passing null pointer to mkdir", kFailure);
+	ERROR_ON_NULL_ARG(filename, "Error passing null pointer to mkdir", kFailure);
 
-    spdlog::debug("mkdir {}", filename);
+	spdlog::debug("mkdir {}", filename);
 
-    assert(driver_isConnected());
-    return kSuccess;
+	assert(driver_isConnected());
+	return kSuccess;
 }
 
-long long int driver_diskFreeSpace(const char *filename)
+long long int driver_diskFreeSpace(const char* filename)
 {
-    ERROR_ON_NULL_ARG(filename, "Error passing null pointer to diskFreeSpace", kFailure);
+	ERROR_ON_NULL_ARG(filename, "Error passing null pointer to diskFreeSpace", kFailure);
 
-    spdlog::debug("diskFreeSpace {}", filename);
+	spdlog::debug("diskFreeSpace {}", filename);
 
-    assert(driver_isConnected());
-    constexpr long long free_space{5LL * 1024LL * 1024LL * 1024LL * 1024LL};
-    return free_space;
+	assert(driver_isConnected());
+	constexpr long long free_space{5LL * 1024LL * 1024LL * 1024LL * 1024LL};
+	return free_space;
 }
 
-int driver_copyToLocal(const char *sSourceFilePathName, const char *sDestFilePathName)
+int driver_copyToLocal(const char* sSourceFilePathName, const char* sDestFilePathName)
 {
-    assert(driver_isConnected());
+	assert(driver_isConnected());
 
-    if (!sSourceFilePathName || !sDestFilePathName)
-    {
-        LogError("Error passing null pointer to driver_copyToLocal");
-        return kFailure;
-    }
+	if (!sSourceFilePathName || !sDestFilePathName)
+	{
+		LogError("Error passing null pointer to driver_copyToLocal");
+		return kFailure;
+	}
 
-    spdlog::debug("copyToLocal {} {}", sSourceFilePathName, sDestFilePathName);
-/*
+	spdlog::debug("copyToLocal {} {}", sSourceFilePathName, sDestFilePathName);
+	/*
     auto maybe_names = GetBucketAndObjectNames(sSourceFilePathName);
     ERROR_ON_NAMES(maybe_names, kFailure);
 
@@ -1462,21 +1529,21 @@ int driver_copyToLocal(const char *sSourceFilePathName, const char *sDestFilePat
     spdlog::debug("Done copying");
 */
 
-    return kSuccess;
+	return kSuccess;
 }
 
-int driver_copyFromLocal(const char *sSourceFilePathName, const char *sDestFilePathName)
+int driver_copyFromLocal(const char* sSourceFilePathName, const char* sDestFilePathName)
 {
-    if (!sSourceFilePathName || !sDestFilePathName)
-    {
-        LogError("Error passing null pointers as arguments to copyFromLocal");
-        return kFailure;
-    }
+	if (!sSourceFilePathName || !sDestFilePathName)
+	{
+		LogError("Error passing null pointers as arguments to copyFromLocal");
+		return kFailure;
+	}
 
-    spdlog::debug("copyFromLocal {} {}", sSourceFilePathName, sDestFilePathName);
+	spdlog::debug("copyFromLocal {} {}", sSourceFilePathName, sDestFilePathName);
 
-    assert(driver_isConnected());
-/*
+	assert(driver_isConnected());
+	/*
     auto maybe_names = GetBucketAndObjectNames(sDestFilePathName);
     ERROR_ON_NAMES(maybe_names, kFailure);
 
@@ -1533,5 +1600,5 @@ int driver_copyFromLocal(const char *sSourceFilePathName, const char *sDestFileP
     auto &maybe_meta = writer.metadata();
     RETURN_ON_ERROR(maybe_meta, "Error during file upload to remote storage", kFailure);
 */
-    return kSuccess;
+	return kSuccess;
 }
