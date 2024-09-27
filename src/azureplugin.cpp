@@ -805,13 +805,7 @@ int driver_exist(const char* filename)
 
 #define ERROR_ON_NAMES(names_result, err_val) RETURN_ON_ERROR((names_result), "Error parsing URL", (err_val))
 
-struct FindPatternResult
-{
-    size_t pattern_1st_char_pos_{std::string::npos};
-    bool is_multifile{false};
-};
-
-FindPatternResult FindPatternSpecialChar(const std::string& pattern)
+Azure::Nullable<size_t> FindPatternSpecialChar(const std::string& pattern)
 {
 	spdlog::debug("Parse multifile pattern {}", pattern);
 
@@ -836,7 +830,7 @@ FindPatternResult FindPatternSpecialChar(const std::string& pattern)
             break;
 		}
 	}
-	return {found_at, found_at != std::string::npos};
+    return found_at != std::string::npos ? found_at : Azure::Nullable<size_t>{};
 }
 
 int driver_fileExists(const char* sFilePathName)
@@ -862,8 +856,8 @@ int driver_fileExists(const char* sFilePathName)
 		return kFalse;
 	}
 
-    const auto find_sp_char = FindPatternSpecialChar(val.object);
-    if (!find_sp_char.is_multifile)
+    const auto pattern_1st_sp_char_pos = FindPatternSpecialChar(val.object);
+    if (!pattern_1st_sp_char_pos)
     {
         const auto& blob_client =
 	    GetServiceClient<BlobServiceClient>().GetBlobContainerClient(val.bucket).GetBlobClient(val.object);
@@ -893,7 +887,7 @@ int driver_fileExists(const char* sFilePathName)
         }
     }
 
-    const auto filter_res = FilterList(val.bucket, val.object, find_sp_char.pattern_1st_char_pos_);
+    const auto filter_res = FilterList(val.bucket, val.object, *pattern_1st_sp_char_pos);
     if (!filter_res)
     {
         if (spdlog::get_level() >= spdlog::level::debug)
@@ -975,9 +969,9 @@ DriverResult<long long> GetFileSize(const ParseUriResult& parsed_names)
 
     // if single file, get it, else multifile pattern, list files
     const std::string& object = parsed_names.object;
-    const auto find_sp_char = FindPatternSpecialChar(object);
+    const auto pattern_1st_sp_char_pos = FindPatternSpecialChar(object);
 
-    if (!find_sp_char.is_multifile)
+    if (!pattern_1st_sp_char_pos)
     {
         // get the property directly
         const auto blob_client = container_client.GetBlobClient(object);
@@ -998,7 +992,7 @@ DriverResult<long long> GetFileSize(const ParseUriResult& parsed_names)
     }
 
     //multifile, list the files corresponding to the pattern
-    auto filter_res = FilterList(parsed_names.bucket, object, find_sp_char.pattern_1st_char_pos_);
+    auto filter_res = FilterList(parsed_names.bucket, object, *pattern_1st_sp_char_pos);
     if (!filter_res)
     {
         return filter_res.ConvertFailureTo<value_t>();
