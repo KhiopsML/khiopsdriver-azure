@@ -79,8 +79,18 @@ template <typename T> struct DriverResult
 	Azure::Response<T> response_;
 	bool success_{false};
 
-	DriverResult() = default;
+	DriverResult() : response_{{}, nullptr} // Azure::Response only has an explicit contructor
+	{
+	}
+
 	DriverResult(Azure::Response<T>&& response, bool success) : response_{std::move(response)}, success_{success} {}
+
+	template <typename U> DriverResult<U> ConvertFailureTo()
+	{
+		DriverResult<U> to;
+		to.response_.RawResponse = std::move(response_.RawResponse);
+		return to;
+	}
 
 	const T& GetValue() const
 	{
@@ -102,12 +112,17 @@ template <typename T> struct DriverResult
 		return response_.RawResponse;
 	}
 
+	Azure::Core::Http::HttpStatusCode GetStatusCode() const
+	{
+		return GetRawResponse()->GetStatusCode();
+	}
+
 	const std::string& GetReasonPhrase() const
 	{
 		return GetRawResponse()->GetReasonPhrase();
 	}
 
-	operator bool() const
+	explicit operator bool() const
 	{
 		return success_;
 	}
