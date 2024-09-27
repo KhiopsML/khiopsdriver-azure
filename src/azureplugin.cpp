@@ -4,6 +4,7 @@
 
 #include "azureplugin.h"
 #include "azureplugin_internal.h"
+#include "contrib/matching.h"
 
 #include <algorithm>
 #include <assert.h>
@@ -397,6 +398,7 @@ DriverResult<ParseUriResult> ParseAzureUri(const std::string& azure_uri)
 	else
 	{
 		spdlog::debug("Provided URI is a testing one.");
+        service = Service::BLOB;
 		bkt_pos = obj_pos + 1;
 		obj_pos = parsed_uri.GetPath().find('/', bkt_pos);
 	}
@@ -628,6 +630,50 @@ void *test_addWriterHandle(bool appendMode, bool create_with_mock_client, std::s
     return InsertHandle<WriterPtr, HandleType::kWrite>(std::move(writer_struct));
 }
 */
+
+// Get from a container a list of blobs matching a name pattern.
+// To get a limited list of blobs to filter per request, the request includes a well defined
+// prefix contained in the pattern
+using BlobItems = std::vector<Azure::Storage::Blobs::Models::BlobItem>;
+DriverResult<BlobItems> FilterList(const std::string& bucket, const std::string& pattern, size_t pattern_1st_sp_char_pos)
+{
+    using value_t = BlobItems;
+
+	std::vector<Azure::Storage::Blobs::Models::BlobItem> res;
+
+    auto container_client = GetServiceClient<BlobServiceClient>().GetBlobContainerClient(bucket);
+    ListBlobsOptions options;
+    options.Prefix = pattern.substr(0, pattern_1st_sp_char_pos);
+    try
+    {
+        for (auto blobs_page = container_client.ListBlobs(options); blobs_page.HasPage(); blobs_page.MoveToNextPage())
+        {
+            // filter blobs by match with pattern
+            for (auto& item : blobs_page.Blobs)
+            {
+                if (!item.IsDeleted && utils::gitignore_glob_match(item.Name, pattern))
+                {
+                    res.emplace_back(std::move(item));
+                }
+            }
+        }
+        if (res.empty())
+        {
+            return MakeDriverHttpFailure<value_t>(Azure::Core::Http::HttpStatusCode::NotFound, "No blob matching pattern in container.");
+        }
+        return MakeDriverSuccess<value_t>(std::move(res));
+    }
+    catch (const Azure::Storage::StorageException& e)
+    {
+        return MakeDriverFailureFromException<value_t>(e);
+    }
+    catch (const std::exception& e)
+    {
+        return MakeDriverFailureFromException<value_t>(e);
+    }
+}
+
+
 const char* driver_getDriverName()
 {
 	return driver_name;
@@ -759,6 +805,40 @@ int driver_exist(const char* filename)
 
 #define ERROR_ON_NAMES(names_result, err_val) RETURN_ON_ERROR((names_result), "Error parsing URL", (err_val))
 
+struct FindPatternResult
+{
+    size_t pattern_1st_char_pos_{std::string::npos};
+    bool is_multifile{false};
+};
+
+FindPatternResult FindPatternSpecialChar(const std::string& pattern)
+{
+	spdlog::debug("Parse multifile pattern {}", pattern);
+
+	constexpr auto special_chars = "*?![^";
+
+	size_t from_offset = 0;
+	size_t found_at = pattern.find_first_of(special_chars, from_offset);
+	while (found_at != std::string::npos)
+	{
+		const char found = pattern[found_at];
+		spdlog::debug("special char {} found at {}", found, found_at);
+
+		if (found_at > 0 && pattern[found_at - 1] == '\\')
+		{
+			spdlog::debug("preceded by a \\, so not so special");
+			from_offset = found_at + 1;
+			found_at = pattern.find_first_of(special_chars, from_offset);
+		}
+		else
+		{
+			spdlog::debug("not preceded by a \\, so really a special char");
+            break;
+		}
+	}
+	return {found_at, found_at != std::string::npos};
+}
+
 int driver_fileExists(const char* sFilePathName)
 {
 	KH_AZ_CONNECTION_ERROR(kFalse);
@@ -782,33 +862,55 @@ int driver_fileExists(const char* sFilePathName)
 		return kFalse;
 	}
 
-	const auto& blob_client =
+    const auto find_sp_char = FindPatternSpecialChar(val.object);
+    if (!find_sp_char.is_multifile)
+    {
+        const auto& blob_client =
 	    GetServiceClient<BlobServiceClient>().GetBlobContainerClient(val.bucket).GetBlobClient(val.object);
+        try
+        {
+            // GetProperties throws in case of error, even if the error is NotFound.
+            blob_client.GetProperties();
+		    spdlog::debug("file {} exists.", sFilePathName);
+		    return kTrue;
+        }
+        catch (const Azure::Storage::StorageException& e)
+        {
+            if (e.StatusCode == Azure::Core::Http::HttpStatusCode::NotFound)
+            {
+			    spdlog::debug("File not found. {}", e.what());
+		    }
+            else
+            {
+                LogException("Error while checking file's presence.", e.what());
+            }
+            return kFalse;
+        }
+        catch (const std::exception& e)
+        {
+            LogException("Error while checking file's presence.", e.what());
+            return kFalse;
+        }
+    }
 
-	try
-	{
-		// GetProperties throws in case of error, even if the error is NotFound.
-		blob_client.GetProperties();
-		spdlog::debug("file {} exists.", sFilePathName);
-		return kTrue;
-	}
-	catch (const Azure::Storage::StorageException& e)
-	{
-		if (e.StatusCode == Azure::Core::Http::HttpStatusCode::NotFound)
-		{
-			spdlog::debug("File not found. {}", e.what());
-		}
-		else
-		{
-			LogException("Error while checking file's presence.", e.what());
-		}
-		return kFalse;
-	}
-	catch (const std::exception& e)
-	{
-		LogException("Error while checking file's presence.", e.what());
-		return kFalse;
-	}
+    const auto filter_res = FilterList(val.bucket, val.object, find_sp_char.pattern_1st_char_pos_);
+    if (!filter_res)
+    {
+        if (spdlog::get_level() >= spdlog::level::debug)
+        {
+            if (Azure::Core::Http::HttpStatusCode::NotFound == filter_res.GetStatusCode())
+            {
+                spdlog::debug(filter_res.GetReasonPhrase());
+            }
+            else
+            {
+                LogBadResult<BlobItems>(filter_res, "Error while listing blobs in container.");
+            }
+        }
+        return kFalse;
+    }
+
+    return kTrue;
 }
 
 int driver_dirExists(const char* sFilePathName)
@@ -819,6 +921,146 @@ int driver_dirExists(const char* sFilePathName)
 
 	spdlog::debug("dirExist {}", sFilePathName);
 	return kTrue;
+}
+
+std::vector<uint8_t> ReadPart(const Azure::Storage::Blobs::Models::DownloadBlobResult& dl_blob, size_t to_read)
+{
+    std::vector<uint8_t> dest(to_read);
+    dl_blob.BodyStream->ReadToCount(dest.data(), to_read);
+    return dest;
+}
+
+Azure::Nullable<std::vector<uint8_t>> FindHeader(const Azure::Storage::Blobs::Models::DownloadBlobResult& dl_blob)
+{
+    constexpr size_t block_size{10*1024*1024};
+    const size_t blob_size = static_cast<size_t>(dl_blob.BlobSize);
+
+    std::vector<uint8_t> header;
+    const size_t to_read = std::min(blob_size, block_size);
+
+    // read by blocks until new line char is found
+    size_t bytes_read = 0;
+    auto& stream_ptr = dl_blob.BodyStream;
+
+    bool found = false;
+    while (bytes_read < blob_size)
+    {
+        // the API contract is that ReadToCount reads up to size or end of stream
+        header.resize(header.size() + to_read);
+        const size_t part_read = stream_ptr->ReadToCount(header.data()+bytes_read, to_read);
+        const auto search_start_it = header.cbegin()+static_cast<ptrdiff_t>(bytes_read);
+        const auto search_end_it = search_start_it+static_cast<ptrdiff_t>(part_read);
+        const auto new_line_it = std::find(search_start_it, search_end_it, static_cast<uint8_t>('\n'));
+
+        if (new_line_it != search_end_it)
+        {
+            // found it!
+            // trim the vector containing the header
+            found = true;
+            header.erase(new_line_it+1,header.cend());
+            break;
+        }
+
+        bytes_read += part_read;
+    }
+
+    return found ? std::move(header) : Azure::Nullable<std::vector<uint8_t>>{};
+}
+
+DriverResult<long long> GetFileSize(const ParseUriResult& parsed_names)
+{
+    using value_t = long long;
+
+    const auto container_client = GetServiceClient<BlobServiceClient>().GetBlobContainerClient(parsed_names.bucket);
+
+    // if single file, get it, else multifile pattern, list files
+    const std::string& object = parsed_names.object;
+    const auto find_sp_char = FindPatternSpecialChar(object);
+
+    if (!find_sp_char.is_multifile)
+    {
+        // get the property directly
+        const auto blob_client = container_client.GetBlobClient(object);
+	    try
+	    {
+		    const auto props = blob_client.GetProperties();
+            value_t result = static_cast<value_t>(props.Value.BlobSize);
+		    return MakeDriverSuccess<value_t>(result);
+	    }
+        catch (const Azure::Storage::StorageException& e)
+        {
+            return MakeDriverFailureFromException<value_t>(e);
+        }
+        catch (const std::exception& e)
+        {
+            return MakeDriverFailureFromException<value_t>(e);
+        }
+    }
+
+    //multifile, list the files corresponding to the pattern
+    auto filter_res = FilterList(parsed_names.bucket, object, find_sp_char.pattern_1st_char_pos_);
+    if (!filter_res)
+    {
+        return filter_res.ConvertFailureTo<value_t>();
+    }
+
+    const auto& blobs_list = filter_res.GetValue();
+
+    // if single file, short treatment
+    if (blobs_list.size() == 1)
+    {
+        return MakeDriverSuccess(static_cast<long long>(blobs_list[0].BlobSize));
+    }
+    
+    // several files
+    // get the sizes and read the headers to identify common headers if any
+    // first file
+    const auto first_blob_client = container_client.GetBlobClient(blobs_list[0].Name);
+    try
+    {
+        const auto dl_res = first_blob_client.Download();
+        const auto& dl_blob = dl_res.Value;
+        const auto maybe_header = FindHeader(dl_blob);
+        if (!maybe_header)
+        {
+            return MakeDriverHttpFailure<long long>(Azure::Core::Http::HttpStatusCode::None, "Error while reading header of first file.");
+        }
+
+        const std::vector<uint8_t>& header = *maybe_header;
+        const size_t header_size = header.size();
+        
+        // next files
+        const size_t blob_count = blobs_list.size();
+        size_t total_size = dl_blob.BlobSize;
+        bool same_headers = true;
+
+        for (size_t i = 1; i < blob_count; i++)
+        {
+            const auto& blob_item = blobs_list[i];
+            total_size += static_cast<size_t>(blob_item.BlobSize);
+
+            // read the beginning of the file to check header if still necessary
+            if (same_headers)
+            {
+                const auto blob_client = container_client.GetBlobClient(blob_item.Name);
+                const auto curr_dl_res = blob_client.Download();
+                const std::vector<uint8_t> part = ReadPart(curr_dl_res.Value, header_size);
+                same_headers = part == header;
+            }
+        }
+
+        size_t result = same_headers ? total_size - (blob_count-1)*header_size : total_size;
+
+        return MakeDriverSuccess<long long>(static_cast<long long>(result));
+    }
+    catch(const Azure::Storage::StorageException& e)
+    {
+        return MakeDriverFailureFromException<long long>(e);
+    }
+    catch(const std::exception& e)
+    {
+        return MakeDriverFailureFromException<long long>(e);
+    }
 }
 
 long long int driver_getFileSize(const char* filename)
@@ -832,9 +1074,9 @@ long long int driver_getFileSize(const char* filename)
 	const auto maybe_parsed_names = ParseAzureUri(filename);
 	ERROR_ON_NAMES(maybe_parsed_names, kBadSize);
 
-	const auto& val = maybe_parsed_names.GetValue();
+	const auto& parsed_names = maybe_parsed_names.GetValue();
 
-	if (Service::BLOB != val.service)
+	if (Service::BLOB != parsed_names.service)
 	{
 		LogError("Functionality not implemented for this type of service.");
 		return kBadSize;
@@ -846,19 +1088,61 @@ long long int driver_getFileSize(const char* filename)
 	//             .GetProperties();
 	//     return props.Value.FileSize;
 
-	const auto blob_client =
-	    GetServiceClient<BlobServiceClient>().GetBlobContainerClient(val.bucket).GetBlockBlobClient(val.object);
-	try
-	{
-		const auto props = blob_client.GetProperties();
-		return props.Value.BlobSize;
-	}
-	catch (const std::exception& e)
-	{
-		LogException("Error while getting file size.", e.what());
-		return kBadSize;
-	}
+    const auto res = GetFileSize(parsed_names);
+    if (!res)
+    {
+        LogBadResult(res, "Error while getting file size.");
+        return kBadSize;
+    }
+
+    return res.GetValue();
 }
+
+/*
+DriverResult<ReaderPtr> MakeReaderPtr(std::string bucket, std::string object)
+{
+    std::vector<std::string> filenames;
+    std::vector<long long> cumulativeSize;
+
+    // if single file, get it, else multifile pattern, list files
+    size_t pattern_1st_sp_char_pos = FindPatternSpecialChar(object);
+    if(!IsMultifile(object, pattern_1st_sp_char_pos))
+    {
+        auto blob_client = GetServiceClient<BlobServiceClient>().GetBlobContainerClient(bucket).GetBlobClient(object);
+        try
+        {
+            const auto props_response = blob_client.GetProperties();
+            const long long blob_size = static_cast<long long>(props_response.Value.BlobSize);
+            ReaderPtr res(new Reader{bucket, object, 0, 0, {object}, {blob_size}, blob_size});
+            return MakeDriverSuccess<ReaderPtr>(std::move(res));
+        }
+        catch(const Azure::Storage::StorageException& e)
+        {
+            LogException("Error while creating reader.", e.what());
+            return MakeDriverHttpFailure<ReaderPtr>(e.StatusCode, e.ReasonPhrase);
+        }
+        catch(const std::exception& e)
+        {
+            LogException("Error while creating reader.", e.what());
+            return MakeDriverHttpFailure<ReaderPtr>(Azure::Core::Http::HttpStatusCode::None, e.what());
+        }
+    }
+
+    // list files
+
+        
+        blob_client.GetProperties().Value.BlobSize;
+
+
+    }
+
+    // list files
+
+    // filter
+
+    return {};
+}
+*/
 /*
 gc::StatusOr<ReaderPtr> MakeReaderPtr(std::string bucketname, std::string objectname)
 {

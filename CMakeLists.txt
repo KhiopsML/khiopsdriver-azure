@@ -54,6 +54,7 @@ endif()
 
 add_library(khiopsdriver_file_azure SHARED src/azureplugin.h src/azureplugin_internal.h src/azureplugin.cpp)
 
+target_include_directories(khiopsdriver_file_azure PRIVATE src/contrib)
 target_link_options(khiopsdriver_file_azure PRIVATE $<$<CONFIG:RELEASE>:-s>) # stripping
 target_link_libraries(khiopsdriver_file_azure PRIVATE Azure::azure-identity Azure::azure-storage-blobs Azure::azure-storage-files-shares spdlog::spdlog)
 target_compile_options(khiopsdriver_file_azure
