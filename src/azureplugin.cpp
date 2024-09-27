@@ -322,7 +322,17 @@ DriverResult<T> MakeDriverHttpFailure(Azure::Core::Http::HttpStatusCode code, co
 	return {Azure::Response<T>({}, MakeRawHttpResponsePtr(code, reason)), false};
 }
 
-template <typename T> DriverResult<T> MakeDriverSuccess(T&& value)
+template <typename T> DriverResult<T> MakeDriverFailureFromException(const Azure::Storage::StorageException& e)
+{
+	return MakeDriverHttpFailure<T>(e.StatusCode, e.ReasonPhrase);
+}
+
+template <typename T> DriverResult<T> MakeDriverFailureFromException(const std::exception& e)
+{
+	return MakeDriverHttpFailure<T>(Azure::Core::Http::HttpStatusCode::None, e.what());
+}
+
+template <typename T> DriverResult<T> MakeDriverSuccess(T value)
 {
 	return {Azure::Response<T>(std::move(value), nullptr), true};
 }
