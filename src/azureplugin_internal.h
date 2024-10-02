@@ -67,6 +67,15 @@ struct MultiPartFile
 	std::vector<std::string> filenames_;
 	std::vector<tOffset> cumulativeSize_;
 	tOffset total_size_{0};
+
+	MultiPartFile() = default;
+	MultiPartFile(std::string bucket, std::string filename, tOffset off, tOffset common_header_length,
+		      std::vector<std::string>&& filenames, std::vector<tOffset>&& cumulativeSize)
+	    : bucketname_{std::move(bucket)}, filename_{std::move(filename)}, offset_{off},
+	      commonHeaderLength_{common_header_length}, filenames_{std::move(filenames)},
+	      cumulativeSize_{std::move(cumulativeSize)}, total_size_{cumulativeSize_.back()}
+	{
+	}
 };
 
 struct WriteFile
@@ -82,74 +91,11 @@ using Writer = WriteFile;
 using ReaderPtr = std::unique_ptr<Reader>;
 using WriterPtr = std::unique_ptr<Writer>;
 
-enum class HandleType
-{
-	kRead,
-	kWrite,
-	kAppend
-};
+template <typename Stream> using StreamPtr = std::unique_ptr<Stream>;
 
-union ClientVariant
-{
-	ReaderPtr reader;
-	WriterPtr writer;
+template <typename Stream> using StreamVec = std::vector<StreamPtr<Stream>>;
 
-	//  no default ctor is allowed since member have non trivial ctors
-	//  the chosen variant must be initialized by placement new
-	explicit ClientVariant(HandleType type)
-	{
-		switch (type)
-		{
-		case HandleType::kRead:
-			new (&reader) ReaderPtr;
-			break;
-		case HandleType::kWrite:
-		case HandleType::kAppend:
-		default:
-			new (&writer) WriterPtr;
-			break;
-		}
-	}
-
-	~ClientVariant() {}
-};
-
-struct Handle
-{
-	HandleType type;
-	ClientVariant var;
-
-	Handle(HandleType p_type) : type{p_type}, var(p_type) {}
-
-	~Handle()
-	{
-		switch (type)
-		{
-		case HandleType::kRead:
-			var.reader.~ReaderPtr();
-			break;
-		case HandleType::kAppend:
-		case HandleType::kWrite:
-			var.writer.~WriterPtr();
-			break;
-		default:
-			break;
-		}
-	}
-
-	Reader& GetReader()
-	{
-		return *(var.reader);
-	}
-	Writer& GetWriter()
-	{
-		return *(var.writer);
-	}
-};
-
-using HandlePtr = std::unique_ptr<Handle>;
-using HandleContainer = std::vector<HandlePtr>;
-using HandleIt = HandleContainer::iterator;
+template <typename Stream> using StreamIt = typename StreamVec<Stream>::iterator;
 
 bool operator==(const MultiPartFile& op1, const MultiPartFile& op2)
 {

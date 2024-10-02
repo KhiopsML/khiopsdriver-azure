@@ -66,7 +66,8 @@ std::string globalBucketName;
 // Last error
 std::string lastError;
 
-HandleContainer active_handles;
+StreamVec<Reader> active_reader_handles;
+StreamVec<Writer> active_writer_handles;
 
 enum class Service
 {
@@ -84,7 +85,10 @@ template <typename T> struct DriverResult
 	{
 	}
 
-	DriverResult(Azure::Response<T>&& response, bool success) : response_{std::move(response)}, success_{success} {}
+	explicit DriverResult(Azure::Response<T>&& response, bool success)
+	    : response_{std::move(response)}, success_{success}
+	{
+	}
 
 	template <typename U> DriverResult<U> ConvertFailureTo()
 	{
@@ -144,10 +148,12 @@ template <typename T> struct DriverResult
 		RETURN_STATUS((x));                                                                                    \
 	}
 
-#define ERROR_ON_NULL_ARG(arg, msg, err_val)                                                                           \
+#define ERROR_ON_NULL_ARG(arg, err_val)                                                                                \
 	if (!(arg))                                                                                                    \
 	{                                                                                                              \
-		LogError((msg));                                                                                       \
+		std::ostringstream oss;                                                                                \
+		oss << "Error passing null pointer to " << __func__;                                                   \
+		LogError(oss.str());                                                                                   \
 		return (err_val);                                                                                      \
 	}
 
@@ -173,40 +179,27 @@ template <typename T> void LogBadResult(const DriverResult<T>& result, const std
 	LogError(oss.str());
 }
 
-void InitHandle(Handle& h, ReaderPtr&& r_ptr)
+template <typename Stream> StreamIt<Stream> FindHandle(void* h, StreamVec<Stream>& handles)
 {
-	h.var.reader = std::move(r_ptr);
+	return std::find_if(handles.begin(), handles.end(),
+			    [h](const StreamPtr<Stream>& act_h_ptr)
+			    { return h == static_cast<void*>(act_h_ptr.get()); });
 }
 
-void InitHandle(Handle& h, WriterPtr&& w_ptr)
+StreamIt<Reader> FindReader(void* h)
 {
-	h.var.writer = std::move(w_ptr);
+	return FindHandle<Reader>(h, active_reader_handles);
 }
 
-template <typename VariantPtr, HandleType Type> HandlePtr MakeHandleFromVariant(VariantPtr&& var_ptr)
+StreamIt<Writer> FindWriter(void* h)
 {
-	HandlePtr h{new Handle(Type)};
-	InitHandle(*h, std::move(var_ptr));
-	return h;
+	return FindHandle<Writer>(h, active_writer_handles);
 }
 
-template <typename VariantPtr, HandleType Type> Handle* InsertHandle(VariantPtr&& var_ptr)
+template <typename Stream> void EraseRemove(StreamIt<Stream> pos, StreamVec<Stream>& handles)
 {
-	return active_handles.insert(active_handles.end(), MakeHandleFromVariant<VariantPtr, Type>(std::move(var_ptr)))
-	    ->get();
-}
-
-HandleIt FindHandle(void* handle)
-{
-	return std::find_if(active_handles.begin(), active_handles.end(),
-			    [handle](const HandlePtr& act_h_ptr)
-			    { return handle == static_cast<void*>(act_h_ptr.get()); });
-}
-
-void EraseRemove(HandleIt pos)
-{
-	*pos = std::move(active_handles.back());
-	active_handles.pop_back();
+	*pos = std::move(handles.back());
+	handles.pop_back();
 }
 
 // Definition of helper functions
@@ -320,7 +313,7 @@ std::unique_ptr<Azure::Core::Http::RawResponse> MakeRawHttpResponsePtr(Azure::Co
 template <typename T>
 DriverResult<T> MakeDriverHttpFailure(Azure::Core::Http::HttpStatusCode code, const std::string& reason)
 {
-	return {Azure::Response<T>({}, MakeRawHttpResponsePtr(code, reason)), false};
+	return DriverResult<T>{Azure::Response<T>(T{}, MakeRawHttpResponsePtr(code, reason)), false};
 }
 
 template <typename T> DriverResult<T> MakeDriverFailureFromException(const Azure::Storage::StorageException& e)
@@ -335,7 +328,7 @@ template <typename T> DriverResult<T> MakeDriverFailureFromException(const std::
 
 template <typename T> DriverResult<T> MakeDriverSuccess(T value)
 {
-	return {Azure::Response<T>(std::move(value), nullptr), true};
+	return DriverResult<T>{Azure::Response<T>(std::move(value), nullptr), true};
 }
 
 struct ParseUriResult
@@ -398,7 +391,7 @@ DriverResult<ParseUriResult> ParseAzureUri(const std::string& azure_uri)
 	else
 	{
 		spdlog::debug("Provided URI is a testing one.");
-        service = Service::BLOB;
+		service = Service::BLOB;
 		bkt_pos = obj_pos + 1;
 		obj_pos = parsed_uri.GetPath().find('/', bkt_pos);
 	}
@@ -500,22 +493,6 @@ bool WillSizeCountProductOverflow(size_t size, size_t count)
 }
 
 /*
-gc::StatusOr<gcs::ListObjectsReader> ListObjects(const std::string &bucket_name, const std::string &object_name)
-{
-    auto list = client.ListObjects(bucket_name, gcs::MatchGlob{object_name});
-    auto first = list.begin();
-    if (first == list.end())
-    {
-        return gc::Status{gc::StatusCode::kNotFound, "Error while searching object : not found"};
-    }
-    if (!first->ok())
-    {
-        return std::move(*first).status();
-    }
-    return list;
-}
-*/
-/*
 // pre condition: stream is of a writing type. do not call otherwise.
 gc::Status CloseWriterStream(Handle &stream)
 {
@@ -564,115 +541,51 @@ gc::Status CloseWriterStream(Handle &stream)
 }
 */
 // Implementation of driver functions
-/*
-void test_setClient(::google::cloud::storage::Client &&mock_client)
-{
-    client = std::move(mock_client);
-    bIsConnected = kTrue;
-}
-
-void test_unsetClient()
-{
-    client = ::google::cloud::storage::Client{};
-}
-
-void *test_getActiveHandles()
-{
-    return &active_handles;
-}
-
-void *test_addReaderHandle(
-    const std::string &bucket,
-    const std::string &object,
-    long long offset,
-    long long commonHeaderLength,
-    const std::vector<std::string> &filenames,
-    const std::vector<long long int> &cumulativeSize,
-    long long total_size)
-{
-    ReaderPtr reader_ptr{new MultiPartFile{
-        bucket,
-        object,
-        offset,
-        commonHeaderLength,
-        filenames,
-        cumulativeSize,
-        total_size}};
-    return InsertHandle<ReaderPtr, HandleType::kRead>(std::move(reader_ptr));
-}
-
-void *test_addWriterHandle(bool appendMode, bool create_with_mock_client, std::string bucketname, std::string objectname)
-{
-    if (!create_with_mock_client)
-    {
-        if (appendMode)
-        {
-            return InsertHandle<WriterPtr, HandleType::kAppend>(WriterPtr(new WriteFile));
-        }
-        return InsertHandle<WriterPtr, HandleType::kWrite>(WriterPtr(new WriteFile));
-    }
-
-    auto writer = client.WriteObject(bucketname, objectname);
-    if (!writer)
-    {
-        return nullptr;
-    }
-
-    WriterPtr writer_struct{new WriteFile};
-    writer_struct->bucketname_ = std::move(bucketname);
-    writer_struct->filename_ = std::move(objectname);
-    writer_struct->writer_ = std::move(writer);
-
-    if (appendMode)
-    {
-        return InsertHandle<WriterPtr, HandleType::kAppend>(std::move(writer_struct));
-    }
-    return InsertHandle<WriterPtr, HandleType::kWrite>(std::move(writer_struct));
-}
-*/
 
 // Get from a container a list of blobs matching a name pattern.
 // To get a limited list of blobs to filter per request, the request includes a well defined
 // prefix contained in the pattern
 using BlobItems = std::vector<Azure::Storage::Blobs::Models::BlobItem>;
-DriverResult<BlobItems> FilterList(const std::string& bucket, const std::string& pattern, size_t pattern_1st_sp_char_pos)
+DriverResult<BlobItems> FilterList(const std::string& bucket, const std::string& pattern,
+				   size_t pattern_1st_sp_char_pos)
 {
-    using value_t = BlobItems;
+	using value_t = BlobItems;
 
 	std::vector<Azure::Storage::Blobs::Models::BlobItem> res;
 
-    auto container_client = GetServiceClient<BlobServiceClient>().GetBlobContainerClient(bucket);
-    ListBlobsOptions options;
-    options.Prefix = pattern.substr(0, pattern_1st_sp_char_pos);
-    try
-    {
-        for (auto blobs_page = container_client.ListBlobs(options); blobs_page.HasPage(); blobs_page.MoveToNextPage())
-        {
-            // filter blobs by match with pattern
-            for (auto& item : blobs_page.Blobs)
-            {
-                if (!item.IsDeleted && utils::gitignore_glob_match(item.Name, pattern))
-                {
-                    res.emplace_back(std::move(item));
-                }
-            }
-        }
-        if (res.empty())
-        {
-            return MakeDriverHttpFailure<value_t>(Azure::Core::Http::HttpStatusCode::NotFound, "No blob matching pattern in container.");
-        }
-        return MakeDriverSuccess<value_t>(std::move(res));
-    }
-    catch (const Azure::Storage::StorageException& e)
-    {
-        return MakeDriverFailureFromException<value_t>(e);
-    }
-    catch (const std::exception& e)
-    {
-        return MakeDriverFailureFromException<value_t>(e);
-    }
+	auto container_client = GetServiceClient<BlobServiceClient>().GetBlobContainerClient(bucket);
+	ListBlobsOptions options;
+	options.Prefix = pattern.substr(0, pattern_1st_sp_char_pos);
+	try
+	{
+		for (auto blobs_page = container_client.ListBlobs(options); blobs_page.HasPage();
+		     blobs_page.MoveToNextPage())
+		{
+			// filter blobs by match with pattern
+			for (auto& item : blobs_page.Blobs)
+			{
+				if (!item.IsDeleted && utils::gitignore_glob_match(item.Name, pattern))
+				{
+					res.emplace_back(std::move(item));
+				}
+			}
+		}
+		if (res.empty())
+		{
+			return MakeDriverHttpFailure<value_t>(Azure::Core::Http::HttpStatusCode::NotFound,
+							      "No blob matching pattern in container.");
+		}
+		return MakeDriverSuccess<value_t>(std::move(res));
+	}
+	catch (const Azure::Storage::StorageException& e)
+	{
+		return MakeDriverFailureFromException<value_t>(e);
+	}
+	catch (const std::exception& e)
+	{
+		return MakeDriverFailureFromException<value_t>(e);
+	}
 }
-
 
 const char* driver_getDriverName()
 {
@@ -778,7 +691,7 @@ int driver_exist(const char* filename)
 {
 	KH_AZ_CONNECTION_ERROR(kFalse);
 
-	ERROR_ON_NULL_ARG(filename, "Error passing null pointer to exist", kFalse);
+	ERROR_ON_NULL_ARG(filename, kFalse);
 
 	spdlog::debug("exist {}", filename);
 
@@ -827,17 +740,17 @@ Azure::Nullable<size_t> FindPatternSpecialChar(const std::string& pattern)
 		else
 		{
 			spdlog::debug("not preceded by a \\, so really a special char");
-            break;
+			break;
 		}
 	}
-    return found_at != std::string::npos ? found_at : Azure::Nullable<size_t>{};
+	return found_at != std::string::npos ? found_at : Azure::Nullable<size_t>{};
 }
 
 int driver_fileExists(const char* sFilePathName)
 {
 	KH_AZ_CONNECTION_ERROR(kFalse);
 
-	ERROR_ON_NULL_ARG(sFilePathName, "Error passing null pointer to fileExists.", kFalse);
+	ERROR_ON_NULL_ARG(sFilePathName, kFalse);
 
 	spdlog::debug("fileExist {}", sFilePathName);
 
@@ -856,212 +769,284 @@ int driver_fileExists(const char* sFilePathName)
 		return kFalse;
 	}
 
-    const auto pattern_1st_sp_char_pos = FindPatternSpecialChar(val.object);
-    if (!pattern_1st_sp_char_pos)
-    {
-        const auto& blob_client =
-	    GetServiceClient<BlobServiceClient>().GetBlobContainerClient(val.bucket).GetBlobClient(val.object);
-        try
-        {
-            // GetProperties throws in case of error, even if the error is NotFound.
-            blob_client.GetProperties();
-		    spdlog::debug("file {} exists.", sFilePathName);
-		    return kTrue;
-        }
-        catch (const Azure::Storage::StorageException& e)
-        {
-            if (e.StatusCode == Azure::Core::Http::HttpStatusCode::NotFound)
-            {
-			    spdlog::debug("File not found. {}", e.what());
-		    }
-            else
-            {
-                LogException("Error while checking file's presence.", e.what());
-            }
-            return kFalse;
-        }
-        catch (const std::exception& e)
-        {
-            LogException("Error while checking file's presence.", e.what());
-            return kFalse;
-        }
-    }
+	const auto pattern_1st_sp_char_pos = FindPatternSpecialChar(val.object);
+	if (!pattern_1st_sp_char_pos)
+	{
+		const auto& blob_client =
+		    GetServiceClient<BlobServiceClient>().GetBlobContainerClient(val.bucket).GetBlobClient(val.object);
+		try
+		{
+			// GetProperties throws in case of error, even if the error is NotFound.
+			blob_client.GetProperties();
+			spdlog::debug("file {} exists.", sFilePathName);
+			return kTrue;
+		}
+		catch (const Azure::Storage::StorageException& e)
+		{
+			if (e.StatusCode == Azure::Core::Http::HttpStatusCode::NotFound)
+			{
+				spdlog::debug("File not found. {}", e.what());
+			}
+			else
+			{
+				LogException("Error while checking file's presence.", e.what());
+			}
+			return kFalse;
+		}
+		catch (const std::exception& e)
+		{
+			LogException("Error while checking file's presence.", e.what());
+			return kFalse;
+		}
+	}
 
-    const auto filter_res = FilterList(val.bucket, val.object, *pattern_1st_sp_char_pos);
-    if (!filter_res)
-    {
-        if (spdlog::get_level() >= spdlog::level::debug)
-        {
-            if (Azure::Core::Http::HttpStatusCode::NotFound == filter_res.GetStatusCode())
-            {
-                spdlog::debug(filter_res.GetReasonPhrase());
-            }
-            else
-            {
-                LogBadResult<BlobItems>(filter_res, "Error while listing blobs in container.");
-            }
-        }
-        return kFalse;
-    }
+	const auto filter_res = FilterList(val.bucket, val.object, *pattern_1st_sp_char_pos);
+	if (!filter_res)
+	{
+		if (spdlog::get_level() >= spdlog::level::debug)
+		{
+			if (Azure::Core::Http::HttpStatusCode::NotFound == filter_res.GetStatusCode())
+			{
+				spdlog::debug(filter_res.GetReasonPhrase());
+			}
+			else
+			{
+				LogBadResult<BlobItems>(filter_res, "Error while listing blobs in container.");
+			}
+		}
+		return kFalse;
+	}
 
-    return kTrue;
+	return kTrue;
 }
 
 int driver_dirExists(const char* sFilePathName)
 {
 	KH_AZ_CONNECTION_ERROR(kFalse);
 
-	ERROR_ON_NULL_ARG(sFilePathName, "Error passing null pointer to dirExists", kFalse);
+	ERROR_ON_NULL_ARG(sFilePathName, kFalse);
 
 	spdlog::debug("dirExist {}", sFilePathName);
 	return kTrue;
 }
 
-std::vector<uint8_t> ReadPart(const Azure::Storage::Blobs::Models::DownloadBlobResult& dl_blob, size_t to_read)
+DownloadBlobToOptions MakeDlBlobOptions(int64_t range_start, Azure::Nullable<int64_t> range_length = {})
 {
-    std::vector<uint8_t> dest(to_read);
-    dl_blob.BodyStream->ReadToCount(dest.data(), to_read);
-    return dest;
+	Azure::Core::Http::HttpRange range{range_start, range_length};
+	DownloadBlobToOptions opt;
+	opt.Range = std::move(range);
+	return opt;
 }
 
-Azure::Nullable<std::vector<uint8_t>> FindHeader(const Azure::Storage::Blobs::Models::DownloadBlobResult& dl_blob)
+// this function rethrows the exception thrown by Azure's API if an error occurs.
+size_t ReadPart(const BlobClient& blob_client, std::vector<uint8_t>& dest, int64_t offset)
 {
-    constexpr size_t block_size{10*1024*1024};
-    const size_t blob_size = static_cast<size_t>(dl_blob.BlobSize);
+	const size_t to_read = dest.size();
+	const auto dl_options = MakeDlBlobOptions(offset, static_cast<int64_t>(to_read));
+	const auto dl_res = blob_client.DownloadTo(dest.data(), to_read, dl_options);
+	return static_cast<size_t>(*(dl_res.Value.ContentRange.Length));
+}
 
-    std::vector<uint8_t> header;
-    const size_t to_read = std::min(blob_size, block_size);
+std::vector<uint8_t> ReadPart(const BlobClient& blob_client, int64_t offset, size_t to_read)
+{
+	std::vector<uint8_t> dest(to_read);
+	const size_t bytes_read = ReadPart(blob_client, dest, offset);
+	if (bytes_read < to_read)
+	{
+		dest.resize(bytes_read);
+	}
+	return dest;
+}
 
-    // read by blocks until new line char is found
-    size_t bytes_read = 0;
-    auto& stream_ptr = dl_blob.BodyStream;
+Azure::Nullable<std::vector<uint8_t>> FindHeader(const BlobClient& blob_client)
+{
+	constexpr size_t block_size{10 * 1024 * 1024};
+	std::vector<uint8_t> header(block_size);
 
-    bool found = false;
-    while (bytes_read < blob_size)
-    {
-        // the API contract is that ReadToCount reads up to size or end of stream
-        header.resize(header.size() + to_read);
-        const size_t part_read = stream_ptr->ReadToCount(header.data()+bytes_read, to_read);
-        const auto search_start_it = header.cbegin()+static_cast<ptrdiff_t>(bytes_read);
-        const auto search_end_it = search_start_it+static_cast<ptrdiff_t>(part_read);
-        const auto new_line_it = std::find(search_start_it, search_end_it, static_cast<uint8_t>('\n'));
+	// read by blocks until new line char is found or end of stream
+	int64_t bytes_read = 0;
 
-        if (new_line_it != search_end_it)
-        {
-            // found it!
-            // trim the vector containing the header
-            found = true;
-            header.erase(new_line_it+1,header.cend());
-            break;
-        }
+	bool found = false;
+	bool exhausted = false;
 
-        bytes_read += part_read;
-    }
+	while (!exhausted)
+	{
+		const auto new_data_start = header.data() + bytes_read;
+		const auto dl_options = MakeDlBlobOptions(bytes_read, block_size);
+		const auto dl_res = blob_client.DownloadTo(new_data_start, block_size, dl_options);
+		const auto dl_bytes_read = *(dl_res.Value.ContentRange.Length);
 
-    return found ? std::move(header) : Azure::Nullable<std::vector<uint8_t>>{};
+		const auto search_end = new_data_start + dl_bytes_read;
+		const auto new_line_pos = std::find(new_data_start, search_end, static_cast<uint8_t>('\n'));
+
+		if (new_line_pos != search_end)
+		{
+			// found it!
+			// trim the vector containing the header
+			found = true;
+			header.resize(std::distance(header.data(), new_line_pos) + 1u);
+			break;
+		}
+
+		bytes_read += dl_bytes_read;
+
+		exhausted = bytes_read == dl_res.Value.BlobSize;
+
+		if (!exhausted)
+		{
+			header.resize(header.size() + block_size);
+		}
+	}
+
+	return found ? std::move(header) : Azure::Nullable<std::vector<uint8_t>>{};
+}
+
+// Azure::Nullable<std::vector<uint8_t>> FindHeader(const Azure::Storage::Blobs::Models::DownloadBlobResult& dl_blob)
+// {
+//     constexpr size_t block_size{10*1024*1024};
+//     const size_t blob_size = static_cast<size_t>(dl_blob.BlobSize);
+
+//     std::vector<uint8_t> header;
+//     const size_t to_read = std::min(blob_size, block_size);
+
+//     // read by blocks until new line char is found
+//     size_t bytes_read = 0;
+//     auto& stream_ptr = dl_blob.BodyStream;
+
+//     bool found = false;
+//     while (bytes_read < blob_size)
+//     {
+//         // the API contract is that ReadToCount reads up to size or end of stream
+//         header.resize(header.size() + to_read);
+//         const size_t part_read = stream_ptr->ReadToCount(header.data()+bytes_read, to_read);
+//         const auto search_start_it = header.cbegin()+static_cast<ptrdiff_t>(bytes_read);
+//         const auto search_end_it = search_start_it+static_cast<ptrdiff_t>(part_read);
+//         const auto new_line_it = std::find(search_start_it, search_end_it, static_cast<uint8_t>('\n'));
+
+//         if (new_line_it != search_end_it)
+//         {
+//             // found it!
+//             // trim the vector containing the header
+//             found = true;
+//             header.erase(new_line_it+1,header.cend());
+//             header.shrink_to_fit();
+//             break;
+//         }
+
+//         bytes_read += part_read;
+//     }
+
+//     return found ? std::move(header) : Azure::Nullable<std::vector<uint8_t>>{};
+// }
+
+bool IsSameHeader(const BlobContainerClient& container_client, const Blobs::Models::BlobItem& blob_item,
+		  const std::vector<uint8_t>& header, std::vector<uint8_t>& part_buffer)
+{
+	const auto blob_client = container_client.GetBlobClient(blob_item.Name);
+	ReadPart(blob_client, part_buffer, 0);
+	return part_buffer == header;
 }
 
 DriverResult<long long> GetFileSize(const ParseUriResult& parsed_names)
 {
-    using value_t = long long;
+	using value_t = long long;
 
-    const auto container_client = GetServiceClient<BlobServiceClient>().GetBlobContainerClient(parsed_names.bucket);
+	const auto container_client = GetServiceClient<BlobServiceClient>().GetBlobContainerClient(parsed_names.bucket);
 
-    // if single file, get it, else multifile pattern, list files
-    const std::string& object = parsed_names.object;
-    const auto pattern_1st_sp_char_pos = FindPatternSpecialChar(object);
+	// if single file, get it, else multifile pattern, list files
+	const std::string& object = parsed_names.object;
+	const auto pattern_1st_sp_char_pos = FindPatternSpecialChar(object);
 
-    if (!pattern_1st_sp_char_pos)
-    {
-        // get the property directly
-        const auto blob_client = container_client.GetBlobClient(object);
-	    try
-	    {
-		    const auto props = blob_client.GetProperties();
-            value_t result = static_cast<value_t>(props.Value.BlobSize);
-		    return MakeDriverSuccess<value_t>(result);
-	    }
-        catch (const Azure::Storage::StorageException& e)
-        {
-            return MakeDriverFailureFromException<value_t>(e);
-        }
-        catch (const std::exception& e)
-        {
-            return MakeDriverFailureFromException<value_t>(e);
-        }
-    }
+	if (!pattern_1st_sp_char_pos)
+	{
+		// get the property directly
+		const auto blob_client = container_client.GetBlobClient(object);
+		try
+		{
+			const auto props = blob_client.GetProperties();
+			value_t result = static_cast<value_t>(props.Value.BlobSize);
+			return MakeDriverSuccess<value_t>(result);
+		}
+		catch (const Azure::Storage::StorageException& e)
+		{
+			return MakeDriverFailureFromException<value_t>(e);
+		}
+		catch (const std::exception& e)
+		{
+			return MakeDriverFailureFromException<value_t>(e);
+		}
+	}
 
-    //multifile, list the files corresponding to the pattern
-    auto filter_res = FilterList(parsed_names.bucket, object, *pattern_1st_sp_char_pos);
-    if (!filter_res)
-    {
-        return filter_res.ConvertFailureTo<value_t>();
-    }
+	//multifile, list the files corresponding to the pattern
+	auto filter_res = FilterList(parsed_names.bucket, object, *pattern_1st_sp_char_pos);
+	if (!filter_res)
+	{
+		return filter_res.ConvertFailureTo<value_t>();
+	}
 
-    const auto& blobs_list = filter_res.GetValue();
+	const auto& blobs_list = filter_res.GetValue();
 
-    // if single file, short treatment
-    if (blobs_list.size() == 1)
-    {
-        return MakeDriverSuccess(static_cast<long long>(blobs_list[0].BlobSize));
-    }
-    
-    // several files
-    // get the sizes and read the headers to identify common headers if any
-    // first file
-    const auto first_blob_client = container_client.GetBlobClient(blobs_list[0].Name);
-    try
-    {
-        const auto dl_res = first_blob_client.Download();
-        const auto& dl_blob = dl_res.Value;
-        const auto maybe_header = FindHeader(dl_blob);
-        if (!maybe_header)
-        {
-            return MakeDriverHttpFailure<long long>(Azure::Core::Http::HttpStatusCode::None, "Error while reading header of first file.");
-        }
+	// if single file, short treatment
+	if (blobs_list.size() == 1)
+	{
+		return MakeDriverSuccess(static_cast<long long>(blobs_list[0].BlobSize));
+	}
 
-        const std::vector<uint8_t>& header = *maybe_header;
-        const size_t header_size = header.size();
-        
-        // next files
-        const size_t blob_count = blobs_list.size();
-        size_t total_size = dl_blob.BlobSize;
-        bool same_headers = true;
+	// several files
+	// get the sizes and read the headers to identify common headers if any
+	// first file
+	const auto first_blob_client = container_client.GetBlobClient(blobs_list[0].Name);
+	try
+	{
+		const auto maybe_header = FindHeader(first_blob_client);
 
-        for (size_t i = 1; i < blob_count; i++)
-        {
-            const auto& blob_item = blobs_list[i];
-            total_size += static_cast<size_t>(blob_item.BlobSize);
+		if (!maybe_header)
+		{
+			return MakeDriverHttpFailure<long long>(Azure::Core::Http::HttpStatusCode::None,
+								"Error while reading header of first file.");
+		}
 
-            // read the beginning of the file to check header if still necessary
-            if (same_headers)
-            {
-                const auto blob_client = container_client.GetBlobClient(blob_item.Name);
-                const auto curr_dl_res = blob_client.Download();
-                const std::vector<uint8_t> part = ReadPart(curr_dl_res.Value, header_size);
-                same_headers = part == header;
-            }
-        }
+		const std::vector<uint8_t>& header = *maybe_header;
+		const size_t header_size = header.size();
 
-        size_t result = same_headers ? total_size - (blob_count-1)*header_size : total_size;
+		// next files
+		const size_t blob_count = blobs_list.size();
+		long long total_size = blobs_list[0].BlobSize;
+		bool same_headers = true;
+		std::vector<uint8_t> part_buffer(header_size);
 
-        return MakeDriverSuccess<long long>(static_cast<long long>(result));
-    }
-    catch(const Azure::Storage::StorageException& e)
-    {
-        return MakeDriverFailureFromException<long long>(e);
-    }
-    catch(const std::exception& e)
-    {
-        return MakeDriverFailureFromException<long long>(e);
-    }
+		for (size_t i = 1; i < blob_count; i++)
+		{
+			const auto& blob_item = blobs_list[i];
+			total_size += static_cast<long long>(blob_item.BlobSize);
+
+			// read the beginning of the file to check header if still necessary
+			if (same_headers)
+			{
+				same_headers = IsSameHeader(container_client, blob_item, header, part_buffer);
+			}
+		}
+
+		long long result =
+		    same_headers ? total_size - static_cast<long long>((blob_count - 1) * header_size) : total_size;
+
+		return MakeDriverSuccess<long long>(result);
+	}
+	catch (const Azure::Storage::StorageException& e)
+	{
+		return MakeDriverFailureFromException<long long>(e);
+	}
+	catch (const std::exception& e)
+	{
+		return MakeDriverFailureFromException<long long>(e);
+	}
 }
 
 long long int driver_getFileSize(const char* filename)
 {
 	KH_AZ_CONNECTION_ERROR(kBadSize);
 
-	ERROR_ON_NULL_ARG(filename, "Error passing null pointer to getFileSize.", kBadSize);
+	ERROR_ON_NULL_ARG(filename, kBadSize);
 
 	spdlog::debug("getFileSize {}", filename);
 
@@ -1082,141 +1067,221 @@ long long int driver_getFileSize(const char* filename)
 	//             .GetProperties();
 	//     return props.Value.FileSize;
 
-    const auto res = GetFileSize(parsed_names);
-    if (!res)
-    {
-        LogBadResult(res, "Error while getting file size.");
-        return kBadSize;
-    }
+	const auto res = GetFileSize(parsed_names);
+	if (!res)
+	{
+		LogBadResult(res, "Error while getting file size.");
+		return kBadSize;
+	}
 
-    return res.GetValue();
+	return res.GetValue();
 }
 
-/*
+DriverResult<long long> ReadBytesInFile(Reader& multifile, unsigned char* buffer, tOffset to_read)
+{
+	// Start at first usable file chunk
+	// Advance through file chunks, advancing buffer pointer
+	// Until last requested byte was read
+	// Or error occured
+
+	const auto& cumul_sizes = multifile.cumulativeSize_;
+	const tOffset common_header_length = multifile.commonHeaderLength_;
+	const auto& filenames = multifile.filenames_;
+	unsigned char* buffer_pos = buffer;
+	tOffset& offset = multifile.offset_;
+	const tOffset offset_bak = offset; // in case of irrecoverable error, leave the multifile in its starting state
+
+	auto recover_offset = [&]() { offset = offset_bak; };
+
+	auto read_range_and_update =
+	    [&](const BlobContainerClient& container, const std::string& filename, tOffset start, tOffset length)
+	{
+		const auto blob_client = container.GetBlobClient(filename);
+		const auto dl_options = MakeDlBlobOptions(static_cast<int64_t>(start), static_cast<int64_t>(length));
+		blob_client.DownloadTo(static_cast<uint8_t*>(buffer_pos), static_cast<size_t>(length), dl_options);
+
+		offset += length;
+		buffer_pos += length;
+		to_read -= length;
+	};
+
+	// Lookup item containing initial bytes at requested offset
+	auto greater_than_offset_it = std::upper_bound(cumul_sizes.begin(), cumul_sizes.end(), offset);
+	size_t idx = static_cast<size_t>(std::distance(cumul_sizes.begin(), greater_than_offset_it));
+
+	spdlog::debug("Use item {} to read @ {} (end = {})", idx, offset, *greater_than_offset_it);
+
+	const auto container_client =
+	    GetServiceClient<BlobServiceClient>().GetBlobContainerClient(multifile.bucketname_);
+
+	// first file read
+	const tOffset file_start = (idx == 0) ? offset : offset - cumul_sizes[idx - 1] + common_header_length;
+	const tOffset read_length = std::min(to_read, cumul_sizes[idx] - offset);
+
+	try
+	{
+		read_range_and_update(container_client, filenames[idx], file_start, read_length);
+	}
+	catch (const StorageException& e)
+	{
+		recover_offset();
+		return MakeDriverFailureFromException<long long>(e);
+	}
+	catch (const std::exception& e)
+	{
+		recover_offset();
+		return MakeDriverFailureFromException<long long>(e);
+	}
+
+	// continue with the next files
+	while (to_read)
+	{
+		// read the missing bytes in the next files as necessary
+		idx++;
+		const tOffset start = common_header_length;
+		const tOffset length = std::min(to_read, cumul_sizes[idx] - cumul_sizes[idx - 1]);
+		try
+		{
+			read_range_and_update(container_client, filenames[idx], start, length);
+		}
+		catch (const StorageException& e)
+		{
+			recover_offset();
+			return MakeDriverFailureFromException<long long>(e);
+		}
+		catch (const std::exception& e)
+		{
+			recover_offset();
+			return MakeDriverFailureFromException<long long>(e);
+		}
+	}
+
+	return MakeDriverSuccess<long long>(to_read);
+}
+
 DriverResult<ReaderPtr> MakeReaderPtr(std::string bucket, std::string object)
 {
-    std::vector<std::string> filenames;
-    std::vector<long long> cumulativeSize;
+	using value_t = ReaderPtr;
 
-    // if single file, get it, else multifile pattern, list files
-    size_t pattern_1st_sp_char_pos = FindPatternSpecialChar(object);
-    if(!IsMultifile(object, pattern_1st_sp_char_pos))
-    {
-        auto blob_client = GetServiceClient<BlobServiceClient>().GetBlobContainerClient(bucket).GetBlobClient(object);
-        try
-        {
-            const auto props_response = blob_client.GetProperties();
-            const long long blob_size = static_cast<long long>(props_response.Value.BlobSize);
-            ReaderPtr res(new Reader{bucket, object, 0, 0, {object}, {blob_size}, blob_size});
-            return MakeDriverSuccess<ReaderPtr>(std::move(res));
-        }
-        catch(const Azure::Storage::StorageException& e)
-        {
-            LogException("Error while creating reader.", e.what());
-            return MakeDriverHttpFailure<ReaderPtr>(e.StatusCode, e.ReasonPhrase);
-        }
-        catch(const std::exception& e)
-        {
-            LogException("Error while creating reader.", e.what());
-            return MakeDriverHttpFailure<ReaderPtr>(Azure::Core::Http::HttpStatusCode::None, e.what());
-        }
-    }
+	auto make_simple_reader = [](std::string&& bucket, std::string&& object, std::string&& filename,
+				     long long blob_size) -> ReaderPtr
+	{
+		std::vector<std::string> filenames;
+		filenames.emplace_back(std::move(filename));
+		std::vector<long long> cumulative_sizes = {blob_size};
+		return std::make_unique<Reader>(std::move(bucket), std::move(object), 0, 0, std::move(filenames),
+						std::move(cumulative_sizes));
+	};
 
-    // list files
+	const auto container_client = GetServiceClient<BlobServiceClient>().GetBlobContainerClient(bucket);
 
-        
-        blob_client.GetProperties().Value.BlobSize;
+	// if single file, get it, else multifile pattern, list files
+	const auto pattern_1st_sp_char_pos = FindPatternSpecialChar(object);
 
+	if (!pattern_1st_sp_char_pos)
+	{
+		auto blob_client = container_client.GetBlobClient(object);
+		try
+		{
+			const auto props_response = blob_client.GetProperties();
+			std::string filename = object;
+			return MakeDriverSuccess<value_t>(
+			    make_simple_reader(std::move(bucket), std::move(object), std::move(filename),
+					       static_cast<long long>(props_response.Value.BlobSize)));
+		}
+		catch (const Azure::Storage::StorageException& e)
+		{
+			return MakeDriverHttpFailure<value_t>(e.StatusCode, e.ReasonPhrase);
+		}
+		catch (const std::exception& e)
+		{
+			return MakeDriverHttpFailure<value_t>(Azure::Core::Http::HttpStatusCode::None, e.what());
+		}
+	}
 
-    }
+	//multifile, list the files corresponding to the pattern
+	auto filter_res = FilterList(bucket, object, *pattern_1st_sp_char_pos);
+	if (!filter_res)
+	{
+		return filter_res.ConvertFailureTo<value_t>();
+	}
 
-    // list files
+	auto& blobs_list = filter_res.GetValue();
 
-    // filter
+	// if single file, short treatment
+	if (blobs_list.size() == 1)
+	{
+		auto& item = blobs_list[0];
+		return MakeDriverSuccess<value_t>(make_simple_reader(
+		    std::move(bucket), std::move(object), std::move(item.Name), static_cast<long long>(item.BlobSize)));
+	}
 
-    return {};
+	// several files, gather data about names and sizes
+	const size_t blob_count = blobs_list.size();
+	std::vector<std::string> filenames;
+	filenames.reserve(blob_count);
+	std::vector<long long> cumulativeSize;
+	cumulativeSize.reserve(blob_count);
+
+	const auto& first_blob = blobs_list[0];
+	const auto first_blob_client = container_client.GetBlobClient(first_blob.Name);
+	try
+	{
+		const auto maybe_header = FindHeader(first_blob_client);
+
+		if (!maybe_header)
+		{
+			return MakeDriverHttpFailure<value_t>(Azure::Core::Http::HttpStatusCode::None,
+							      "Error while reading header of first file.");
+		}
+
+		const std::vector<uint8_t>& header = *maybe_header;
+		const size_t header_size = header.size();
+		filenames.emplace_back(first_blob.Name);
+		cumulativeSize.push_back(static_cast<long long>(blobs_list[0].BlobSize));
+
+		// next files
+		bool same_headers = true;
+		std::vector<uint8_t> part_buffer(header_size);
+
+		for (size_t i = 1; i < blob_count; i++)
+		{
+			const auto& curr_blob_item = blobs_list[i];
+			filenames.emplace_back(curr_blob_item.Name);
+			cumulativeSize.push_back(cumulativeSize.back() +
+						 static_cast<long long>(curr_blob_item.BlobSize));
+
+			// read the beginning of the file to check header if still necessary
+			if (same_headers)
+			{
+				same_headers = IsSameHeader(container_client, curr_blob_item, header, part_buffer);
+			}
+		}
+
+		if (same_headers)
+		{
+			// update cumulativeSize
+			for (size_t i = 1; i < blob_count; i++)
+			{
+				cumulativeSize[i] -= static_cast<long long>(i * header_size);
+			}
+		}
+
+		return MakeDriverSuccess<value_t>(std::make_unique<Reader>(
+		    std::move(bucket), std::move(object), 0, static_cast<long long>(header_size), std::move(filenames),
+		    std::move(cumulativeSize)));
+	}
+	catch (const Azure::Storage::StorageException& e)
+	{
+		return MakeDriverFailureFromException<value_t>(e);
+	}
+	catch (const std::exception& e)
+	{
+		return MakeDriverFailureFromException<value_t>(e);
+	}
 }
-*/
+
 /*
-gc::StatusOr<ReaderPtr> MakeReaderPtr(std::string bucketname, std::string objectname)
-{
-    std::vector<std::string> filenames;
-    std::vector<long long> cumulativeSize;
-
-    auto push_back_data = [&](gcs::ListObjectsIterator &list_it)
-    {
-        filenames.push_back((*list_it)->name());
-        long long size = static_cast<long long>((*list_it)->size());
-        if (!cumulativeSize.empty())
-        {
-            size += cumulativeSize.back();
-        }
-        cumulativeSize.push_back(size);
-    };
-
-    auto maybe_list = ListObjects(bucketname, objectname);
-    RETURN_STATUS_ON_ERROR(maybe_list);
-
-    auto list_it = maybe_list->begin();
-    const auto list_end = maybe_list->end();
-
-    push_back_data(list_it);
-
-    list_it++;
-    if (list_end == list_it)
-    {
-        // unique file
-        const tOffset total_size = cumulativeSize.back();
-        return ReaderPtr(new MultiPartFile{
-            std::move(bucketname),
-            std::move(objectname),
-            0,
-            0,
-            std::move(filenames),
-            std::move(cumulativeSize),
-            total_size});
-    }
-
-    // multifile
-    // check headers
-    auto maybe_header = ReadHeader(bucketname, filenames.front());
-    RETURN_STATUS_ON_ERROR(maybe_header);
-
-    const std::string& header = *maybe_header;
-    const long long header_size = static_cast<long long>(header.size());
-    bool same_header{true};
-
-    for (; list_it != list_end; list_it++)
-    {
-        RETURN_STATUS_ON_ERROR(*list_it);
-
-        push_back_data(list_it);
-
-        if (same_header)
-        {
-            auto maybe_curr_header = ReadHeader(bucketname, filenames.back());
-            RETURN_STATUS_ON_ERROR(maybe_curr_header);
-
-            same_header = (header == *maybe_curr_header);
-            if (same_header)
-            {
-                cumulativeSize.back() -= header_size;
-            }
-        }
-    }
-
-    tOffset total_size = cumulativeSize.back();
-
-    return ReaderPtr(new MultiPartFile{
-        std::move(bucketname),
-        std::move(objectname),
-        0,
-        same_header ? header_size : 0,
-        std::move(filenames),
-        std::move(cumulativeSize),
-        total_size});
-}
-
 gc::StatusOr<WriterPtr> MakeWriterPtr(std::string bucketname, std::string objectname)
 {
     auto writer = client.WriteObject(bucketname, objectname);
@@ -1230,61 +1295,65 @@ gc::StatusOr<WriterPtr> MakeWriterPtr(std::string bucketname, std::string object
     writer_struct->writer_ = std::move(writer);
     return writer_struct;
 }
-
-template <typename StreamPtr, HandleType Type>
-gc::StatusOr<Handle *> RegisterStream(std::function<gc::StatusOr<StreamPtr>(std::string, std::string)> MakeStreamPtr, std::string &&bucket, std::string &&object)
-{
-    auto maybe_stream = MakeStreamPtr(std::move(bucket), std::move(object));
-    RETURN_STATUS_ON_ERROR(maybe_stream);
-
-    return InsertHandle<StreamPtr, Type>(std::move(maybe_stream).value());
-}
-
-gc::StatusOr<Handle *> RegisterReader(std::string &&bucket, std::string &&object)
-{
-    return RegisterStream<ReaderPtr, HandleType::kRead>(MakeReaderPtr, std::move(bucket), std::move(object));
-}
-
-gc::StatusOr<Handle *> RegisterWriter(std::string &&bucket, std::string &&object)
-{
-    return RegisterStream<WriterPtr, HandleType::kWrite>(MakeWriterPtr, std::move(bucket), std::move(object));
-}
-
-gc::StatusOr<Handle *> RegisterWriterForAppend(std::string &&bucket, std::string &&tmp, std::string append_target)
-{
-    auto maybe_handle = RegisterStream<WriterPtr, HandleType::kAppend>(MakeWriterPtr, std::move(bucket), std::move(tmp));
-    if (maybe_handle)
-    {
-        (*maybe_handle)->GetWriter().append_target_ = std::move(append_target);
-    }
-    return maybe_handle;
-}
 */
+
+// This template is only here to get specialized
+template <typename Stream> Stream* PushBackHandle(StreamPtr<Stream>&& stream_ptr, StreamVec<Stream>& handles)
+{
+	Stream* res = stream_ptr.get();
+	handles.push_back(std::move(stream_ptr));
+	return res;
+}
+
+template <typename Stream>
+DriverResult<Stream*>
+RegisterStream(std::function<DriverResult<StreamPtr<Stream>>(std::string, std::string)> MakeStreamPtr,
+	       std::string&& bucket, std::string&& object, StreamVec<Stream>& streams)
+{
+	auto maybe_stream_ptr = MakeStreamPtr(std::move(bucket), std::move(object));
+	if (!maybe_stream_ptr)
+	{
+		return maybe_stream_ptr.ConvertFailureTo<Stream*>();
+	}
+	return MakeDriverSuccess<Stream*>(PushBackHandle(maybe_stream_ptr.TakeValue(), streams));
+}
+
+DriverResult<Reader*> RegisterReader(std::string&& bucket, std::string&& object)
+{
+	return RegisterStream<Reader>(MakeReaderPtr, std::move(bucket), std::move(object), active_reader_handles);
+}
+
+// DriverResult<Writer*> RegisterWriter(std::string&& bucket, std::string&& object)
+// {
+// 	return RegisterStream<Writer>(MakeWriterPtr, std::move(bucket), std::move(object), active_writer_handles);
+// }
+
 void* driver_fopen(const char* filename, char mode)
 {
-	assert(driver_isConnected());
+	KH_AZ_CONNECTION_ERROR(nullptr);
 
-	ERROR_ON_NULL_ARG(filename, "Error passing null pointer to fopen.", nullptr);
+	ERROR_ON_NULL_ARG(filename, nullptr);
 
 	spdlog::debug("fopen {} {}", filename, mode);
 
-	// auto maybe_names = GetBucketAndObjectNames(filename);
-	// ERROR_ON_NAMES(maybe_names, nullptr);
+	auto name_parsing_result = ParseAzureUri(filename);
+	ERROR_ON_NAMES(name_parsing_result, nullptr);
 
-	// auto& names = *maybe_names;
+	auto& parsed_names = name_parsing_result.GetValue();
 
-	// gc::StatusOr<Handle *> maybe_handle;
-	std::string err_msg;
-	/*
-    switch (mode)
-    {
-    case 'r':
-    {
-        maybe_handle = RegisterReader(std::move(names.bucket), std::move(names.object));
-        err_msg = "Error while opening reader stream";
-        break;
-    }
-    case 'w':
+	switch (mode)
+	{
+	case 'r':
+	{
+		auto register_res = RegisterReader(std::move(parsed_names.bucket), std::move(parsed_names.object));
+		if (!register_res)
+		{
+			LogBadResult(register_res, "Error while opening reader stream.");
+			return nullptr;
+		}
+		return register_res.GetValue();
+	}
+	/*    case 'w':
     {
         maybe_handle = RegisterWriter(std::move(names.bucket), std::move(names.object));
         err_msg = "Error while opening writer stream";
@@ -1333,76 +1402,64 @@ void* driver_fopen(const char* filename, char mode)
         err_msg = "Error opening file in append mode, cannot open tmp object";
         break;
     }
-    default:
-        LogError("Invalid open mode: " + mode);
-        return nullptr;
-    }
+*/
+	default:
+		LogError("Invalid open mode: " + mode);
+		return nullptr;
+	}
 
-    RETURN_ON_ERROR(maybe_handle, err_msg, nullptr);
+	// RETURN_ON_ERROR(maybe_handle, err_msg, nullptr);
 
-    return *maybe_handle;
-    */
-	return NULL;
+	// return *maybe_handle;
+
+	// return NULL;
 }
 
-#define ERROR_NO_STREAM(handle_it, errval)                                                                             \
-	if ((handle_it) == active_handles.end())                                                                       \
-	{                                                                                                              \
-		LogError("Cannot identify stream");                                                                    \
-		return (errval);                                                                                       \
-	}
+// #define ERROR_NO_STREAM(handle_it, errval)                                                                             \
+// 	if ((handle_it) == active_handles.end())                                                                       \
+// 	{                                                                                                              \
+// 		LogError("Cannot identify stream");                                                                    \
+// 		return (errval);                                                                                       \
+// 	}
 
 int driver_fclose(void* stream)
 {
 	assert(driver_isConnected());
 
-	ERROR_ON_NULL_ARG(stream, "Error passing null pointer to fclose", kCloseEOF);
+	ERROR_ON_NULL_ARG(stream, kCloseEOF);
 
 	spdlog::debug("fclose {}", (void*)stream);
 
-	auto stream_it = FindHandle(stream);
-	ERROR_NO_STREAM(stream_it, kCloseEOF);
-	auto& h_ptr = *stream_it;
-	/*
-    gc::Status status;
+	const auto stream_it = FindReader(stream);
+	if (stream_it != active_reader_handles.end())
+	{
+		EraseRemove<Reader>(stream_it, active_reader_handles);
+		return kCloseSuccess;
+	}
 
-    if (HandleType::kRead != h_ptr->type)
-    {
-        status = CloseWriterStream(*h_ptr);
-    }
-
-    EraseRemove(stream_it);
-
-    if (!status.ok())
-    {
-        LogBadStatus(status, "Error while closing writer stream");
-        return kFailure;
-    }
-*/
-	return kCloseSuccess;
+	LogError("Cannot identify stream.");
+	return kCloseEOF;
 }
 
 int driver_fseek(void* stream, long long int offset, int whence)
 {
-	constexpr long long max_val = std::numeric_limits<long long>::max();
+	KH_AZ_CONNECTION_ERROR(kBadSize);
 
-	ERROR_ON_NULL_ARG(stream, "Error passing null pointer to fseek", -1);
-
-	// confirm stream's presence
-	auto to_stream = FindHandle(stream);
-	ERROR_NO_STREAM(to_stream, -1);
-
-	auto& stream_h = *to_stream;
-
-	if (HandleType::kRead != stream_h->type)
-	{
-		LogError("Cannot seek on not reading stream");
-		return -1;
-	}
+	ERROR_ON_NULL_ARG(stream, kBadSize);
 
 	spdlog::debug("fseek {} {} {}", stream, offset, whence);
 
-	MultiPartFile& h = stream_h->GetReader();
+	// confirm stream's presence
+	auto reader_ptr_it = FindReader(stream);
+	if (reader_ptr_it == active_reader_handles.end())
+	{
+		LogError("Cannot identify stream as a reader stream.");
+		return kBadSize;
+	}
+
+	Reader& reader = **reader_ptr_it;
+
+	constexpr long long max_val = std::numeric_limits<long long>::max();
 
 	tOffset computed_offset{0};
 
@@ -1412,42 +1469,42 @@ int driver_fseek(void* stream, long long int offset, int whence)
 		computed_offset = offset;
 		break;
 	case std::ios::cur:
-		if (offset > max_val - h.offset_)
+		if (offset > max_val - reader.offset_)
 		{
 			LogError("Signed overflow prevented");
-			return -1;
+			return kBadSize;
 		}
-		computed_offset = h.offset_ + offset;
+		computed_offset = reader.offset_ + offset;
 		break;
 	case std::ios::end:
-		if (h.total_size_ > 0)
+		if (reader.total_size_ > 0)
 		{
-			long long minus1 = h.total_size_ - 1;
+			long long minus1 = reader.total_size_ - 1;
 			if (offset > max_val - minus1)
 			{
 				LogError("Signed overflow prevented");
-				return -1;
+				return kBadSize;
 			}
 		}
-		if ((offset == std::numeric_limits<long long>::min()) && (h.total_size_ == 0))
+		if ((offset == std::numeric_limits<long long>::min()) && (reader.total_size_ == 0))
 		{
 			LogError("Signed overflow prevented");
-			return -1;
+			return kBadSize;
 		}
 
-		computed_offset = (h.total_size_ == 0) ? offset : h.total_size_ - 1 + offset;
+		computed_offset = (reader.total_size_ == 0) ? offset : reader.total_size_ - 1 + offset;
 		break;
 	default:
 		LogError("Invalid seek mode " + std::to_string(whence));
-		return -1;
+		return kBadSize;
 	}
 
 	if (computed_offset < 0)
 	{
 		LogError("Invalid seek offset " + std::to_string(computed_offset));
-		return -1;
+		return kBadSize;
 	}
-	h.offset_ = computed_offset;
+	reader.offset_ = computed_offset;
 	return 0;
 }
 
@@ -1464,36 +1521,26 @@ const char* driver_getlasterror()
 
 long long int driver_fread(void* ptr, size_t size, size_t count, void* stream)
 {
-	ERROR_ON_NULL_ARG(stream, "Error passing null stream pointer to fread", -1);
-	ERROR_ON_NULL_ARG(ptr, "Error passing null buffer pointer to fread", -1);
+	KH_AZ_CONNECTION_ERROR(kBadSize);
+
+	ERROR_ON_NULL_ARG(stream, kBadSize);
+	ERROR_ON_NULL_ARG(ptr, kBadSize);
 
 	if (0 == size)
 	{
 		LogError("Error passing size of 0");
-		return -1;
-	}
-
-	// confirm stream's presence
-	auto to_stream = FindHandle(stream);
-	if (to_stream == active_handles.end())
-	{
-		LogError("Cannot identify stream");
-		return -1;
-	}
-
-	auto& stream_h = *to_stream;
-
-	if (HandleType::kRead != stream_h->type)
-	{
-		LogError("Cannot read on not reading stream");
-		return -1;
+		return kBadSize;
 	}
 
 	spdlog::debug("fread {} {} {} {}", ptr, size, count, stream);
 
-	MultiPartFile& h = stream_h->GetReader();
-
-	const tOffset offset = h.offset_;
+	// confirm stream's presence
+	const auto& reader_ptr_it = FindReader(stream);
+	if (reader_ptr_it == active_reader_handles.end())
+	{
+		LogError("Cannot identify stream as a reader stream.");
+		return kBadSize;
+	}
 
 	// fast exit for 0 read
 	if (0 == count)
@@ -1505,23 +1552,25 @@ long long int driver_fread(void* ptr, size_t size, size_t count, void* stream)
 	if (WillSizeCountProductOverflow(size, count))
 	{
 		LogError("product size * count is too large, would overflow");
-		return -1;
+		return kBadSize;
 	}
-
 	tOffset to_read{static_cast<tOffset>(size * count)};
+
+	Reader& reader = **reader_ptr_it;
+	const tOffset offset = reader.offset_;
 	if (offset > std::numeric_limits<long long>::max() - to_read)
 	{
 		LogError("signed overflow prevented on reading attempt");
-		return -1;
+		return kBadSize;
 	}
 	// end of overflow prevention
 
 	// special case: if offset >= total_size, error if not 0 byte required. 0 byte required is already done above
-	const tOffset total_size = h.total_size_;
+	const tOffset total_size = reader.total_size_;
 	if (offset >= total_size)
 	{
 		LogError("Error trying to read more bytes while already out of bounds");
-		return -1;
+		return kBadSize;
 	}
 
 	// normal cases
@@ -1535,38 +1584,37 @@ long long int driver_fread(void* ptr, size_t size, size_t count, void* stream)
 	{
 		spdlog::debug("offset = {} to_read = {}", offset, to_read);
 	}
-	/*
-    auto maybe_read = ReadBytesInFile(h, reinterpret_cast<char *>(ptr), to_read);
-    RETURN_ON_ERROR(maybe_read, "Error while reading from file", -1);
 
-    return *maybe_read;
-    */
-	return 0;
+	const auto read_res = ReadBytesInFile(reader, reinterpret_cast<unsigned char*>(ptr), to_read);
+	if (!read_res)
+	{
+		LogBadResult(read_res, "Error while reading from file.");
+		return kBadSize;
+	}
+
+	return to_read;
 }
 
 long long int driver_fwrite(const void* ptr, size_t size, size_t count, void* stream)
 {
-	ERROR_ON_NULL_ARG(stream, "Error passing null stream pointer to fwrite", -1);
-	ERROR_ON_NULL_ARG(ptr, "Error passing null buffer pointer to fwrite", -1);
+	KH_AZ_CONNECTION_ERROR(kBadSize);
+
+	ERROR_ON_NULL_ARG(stream, kBadSize);
+	ERROR_ON_NULL_ARG(ptr, kBadSize);
 
 	if (0 == size)
 	{
 		LogError("Error passing size 0 to fwrite");
-		return -1;
+		return kBadSize;
 	}
 
 	spdlog::debug("fwrite {} {} {} {}", ptr, size, count, stream);
 
-	auto stream_it = FindHandle(stream);
-	ERROR_NO_STREAM(stream_it, -1);
-	Handle& stream_h = **stream_it;
-
-	const HandleType type = stream_h.type;
-
-	if (HandleType::kRead == type)
+	const auto& writer_ptr_it = FindWriter(stream);
+	if (writer_ptr_it == active_writer_handles.end())
 	{
-		LogError("Cannot write on not writing stream");
-		return -1;
+		LogError("Cannot identify stream as a writer stream.");
+		return kBadSize;
 	}
 
 	// fast exit for 0
@@ -1579,51 +1627,77 @@ long long int driver_fwrite(const void* ptr, size_t size, size_t count, void* st
 	if (WillSizeCountProductOverflow(size, count))
 	{
 		LogError("Error on write: product size * count is too large, would overflow");
-		return -1;
+		return kBadSize;
 	}
 
-	const long long to_write = static_cast<long long>(size * count);
-	/*
-    gcs::ObjectWriteStream &writer = stream_h.GetWriter().writer_;
-    writer.write(static_cast<const char *>(ptr), to_write);
-    if (writer.bad())
-    {
-        LogBadStatus(writer.last_status(), "Error during upload");
-        return -1;
-    }
-    spdlog::debug("Write status after write: good {}, bad {}, fail {}",
-                  writer.good(), writer.bad(), writer.fail());
-*/
-	return to_write;
+	return kBadSize;
+
+	// const size_t to_write = size * count;
+
+	// // tune up the capacity of the internal buffer, the final buffer size must be a multiple of the size argument
+	// auto& buffer = h_ptr->buffer_;
+	// const size_t curr_size = buffer.size();
+	// const size_t next_size = curr_size + to_write;
+	// if (next_size > buffer.capacity())
+	// {
+	// 	// if next_size exceeds max capacity, reserve the closest capacity under buff_max_ that is a multiple of size argument,
+	// 	// else reserve next_size
+	// 	buffer.reserve(next_size > WriteFile::buff_max_ ? (WriteFile::buff_max_ / size) * size : next_size);
+	// }
+
+	// // copy up to capacity or the whole data for now
+	// size_t remain = to_write;
+	// const size_t available = buffer.capacity() - buffer.size();
+	// size_t copy_count = std::min(available, remain);
+	// const unsigned char* ptr_cast_pos = reinterpret_cast<const unsigned char*>(ptr);
+
+	// auto copy_and_update =
+	//     [](Aws::Vector<unsigned char>& dest, const unsigned char** src_start, size_t count, size_t& remain)
+	// {
+	// 	dest.insert(dest.end(), *src_start, (*src_start) + count);
+	// 	(*src_start) += count;
+	// 	remain -= count;
+	// };
+
+	// copy_and_update(buffer, &ptr_cast_pos, copy_count, remain);
+
+	// // upload the content of the buffer until the size of the remaining data is smaller than the minimum upload size
+	// while (buffer.size() >= WriteFile::buff_min_)
+	// {
+	// 	auto outcome = UploadPart(*h_ptr);
+	// 	RETURN_ON_ERROR(outcome, "Error during upload", kBadSize);
+
+	// 	// copy remaining data up to capacity
+	// 	buffer.clear();
+	// 	copy_count = std::min(remain, buffer.capacity());
+	// 	copy_and_update(buffer, &ptr_cast_pos, copy_count, remain);
+	// }
+
+	// // release unused memory
+	// buffer.shrink_to_fit();
+
+	// return to_write;
 }
 
 int driver_fflush(void* stream)
 {
-	ERROR_ON_NULL_ARG(stream, "Error passing null stream pointer to fflush", -1);
+	KH_AZ_CONNECTION_ERROR(-1);
 
-	auto stream_it = FindHandle(stream);
-	ERROR_NO_STREAM(stream_it, -1);
-	Handle& stream_h = **stream_it;
+	ERROR_ON_NULL_ARG(stream, -1);
 
-	if (HandleType::kWrite != stream_h.type)
+	const auto& writer_ptr_it = FindWriter(stream);
+	if (writer_ptr_it == active_writer_handles.end())
 	{
-		LogError("Cannot flush on not writing stream");
+		LogError("Cannot identify stream as a writer stream.");
 		return -1;
 	}
-	/*
-    auto &out_stream = stream_h.GetWriter().writer_;
-    if (!out_stream.flush())
-    {
-        LogBadStatus(out_stream.last_status(), "Error during upload");
-        return -1;
-    }
-*/
+
 	return 0;
 }
 
 int driver_remove(const char* filename)
 {
-	ERROR_ON_NULL_ARG(filename, "Error passing null pointer to remove", kFailure);
+	ERROR_ON_NULL_ARG(filename, kFailure);
 
 	spdlog::debug("remove {}", filename);
 
@@ -1658,7 +1732,7 @@ int driver_remove(const char* filename)
 
 int driver_rmdir(const char* filename)
 {
-	ERROR_ON_NULL_ARG(filename, "Error passing null pointer to rmdir", kFailure);
+	ERROR_ON_NULL_ARG(filename, kFailure);
 
 	spdlog::debug("rmdir {}", filename);
 
@@ -1669,7 +1743,7 @@ int driver_rmdir(const char* filename)
 
 int driver_mkdir(const char* filename)
 {
-	ERROR_ON_NULL_ARG(filename, "Error passing null pointer to mkdir", kFailure);
+	ERROR_ON_NULL_ARG(filename, kFailure);
 
 	spdlog::debug("mkdir {}", filename);
 
@@ -1679,7 +1753,7 @@ int driver_mkdir(const char* filename)
 
 long long int driver_diskFreeSpace(const char* filename)
 {
-	ERROR_ON_NULL_ARG(filename, "Error passing null pointer to diskFreeSpace", kFailure);
+	ERROR_ON_NULL_ARG(filename, kFailure);
 
 	spdlog::debug("diskFreeSpace {}", filename);
 
