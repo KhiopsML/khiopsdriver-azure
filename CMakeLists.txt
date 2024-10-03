@@ -23,6 +23,7 @@ find_package(azure-identity-cpp CONFIG REQUIRED)
 find_package(azure-storage-blobs-cpp CONFIG REQUIRED)
 find_package(azure-storage-files-shares-cpp CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
+find_package(Boost REQUIRED)
 
 # Hide symbols in the shared libraries
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)

@@ -26,6 +26,10 @@
 
 #include <azure/identity/default_azure_credential.hpp>
 
+#include <boost/uuid/uuid.hpp>            // uuid class
+#include <boost/uuid/uuid_generators.hpp> // generators
+#include <boost/uuid/uuid_io.hpp>         // streaming operators etc.
+
 using namespace azureplugin;
 
 constexpr const char* version = "0.1.0";
@@ -163,10 +167,10 @@ void LogError(const std::string& msg)
 	spdlog::error(lastError);
 }
 
-void LogException(std::string&& msg, std::string&& what)
+void LogException(const std::string& msg, const std::string& what)
 {
 	std::ostringstream oss;
-	oss << std::move(msg) << " " << std::move(what);
+	oss << msg << " " << what;
 	LogError(oss.str());
 }
 
@@ -640,41 +644,13 @@ int driver_connect()
 
 int driver_disconnect()
 {
-	/*
-    // loop on the still active handles to close as necessary and remove. clear() on the container would do it
-    // but the procedures would fail silently.
-    std::vector<gc::Status> failures;
-    for (auto &h_ptr : active_handles)
-    {
-        // the writing streams need to be closed
-        const HandleType type = h_ptr->type;
-        if (HandleType::kRead != type)
-        {
-            gc::Status status = CloseWriterStream(*h_ptr);
-            if (!status.ok())
-            {
-                failures.push_back(std::move(status));
-            }
-        }
-    }
-    active_handles.clear();
-*/
-	bIsConnected = kFalse;
+	// clear handles
+	active_reader_handles.clear();
+	active_writer_handles.clear();
 
-	//if (failures.empty())
-	//{
+	// manage internal state
+	bIsConnected = kFalse;
 	return kSuccess;
-	//}
-	/*
-    std::ostringstream os;
-    os << "Errors occured during disconnection:\n";
-    for (const auto &status : failures)
-    {
-        os << status << '\n';
-    }
-    LogError(os.str());
-    */
-	// return kFailure;
 }
 
 int driver_isConnected()
@@ -1281,21 +1257,21 @@ DriverResult<ReaderPtr> MakeReaderPtr(std::string bucket, std::string object)
 	}
 }
 
-/*
-gc::StatusOr<WriterPtr> MakeWriterPtr(std::string bucketname, std::string objectname)
+DriverResult<WriterPtr> MakeWriterPtr(std::string bucket, std::string object)
 {
-    auto writer = client.WriteObject(bucketname, objectname);
-    if (!writer)
+    using value_t = WriterPtr;
+
+    const auto container_client = GetServiceClient<BlobServiceClient>().GetBlobContainerClient(bucket);
+	try
     {
-        return writer.last_status();
+        auto writer_ptr = std::make_unique<Writer>(std::move(bucket), std::move(object), container_client.GetBlockBlobClient(object));
+        return MakeDriverSuccess<value_t>(std::move(writer_ptr));
     }
-    WriterPtr writer_struct{new WriteFile};
-    writer_struct->bucketname_ = std::move(bucketname);
-    writer_struct->filename_ = std::move(objectname);
-    writer_struct->writer_ = std::move(writer);
-    return writer_struct;
+    catch(const std::exception& e)
+    {
+        return MakeDriverFailureFromException<value_t>(e);
+    }
 }
-*/
 
 // This template is only here to get specialized
 template <typename Stream> Stream* PushBackHandle(StreamPtr<Stream>&& stream_ptr, StreamVec<Stream>& handles)
@@ -1313,7 +1289,7 @@ RegisterStream(std::function<DriverResult<StreamPtr<Stream>>(std::string, std::s
 	auto maybe_stream_ptr = MakeStreamPtr(std::move(bucket), std::move(object));
 	if (!maybe_stream_ptr)
 	{
-		return maybe_stream_ptr.ConvertFailureTo<Stream*>();
+		return maybe_stream_ptr.template ConvertFailureTo<Stream*>();
 	}
 	return MakeDriverSuccess<Stream*>(PushBackHandle(maybe_stream_ptr.TakeValue(), streams));
 }
@@ -1323,10 +1299,10 @@ DriverResult<Reader*> RegisterReader(std::string&& bucket, std::string&& object)
 	return RegisterStream<Reader>(MakeReaderPtr, std::move(bucket), std::move(object), active_reader_handles);
 }
 
-// DriverResult<Writer*> RegisterWriter(std::string&& bucket, std::string&& object)
-// {
-// 	return RegisterStream<Writer>(MakeWriterPtr, std::move(bucket), std::move(object), active_writer_handles);
-// }
+DriverResult<Writer*> RegisterWriter(std::string&& bucket, std::string&& object)
+{
+	return RegisterStream<Writer>(MakeWriterPtr, std::move(bucket), std::move(object), active_writer_handles);
+}
 
 void* driver_fopen(const char* filename, char mode)
 {
@@ -1353,12 +1329,17 @@ void* driver_fopen(const char* filename, char mode)
 		}
 		return register_res.GetValue();
 	}
-	/*    case 'w':
+	    case 'w':
     {
-        maybe_handle = RegisterWriter(std::move(names.bucket), std::move(names.object));
-        err_msg = "Error while opening writer stream";
-        break;
+        auto register_res = RegisterWriter(std::move(parsed_names.bucket), std::move(parsed_names.object));
+        if (!register_res)
+        {
+            LogBadResult(register_res, "Error while opening writer stream.");
+			return nullptr;
+        }
+        return register_res.GetValue();
     }
+    /*
     case 'a':
     {
         // GCS does not as yet provide a way to add data to existing files.
@@ -1430,13 +1411,34 @@ int driver_fclose(void* stream)
 
 	spdlog::debug("fclose {}", (void*)stream);
 
-	const auto stream_it = FindReader(stream);
-	if (stream_it != active_reader_handles.end())
+	const auto reader_stream_it = FindReader(stream);
+	if (reader_stream_it != active_reader_handles.end())
 	{
-		EraseRemove<Reader>(stream_it, active_reader_handles);
+		EraseRemove<Reader>(reader_stream_it, active_reader_handles);
 		return kCloseSuccess;
 	}
 
+    const auto writer_stream_it = FindWriter(stream);
+    if (writer_stream_it != active_writer_handles.end())
+    {
+        // finalize the block blob upload
+        const auto& writer = **writer_stream_it;
+		int res = kCloseEOF;
+        try
+        {
+            writer.client_.CommitBlockList(writer.block_ids_list_);
+            // the handle can be erased from its list, no staged block will remain
+            res = kCloseSuccess;
+        }
+        catch(const StorageException& e)
+        {
+            // the staged blocks are still on the server but will get garbage collected after 10 days,
+			// according to Azure service			
+            LogException("Error while closing writer stream. Stream writer handle will be removed anyway.", e.what());
+        }
+		EraseRemove<Writer>(writer_stream_it, active_writer_handles);
+		return res;
+    }
 	LogError("Cannot identify stream.");
 	return kCloseEOF;
 }
@@ -1630,53 +1632,32 @@ long long int driver_fwrite(const void* ptr, size_t size, size_t count, void* st
 		return kBadSize;
 	}
 
+	// stage a block containing the data from the buffer
+	auto& writer = **writer_ptr_it;
+	const size_t to_write = size*count;
+	Azure::Core::IO::MemoryBodyStream streambuf(reinterpret_cast<const uint8_t*>(ptr), to_write);
+	
+	const auto uuid = boost::uuids::random_generator()();
+	std::vector<uint8_t> vec_uuid(uuid.size());
+	std::copy(uuid.begin(), uuid.end(), vec_uuid.begin());
+	std::string uuid_encoded = Azure::Core::Convert::Base64Encode(vec_uuid);
+	
+	try
+	{
+		const auto stage_response = writer.client_.StageBlock(uuid_encoded, streambuf);
+		writer.block_ids_list_.push_back(std::move(uuid_encoded));
+		return static_cast<long long>(to_write);
+	}
+	catch(const StorageException& e)
+	{
+		LogException("Error while writing data.", e.what());
+	}
+	catch(const std::exception& e)
+	{
+		LogException("Error while writing data.", e.what());
+	}
+	
 	return kBadSize;
-
-	// const size_t to_write = size * count;
-
-	// // tune up the capacity of the internal buffer, the final buffer size must be a multiple of the size argument
-	// auto& buffer = h_ptr->buffer_;
-	// const size_t curr_size = buffer.size();
-	// const size_t next_size = curr_size + to_write;
-	// if (next_size > buffer.capacity())
-	// {
-	// 	// if next_size exceeds max capacity, reserve the closest capacity under buff_max_ that is a multiple of size argument,
-	// 	// else reserve next_size
-	// 	buffer.reserve(next_size > WriteFile::buff_max_ ? (WriteFile::buff_max_ / size) * size : next_size);
-	// }
-
-	// // copy up to capacity or the whole data for now
-	// size_t remain = to_write;
-	// const size_t available = buffer.capacity() - buffer.size();
-	// size_t copy_count = std::min(available, remain);
-	// const unsigned char* ptr_cast_pos = reinterpret_cast<const unsigned char*>(ptr);
-
-	// auto copy_and_update =
-	//     [](Aws::Vector<unsigned char>& dest, const unsigned char** src_start, size_t count, size_t& remain)
-	// {
-	// 	dest.insert(dest.end(), *src_start, (*src_start) + count);
-	// 	(*src_start) += count;
-	// 	remain -= count;
-	// };
-
-	// copy_and_update(buffer, &ptr_cast_pos, copy_count, remain);
-
-	// // upload the content of the buffer until the size of the remaining data is smaller than the minimum upload size
-	// while (buffer.size() >= WriteFile::buff_min_)
-	// {
-	// 	auto outcome = UploadPart(*h_ptr);
-	// 	RETURN_ON_ERROR(outcome, "Error during upload", kBadSize);
-
-	// 	// copy remaining data up to capacity
-	// 	buffer.clear();
-	// 	copy_count = std::min(remain, buffer.capacity());
-	// 	copy_and_update(buffer, &ptr_cast_pos, copy_count, remain);
-	// }
-
-	// // release unused memory
-	// buffer.shrink_to_fit();
-
-	// return to_write;
 }
 
 int driver_fflush(void* stream)
