@@ -479,15 +479,19 @@ std::string GetEnvironmentVariableOrDefault(const std::string& variable_name, co
 	return default_value;
 }
 
-template <typename ServiceClientType> ServiceClientType GetServiceClient()
+std::string GetConnectionStringFromEnv()
 {
 	// TODO Should allow different auth options like described in: https://learn.microsoft.com/en-us/azure/storage/blobs/authorize-data-operations-cli
-	const std::string connectionString =
-	    GetEnvironmentVariableOrDefault("AZURE_STORAGE_CONNECTION_STRING",
-					    "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey="
-					    "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/"
-					    "KBHBeksoGMGw==;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;");
-	return ServiceClientType::CreateFromConnectionString(connectionString);
+	return GetEnvironmentVariableOrDefault(
+	    "AZURE_STORAGE_CONNECTION_STRING",
+	    "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey="
+	    "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/"
+	    "KBHBeksoGMGw==;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;");
+}
+
+template <typename ServiceClientType> ServiceClientType GetServiceClient()
+{
+	return ServiceClientType::CreateFromConnectionString(GetConnectionStringFromEnv());
 }
 
 bool WillSizeCountProductOverflow(size_t size, size_t count)
@@ -1259,18 +1263,27 @@ DriverResult<ReaderPtr> MakeReaderPtr(std::string bucket, std::string object)
 
 DriverResult<WriterPtr> MakeWriterPtr(std::string bucket, std::string object)
 {
-    using value_t = WriterPtr;
+	using value_t = WriterPtr;
 
-    const auto container_client = GetServiceClient<BlobServiceClient>().GetBlobContainerClient(bucket);
+	auto append_client = AppendBlobClient::CreateFromConnectionString(GetConnectionStringFromEnv(), bucket, object);
+
 	try
-    {
-        auto writer_ptr = std::make_unique<Writer>(std::move(bucket), std::move(object), container_client.GetBlockBlobClient(object));
-        return MakeDriverSuccess<value_t>(std::move(writer_ptr));
-    }
-    catch(const std::exception& e)
-    {
-        return MakeDriverFailureFromException<value_t>(e);
-    }
+	{
+		auto response = append_client.Create();
+		if (!response.Value.Created)
+		{
+			const auto& raw_response = *(response.RawResponse);
+			return MakeDriverHttpFailure<WriterPtr>(raw_response.GetStatusCode(),
+								raw_response.GetReasonPhrase());
+		}
+		auto writer_ptr =
+		    std::make_unique<Writer>(std::move(bucket), std::move(object), std::move(append_client));
+		return MakeDriverSuccess<value_t>(std::move(writer_ptr));
+	}
+	catch (const std::exception& e)
+	{
+		return MakeDriverFailureFromException<value_t>(e);
+	}
 }
 
 // This template is only here to get specialized
@@ -1329,17 +1342,18 @@ void* driver_fopen(const char* filename, char mode)
 		}
 		return register_res.GetValue();
 	}
-	    case 'w':
-    {
-        auto register_res = RegisterWriter(std::move(parsed_names.bucket), std::move(parsed_names.object));
-        if (!register_res)
-        {
-            LogBadResult(register_res, "Error while opening writer stream.");
+	case 'w':
+	{
+		auto register_res = RegisterWriter(std::move(parsed_names.bucket), std::move(parsed_names.object));
+		if (!register_res)
+		{
+			LogBadResult(register_res, "Error while opening writer stream.");
 			return nullptr;
-        }
-        return register_res.GetValue();
-    }
-    /*
+		}
+		return register_res.GetValue();
+	}
+
+		/*
     case 'a':
     {
         // GCS does not as yet provide a way to add data to existing files.
@@ -1418,27 +1432,13 @@ int driver_fclose(void* stream)
 		return kCloseSuccess;
 	}
 
-    const auto writer_stream_it = FindWriter(stream);
-    if (writer_stream_it != active_writer_handles.end())
-    {
-        // finalize the block blob upload
-        const auto& writer = **writer_stream_it;
-		int res = kCloseEOF;
-        try
-        {
-            writer.client_.CommitBlockList(writer.block_ids_list_);
-            // the handle can be erased from its list, no staged block will remain
-            res = kCloseSuccess;
-        }
-        catch(const StorageException& e)
-        {
-            // the staged blocks are still on the server but will get garbage collected after 10 days,
-			// according to Azure service			
-            LogException("Error while closing writer stream. Stream writer handle will be removed anyway.", e.what());
-        }
+	const auto writer_stream_it = FindWriter(stream);
+	if (writer_stream_it != active_writer_handles.end())
+	{
 		EraseRemove<Writer>(writer_stream_it, active_writer_handles);
-		return res;
-    }
+		return kCloseSuccess;
+	}
+
 	LogError("Cannot identify stream.");
 	return kCloseEOF;
 }
@@ -1634,29 +1634,23 @@ long long int driver_fwrite(const void* ptr, size_t size, size_t count, void* st
 
 	// stage a block containing the data from the buffer
 	auto& writer = **writer_ptr_it;
-	const size_t to_write = size*count;
+	const size_t to_write = size * count;
 	Azure::Core::IO::MemoryBodyStream streambuf(reinterpret_cast<const uint8_t*>(ptr), to_write);
-	
-	const auto uuid = boost::uuids::random_generator()();
-	std::vector<uint8_t> vec_uuid(uuid.size());
-	std::copy(uuid.begin(), uuid.end(), vec_uuid.begin());
-	std::string uuid_encoded = Azure::Core::Convert::Base64Encode(vec_uuid);
-	
+
 	try
 	{
-		const auto stage_response = writer.client_.StageBlock(uuid_encoded, streambuf);
-		writer.block_ids_list_.push_back(std::move(uuid_encoded));
+		writer.client_.AppendBlock(streambuf);
 		return static_cast<long long>(to_write);
 	}
-	catch(const StorageException& e)
+	catch (const StorageException& e)
 	{
 		LogException("Error while writing data.", e.what());
 	}
-	catch(const std::exception& e)
+	catch (const std::exception& e)
 	{
 		LogException("Error while writing data.", e.what());
 	}
-	
+
 	return kBadSize;
 }
 

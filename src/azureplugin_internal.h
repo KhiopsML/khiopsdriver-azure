@@ -42,7 +42,7 @@ extern "C"
 } /* extern "C" */
 #endif /* __cplusplus */
 
-#include "azure/storage/blobs/block_blob_client.hpp"
+#include "azure/storage/blobs/append_blob_client.hpp"
 
 namespace azureplugin
 {
@@ -82,16 +82,14 @@ struct MultiPartFile
 
 struct WriteFile
 {
-	Azure::Storage::Blobs::BlockBlobClient client_;
-	std::vector<std::string> block_ids_list_;
+	Azure::Storage::Blobs::AppendBlobClient client_;
 	std::string bucketname_;
 	std::string filename_;
 
-	explicit WriteFile(std::string bucket, std::string filename, Azure::Storage::Blobs::BlockBlobClient&& client)
-	: client_{std::move(client)}
-	, bucketname_{std::move(bucket)}
-	, filename_{std::move(filename)}
-	{}
+	explicit WriteFile(std::string bucket, std::string filename, Azure::Storage::Blobs::AppendBlobClient&& client)
+	    : client_{std::move(client)}, bucketname_{std::move(bucket)}, filename_{std::move(filename)}
+	{
+	}
 };
 
 using Reader = MultiPartFile;
