@@ -1139,9 +1139,16 @@ DriverResult<long long> ReadBytesInFile(Reader& multifile, unsigned char* buffer
 	return MakeDriverSuccess<long long>(to_read);
 }
 
-DriverResult<ReaderPtr> MakeReaderPtr(std::string bucket, std::string object)
+enum class ReaderMode
+{
+	kNone
+};
+
+DriverResult<ReaderPtr> MakeReaderPtr(std::string bucket, std::string object, ReaderMode mode)
 {
 	using value_t = ReaderPtr;
+
+	(void)mode; //unused, silence warnings
 
 	auto make_simple_reader = [](std::string&& bucket, std::string&& object, std::string&& filename,
 				     long long blob_size) -> ReaderPtr
@@ -1261,7 +1268,13 @@ DriverResult<ReaderPtr> MakeReaderPtr(std::string bucket, std::string object)
 	}
 }
 
-DriverResult<WriterPtr> MakeWriterPtr(std::string bucket, std::string object)
+enum class WriterMode
+{
+	kWrite,
+	kAppend
+};
+
+DriverResult<WriterPtr> MakeWriterPtr(std::string bucket, std::string object, WriterMode mode)
 {
 	using value_t = WriterPtr;
 
@@ -1269,21 +1282,41 @@ DriverResult<WriterPtr> MakeWriterPtr(std::string bucket, std::string object)
 
 	try
 	{
-		auto response = append_client.Create();
-		if (!response.Value.Created)
+		switch (mode)
 		{
-			const auto& raw_response = *(response.RawResponse);
-			return MakeDriverHttpFailure<WriterPtr>(raw_response.GetStatusCode(),
-								raw_response.GetReasonPhrase());
+		case WriterMode::kWrite:
+		{
+			const auto response = append_client.Create();
+			if (!response.Value.Created)
+			{
+				const auto& raw_response = *(response.RawResponse);
+				return MakeDriverHttpFailure<WriterPtr>(raw_response.GetStatusCode(),
+									raw_response.GetReasonPhrase());
+			}
+			break;
 		}
-		auto writer_ptr =
-		    std::make_unique<Writer>(std::move(bucket), std::move(object), std::move(append_client));
-		return MakeDriverSuccess<value_t>(std::move(writer_ptr));
+		case WriterMode::kAppend:
+		{
+			const auto response = append_client.CreateIfNotExists();
+			if (!response.Value.Created)
+			{
+				spdlog::debug("File already exists, no creation needed before appending.");
+			}
+			break;
+		}
+		}
+	}
+	catch (const StorageException& e)
+	{
+		return MakeDriverFailureFromException<value_t>(e);
 	}
 	catch (const std::exception& e)
 	{
 		return MakeDriverFailureFromException<value_t>(e);
 	}
+
+	auto writer_ptr = std::make_unique<Writer>(std::move(bucket), std::move(object), std::move(append_client));
+	return MakeDriverSuccess<value_t>(std::move(writer_ptr));
 }
 
 // This template is only here to get specialized
@@ -1294,12 +1327,12 @@ template <typename Stream> Stream* PushBackHandle(StreamPtr<Stream>&& stream_ptr
 	return res;
 }
 
-template <typename Stream>
+template <typename Stream, typename Mode>
 DriverResult<Stream*>
-RegisterStream(std::function<DriverResult<StreamPtr<Stream>>(std::string, std::string)> MakeStreamPtr,
+RegisterStream(std::function<DriverResult<StreamPtr<Stream>>(std::string, std::string, Mode)> MakeStreamPtr, Mode mode,
 	       std::string&& bucket, std::string&& object, StreamVec<Stream>& streams)
 {
-	auto maybe_stream_ptr = MakeStreamPtr(std::move(bucket), std::move(object));
+	auto maybe_stream_ptr = MakeStreamPtr(std::move(bucket), std::move(object), mode);
 	if (!maybe_stream_ptr)
 	{
 		return maybe_stream_ptr.template ConvertFailureTo<Stream*>();
@@ -1309,12 +1342,14 @@ RegisterStream(std::function<DriverResult<StreamPtr<Stream>>(std::string, std::s
 
 DriverResult<Reader*> RegisterReader(std::string&& bucket, std::string&& object)
 {
-	return RegisterStream<Reader>(MakeReaderPtr, std::move(bucket), std::move(object), active_reader_handles);
+	return RegisterStream<Reader, ReaderMode>(MakeReaderPtr, ReaderMode::kNone, std::move(bucket),
+						  std::move(object), active_reader_handles);
 }
 
-DriverResult<Writer*> RegisterWriter(std::string&& bucket, std::string&& object)
+DriverResult<Writer*> RegisterWriter(std::string&& bucket, std::string&& object, WriterMode mode)
 {
-	return RegisterStream<Writer>(MakeWriterPtr, std::move(bucket), std::move(object), active_writer_handles);
+	return RegisterStream<Writer, WriterMode>(MakeWriterPtr, mode, std::move(bucket), std::move(object),
+						  active_writer_handles);
 }
 
 void* driver_fopen(const char* filename, char mode)
@@ -1344,7 +1379,8 @@ void* driver_fopen(const char* filename, char mode)
 	}
 	case 'w':
 	{
-		auto register_res = RegisterWriter(std::move(parsed_names.bucket), std::move(parsed_names.object));
+		auto register_res =
+		    RegisterWriter(std::move(parsed_names.bucket), std::move(parsed_names.object), WriterMode::kWrite);
 		if (!register_res)
 		{
 			LogBadResult(register_res, "Error while opening writer stream.");
@@ -1352,62 +1388,39 @@ void* driver_fopen(const char* filename, char mode)
 		}
 		return register_res.GetValue();
 	}
+	case 'a':
+	{
+		std::string target = std::move(parsed_names.object);
+		// determine if object is a multifile
+		const auto pattern_1st_sp_char_pos = FindPatternSpecialChar(target);
+		if (pattern_1st_sp_char_pos)
+		{
+			// filter the present blobs and pick the last file as target
+			const auto container_client = BlobContainerClient::CreateFromConnectionString(
+			    GetConnectionStringFromEnv(), parsed_names.bucket);
+			auto filter_res = FilterList(parsed_names.bucket, target, *pattern_1st_sp_char_pos);
+			if (!filter_res)
+			{
+				LogBadResult(filter_res, "Error while opening stream in append mode.");
+				return nullptr;
+			}
+			target = std::move(filter_res.GetValue().back().Name);
+		}
 
-		/*
-    case 'a':
-    {
-        // GCS does not as yet provide a way to add data to existing files.
-        // This will be the process to emulate an append:
-        // - check existence of the target object
-        // - open a temporary write object to upload the new data
-        // - compose, as defined by GCS, the source with the new temporary object
-        //
-        // The actual composition will happen on closing of the append stream
-
-        auto maybe_list = ListObjects(names.bucket, names.object);
-        if (!maybe_list)
-        {
-            // If file doesn't exist, fallback to write mode
-            maybe_handle = RegisterWriter(std::move(names.bucket), std::move(names.object));
-            err_msg = "Error while opening writer stream";
-            break;
-        }
-
-        // go to end of list to get the target file name
-        auto list_it = maybe_list->begin();
-        const auto list_end = maybe_list->end();
-        auto to_last_item = list_it;
-        list_it++;
-        while (list_end != list_it)
-        {
-            to_last_item = list_it;
-            list_it++;
-        }
-
-        if (!to_last_item->ok())
-        {
-            // data is unusable
-            maybe_handle = std::move(*to_last_item).status();
-            err_msg = "Error opening file in append mode";
-            break;
-        }
-
-        // get a writer handle
-        maybe_handle = RegisterWriterForAppend(std::move(names.bucket), "tmp_object_to_append", to_last_item->value().name());
-        err_msg = "Error opening file in append mode, cannot open tmp object";
-        break;
-    }
-*/
+		// open the stream
+		auto register_res =
+		    RegisterWriter(std::move(parsed_names.bucket), std::move(target), WriterMode::kAppend);
+		if (!register_res)
+		{
+			LogBadResult(register_res, "Error while opening stream in append mode.");
+			return nullptr;
+		}
+		return register_res.GetValue();
+	}
 	default:
 		LogError("Invalid open mode: " + mode);
 		return nullptr;
 	}
-
-	// RETURN_ON_ERROR(maybe_handle, err_msg, nullptr);
-
-	// return *maybe_handle;
-
-	// return NULL;
 }
 
 // #define ERROR_NO_STREAM(handle_it, errval)                                                                             \
