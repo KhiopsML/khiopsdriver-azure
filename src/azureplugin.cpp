@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <assert.h>
+#include <cstdio>
 #include <fstream>
 #include <iostream>
 #include <iterator>
@@ -864,7 +865,7 @@ Azure::Nullable<std::vector<uint8_t>> FindHeader(const BlobClient& blob_client)
 			// found it!
 			// trim the vector containing the header
 			found = true;
-			header.resize(std::distance(header.data(), new_line_pos) + 1u);
+			header.resize(static_cast<size_t>(std::distance(header.data(), new_line_pos) + 1u));
 			break;
 		}
 
@@ -880,44 +881,6 @@ Azure::Nullable<std::vector<uint8_t>> FindHeader(const BlobClient& blob_client)
 
 	return found ? std::move(header) : Azure::Nullable<std::vector<uint8_t>>{};
 }
-
-// Azure::Nullable<std::vector<uint8_t>> FindHeader(const Azure::Storage::Blobs::Models::DownloadBlobResult& dl_blob)
-// {
-//     constexpr size_t block_size{10*1024*1024};
-//     const size_t blob_size = static_cast<size_t>(dl_blob.BlobSize);
-
-//     std::vector<uint8_t> header;
-//     const size_t to_read = std::min(blob_size, block_size);
-
-//     // read by blocks until new line char is found
-//     size_t bytes_read = 0;
-//     auto& stream_ptr = dl_blob.BodyStream;
-
-//     bool found = false;
-//     while (bytes_read < blob_size)
-//     {
-//         // the API contract is that ReadToCount reads up to size or end of stream
-//         header.resize(header.size() + to_read);
-//         const size_t part_read = stream_ptr->ReadToCount(header.data()+bytes_read, to_read);
-//         const auto search_start_it = header.cbegin()+static_cast<ptrdiff_t>(bytes_read);
-//         const auto search_end_it = search_start_it+static_cast<ptrdiff_t>(part_read);
-//         const auto new_line_it = std::find(search_start_it, search_end_it, static_cast<uint8_t>('\n'));
-
-//         if (new_line_it != search_end_it)
-//         {
-//             // found it!
-//             // trim the vector containing the header
-//             found = true;
-//             header.erase(new_line_it+1,header.cend());
-//             header.shrink_to_fit();
-//             break;
-//         }
-
-//         bytes_read += part_read;
-//     }
-
-//     return found ? std::move(header) : Azure::Nullable<std::vector<uint8_t>>{};
-// }
 
 bool IsSameHeader(const BlobContainerClient& container_client, const Blobs::Models::BlobItem& blob_item,
 		  const std::vector<uint8_t>& header, std::vector<uint8_t>& part_buffer)
@@ -1811,7 +1774,8 @@ int driver_copyToLocal(const char* sSourceFilePathName, const char* sDestFilePat
 			const auto client =
 			    BlobClient::CreateFromConnectionString(GetConnectionStringFromEnv(), bucket, files[part]);
 			const size_t read = ReadPart(client, relay_buff, static_cast<int64_t>(curr_offset));
-			file_stream.write(reinterpret_cast<const char*>(relay_buff.data()), read);
+			file_stream.write(reinterpret_cast<const char*>(relay_buff.data()),
+					  static_cast<std::streamsize>(read));
 			offset += static_cast<long long>(read);
 		}
 		catch (const StorageException& e)
@@ -1855,6 +1819,8 @@ int driver_copyToLocal(const char* sSourceFilePathName, const char* sDestFilePat
 
 int driver_copyFromLocal(const char* sSourceFilePathName, const char* sDestFilePathName)
 {
+	KH_AZ_CONNECTION_ERROR(kFailure);
+
 	if (!sSourceFilePathName || !sDestFilePathName)
 	{
 		LogError("Error passing null pointers as arguments to copyFromLocal");
@@ -1863,63 +1829,86 @@ int driver_copyFromLocal(const char* sSourceFilePathName, const char* sDestFileP
 
 	spdlog::debug("copyFromLocal {} {}", sSourceFilePathName, sDestFilePathName);
 
-	assert(driver_isConnected());
-	/*
-    auto maybe_names = GetBucketAndObjectNames(sDestFilePathName);
-    ERROR_ON_NAMES(maybe_names, kFailure);
+	auto name_parsing_result = ParseAzureUri(sDestFilePathName);
+	ERROR_ON_NAMES(name_parsing_result, kFailure);
 
-    // Open the local file
-    std::ifstream file_stream(sSourceFilePathName, std::ios::binary);
-    if (!file_stream.is_open())
-    {
-        std::ostringstream os;
-        os << "Failed to open local file: " << sSourceFilePathName;
-        LogError(os.str());
-        return kFailure;
-    }
+	// Open the local file to get its size
+	std::ifstream file_stream(sSourceFilePathName, std::ios::binary);
+	if (!file_stream.is_open())
+	{
+		std::ostringstream oss;
+		oss << "Failed to open local file: " << sSourceFilePathName;
+		LogError(oss.str());
+		return kFailure;
+	}
+	file_stream.seekg(0, std::ios_base::end);
+	const int64_t file_size = static_cast<int64_t>(file_stream.tellg());
+	file_stream.close();
 
-    // Create a WriteObject stream
-    const auto& names = *maybe_names;
-    auto writer = client.WriteObject(names.bucket, names.object);
-    if (!writer || !writer.IsOpen())
-    {
-        LogBadStatus(writer.metadata().status(), "Error initializing upload stream to remote storage");
-        return kFailure;
-    }
+	// Open the local file with lower level functions, to get a file handle that
+	// will be passed to the stream object of Azure, to avoid allocating a relay buffer
+	auto file = std::fopen(sSourceFilePathName, "rb");
+	if (!file)
+	{
+		std::ostringstream oss;
+		oss << "Failed to open local file: " << sSourceFilePathName;
+		LogError(oss.str());
+		return kFailure;
+	}
 
-    // Read from the local file and write to the GCS object
-    constexpr size_t buf_size{1024};
-    std::array<char, buf_size> buffer{};
-    char *buf_data = buffer.data();
+	// Create a writer stream
+	auto& parsed_names = name_parsing_result.GetValue();
+	auto writer_ptr_res =
+	    MakeWriterPtr(std::move(parsed_names.bucket), std::move(parsed_names.object), WriterMode::kWrite);
+	if (!writer_ptr_res)
+	{
+		LogBadResult(writer_ptr_res, "Error while creating writer stream to remote storage.");
+		return kFailure;
+	}
 
-    while (file_stream.read(buf_data, buf_size) && writer.write(buf_data, buf_size)){}
-    // what made the process stop?
-    if (!writer)
-    {
-        LogBadStatus(writer.last_status(), "Error while copying to remote storage");
-        return kFailure;
-    }
-    else if (file_stream.eof())
-    {
-        // copy what remains in the buffer
-        const auto rem = file_stream.gcount();
-        if (rem > 0 && !writer.write(buf_data, rem))
-        {
-            LogError("Error while copying to remote storage");
-            return kFailure;
-        }
-    }
-    else if (file_stream.bad())
-    {
-        LogError("Error while reading on local storage");
-        return kFailure;
-    }
+	// append blobs by chunks of 100 MB, limit allowed by Azure
+	const auto& writer = *(writer_ptr_res.GetValue());
+	const AppendBlobClient& append_client = writer.client_;
 
-    // Close the GCS WriteObject stream to complete the upload
-    writer.Close();
+	constexpr int64_t max_size{100 * 1024 * 1024};
 
-    auto &maybe_meta = writer.metadata();
-    RETURN_ON_ERROR(maybe_meta, "Error during file upload to remote storage", kFailure);
-*/
+	int64_t offset{0};
+	int64_t remaining = file_size;
+	try
+	{
+		while (remaining > 0)
+		{
+			const int64_t to_read = std::min(remaining, max_size);
+			auto bodystream = Azure::Core::IO::_internal::RandomAccessFileBodyStream(
+			    static_cast<void*>(file), offset, to_read);
+			append_client.AppendBlock(bodystream);
+			offset += to_read;
+			remaining -= to_read;
+		}
+	}
+	catch (const StorageException& e)
+	{
+		LogException("Error while writing to remote storage due to storage error.", e.what());
+		if (0 != std::fclose(file))
+		{
+			LogError("Source file failed to close properly.");
+		}
+		return kFailure;
+	}
+	catch (const std::exception& e)
+	{
+		LogException("Error while writing to remote storage unrelated to storage actions.", e.what());
+		if (0 != std::fclose(file))
+		{
+			LogError("Source file failed to close properly.");
+		}
+		return kFailure;
+	}
+
+	if (0 != std::fclose(file))
+	{
+		LogError("Source file failed to close properly.");
+	}
+
 	return kSuccess;
 }
