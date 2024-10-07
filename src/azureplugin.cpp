@@ -1685,37 +1685,40 @@ int driver_fflush(void* stream)
 
 int driver_remove(const char* filename)
 {
+	KH_AZ_CONNECTION_ERROR(kFailure);
+
 	ERROR_ON_NULL_ARG(filename, kFailure);
 
 	spdlog::debug("remove {}", filename);
 
-	assert(driver_isConnected());
+	const auto name_parsing_result = ParseAzureUri(filename);
+	ERROR_ON_NAMES(name_parsing_result, kFailure);
+	const auto& names = name_parsing_result.GetValue();
 
-	auto maybe_names = GetServiceBucketAndObjectNames(filename);
-	const auto& val = maybe_names.GetValue();
+	spdlog::info("Deleting blob: {}.", names.object);
 
-	std::string blobName = val.object;
-	std::cout << "Deleting blob: " << blobName << std::endl;
-	std::string containerName = val.bucket;
-	auto containerClient = GetServiceClient<BlobServiceClient>().GetBlobContainerClient(containerName);
-
-	// Create the block blob client
-	BlockBlobClient blobClient = containerClient.GetBlockBlobClient(blobName);
-	blobClient.Delete();
-
-	/*
-    auto maybe_names = GetBucketAndObjectNames(filename);
-    ERROR_ON_NAMES(maybe_names, kFailure);
-    auto& names = *maybe_names;
-
-    const auto status = client.DeleteObject(names.bucket, names.object);
-    if (!status.ok() && status.code() != gc::StatusCode::kNotFound)
-    {
-        LogBadStatus(status, "Error deleting object");
-        return kFailure;
-    }
-*/
-	return kSuccess;
+	// Create the blob client and send the delete request
+	const BlobClient blob_client =
+	    BlobClient::CreateFromConnectionString(GetConnectionStringFromEnv(), names.bucket, names.object);
+	try
+	{
+		const auto delete_res = blob_client.Delete();
+		if (!delete_res.Value.Deleted)
+		{
+			LogError("Error while deleting blob.");
+			return kFailure;
+		}
+		return kSuccess;
+	}
+	catch (const StorageException& e)
+	{
+		LogException("Error while deleting blob.", e.what());
+		return kFailure;
+	}
+	catch (const std::exception& e)
+	{
+		LogException("Error while deleting blob, unrelated to a Storage error.", e.what());
+	}
 }
 
 int driver_rmdir(const char* filename)
