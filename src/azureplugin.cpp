@@ -1563,11 +1563,10 @@ int driver_remove(const char* filename)
 	    BlobClient::CreateFromConnectionString(GetConnectionStringFromEnv(), names.bucket, names.object);
 	try
 	{
-		const auto delete_res = blob_client.Delete();
+		const auto delete_res = blob_client.DeleteIfExists();
 		if (!delete_res.Value.Deleted)
 		{
-			LogError("Error while deleting blob.");
-			return kFailure;
+			spdlog::info("The blob didn't exist.");
 		}
 		return kSuccess;
 	}
