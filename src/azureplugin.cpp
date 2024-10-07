@@ -1284,13 +1284,6 @@ void* driver_fopen(const char* filename, char mode)
 	}
 }
 
-// #define ERROR_NO_STREAM(handle_it, errval)                                                                             \
-// 	if ((handle_it) == active_handles.end())                                                                       \
-// 	{                                                                                                              \
-// 		LogError("Cannot identify stream");                                                                    \
-// 		return (errval);                                                                                       \
-// 	}
-
 int driver_fclose(void* stream)
 {
 	assert(driver_isConnected());
