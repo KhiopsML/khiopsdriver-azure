@@ -207,108 +207,6 @@ template <typename Stream> void EraseRemove(StreamIt<Stream> pos, StreamVec<Stre
 	handles.pop_back();
 }
 
-// Definition of helper functions
-/*
-gc::StatusOr<long long int> DownloadFileRangeToBuffer(const std::string &bucket_name,
-                                                      const std::string &object_name,
-                                                      char *buffer,
-                                                      std::int64_t start_range,
-                                                      std::int64_t end_range)
-{
-    auto reader = client.ReadObject(bucket_name, object_name, gcs::ReadRange(start_range, end_range));
-    if (!reader)
-    {
-        auto &o_status = reader.status();
-        return gc::Status{o_status.code(), "Error while creating reading stream; " + o_status.message()};
-    }
-
-    reader.read(buffer, end_range - start_range);
-    if (reader.bad())
-    {
-        auto &o_status = reader.status();
-        return gc::Status{o_status.code(), "Error while creating reading stream; " + o_status.message()};
-    }
-
-    long long int num_read = static_cast<long long>(reader.gcount());
-    spdlog::debug("read = {}", num_read);
-
-    return num_read;
-}
-
-gc::StatusOr<long long> ReadBytesInFile(MultiPartFile &multifile, char *buffer, tOffset to_read)
-{
-    // Start at first usable file chunk
-    // Advance through file chunks, advancing buffer pointer
-    // Until last requested byte was read
-    // Or error occured
-
-    tOffset bytes_read{0};
-
-    // Lookup item containing initial bytes at requested offset
-    const auto &cumul_sizes = multifile.cumulativeSize_;
-    const tOffset common_header_length = multifile.commonHeaderLength_;
-    const std::string &bucket_name = multifile.bucketname_;
-    const auto &filenames = multifile.filenames_;
-    char *buffer_pos = buffer;
-    tOffset &offset = multifile.offset_;
-    const tOffset offset_bak = offset; // in case of irrecoverable error, leave the multifile in its starting state
-
-    auto greater_than_offset_it = std::upper_bound(cumul_sizes.begin(), cumul_sizes.end(), offset);
-    size_t idx = static_cast<size_t>(std::distance(cumul_sizes.begin(), greater_than_offset_it));
-
-    spdlog::debug("Use item {} to read @ {} (end = {})", idx, offset, *greater_than_offset_it);
-
-    auto read_range_and_update = [&](const std::string &filename, tOffset start, tOffset end) -> gc::Status
-    {
-        auto maybe_actual_read = DownloadFileRangeToBuffer(bucket_name, filename, buffer_pos,
-                                                           static_cast<int64_t>(start), static_cast<int64_t>(end));
-        if (!maybe_actual_read)
-        {
-            offset = offset_bak;
-            RETURN_STATUS(maybe_actual_read);
-        }
-
-        tOffset actual_read = *maybe_actual_read;
-
-        bytes_read += actual_read;
-        buffer_pos += actual_read;
-        offset += actual_read;
-
-        if (actual_read < (end - start))
-        {
-            spdlog::debug("End of file encountered");
-            to_read = 0;
-        }
-        else
-        {
-            to_read -= actual_read;
-        }
-
-        return {};
-    };
-
-    // first file read
-
-    const tOffset file_start = (idx == 0) ? offset : offset - cumul_sizes[idx - 1] + common_header_length;
-    const tOffset read_end = std::min(file_start + to_read, file_start + cumul_sizes[idx] - offset);
-
-    gc::Status read_status = read_range_and_update(filenames[idx], file_start, read_end);
-
-    // continue with the next files
-    while (read_status.ok() && to_read)
-    {
-        // read the missing bytes in the next files as necessary
-        idx++;
-        const tOffset start = common_header_length;
-        const tOffset end = std::min(start + to_read, start + cumul_sizes[idx] - cumul_sizes[idx - 1]);
-
-        read_status = read_range_and_update(filenames[idx], start, end);
-    }
-
-    return read_status.ok() ? bytes_read : gc::StatusOr<long long>{read_status};
-}
-*/
-
 std::unique_ptr<Azure::Core::Http::RawResponse> MakeRawHttpResponsePtr(Azure::Core::Http::HttpStatusCode code,
 								       const std::string& reason)
 {
@@ -1681,6 +1579,7 @@ int driver_remove(const char* filename)
 	catch (const std::exception& e)
 	{
 		LogException("Error while deleting blob, unrelated to a Storage error.", e.what());
+		return kFailure;
 	}
 }
 
@@ -1832,7 +1731,7 @@ int driver_copyFromLocal(const char* sSourceFilePathName, const char* sDestFileP
 	auto name_parsing_result = ParseAzureUri(sDestFilePathName);
 	ERROR_ON_NAMES(name_parsing_result, kFailure);
 
-	// Open the local file to get its size
+	// Open the local file
 	std::ifstream file_stream(sSourceFilePathName, std::ios::binary);
 	if (!file_stream.is_open())
 	{
@@ -1841,20 +1740,10 @@ int driver_copyFromLocal(const char* sSourceFilePathName, const char* sDestFileP
 		LogError(oss.str());
 		return kFailure;
 	}
+	// size of file
 	file_stream.seekg(0, std::ios_base::end);
 	const int64_t file_size = static_cast<int64_t>(file_stream.tellg());
-	file_stream.close();
-
-	// Open the local file with lower level functions, to get a file handle that
-	// will be passed to the stream object of Azure, to avoid allocating a relay buffer
-	auto file = std::fopen(sSourceFilePathName, "rb");
-	if (!file)
-	{
-		std::ostringstream oss;
-		oss << "Failed to open local file: " << sSourceFilePathName;
-		LogError(oss.str());
-		return kFailure;
-	}
+	file_stream.seekg(0);
 
 	// Create a writer stream
 	auto& parsed_names = name_parsing_result.GetValue();
@@ -1871,43 +1760,38 @@ int driver_copyFromLocal(const char* sSourceFilePathName, const char* sDestFileP
 	const AppendBlobClient& append_client = writer.client_;
 
 	constexpr int64_t max_size{100 * 1024 * 1024};
+	std::vector<uint8_t> relay_buffer(static_cast<size_t>(std::min(max_size, file_size)));
 
-	int64_t offset{0};
-	int64_t remaining = file_size;
 	try
 	{
-		while (remaining > 0)
+		// TODO: try to avoid copying to the relay buffer by using RandomAccessFileBodyStream. This requires the file descriptor
+		// of the opened source file.
+
+		for (int64_t remaining = file_size, to_read = std::min(remaining, max_size);
+		     to_read > 0 && file_stream.read(reinterpret_cast<char*>(relay_buffer.data()),
+						     static_cast<std::streamsize>(to_read));
+		     remaining -= to_read, to_read = std::min(remaining, max_size))
 		{
-			const int64_t to_read = std::min(remaining, max_size);
-			auto bodystream = Azure::Core::IO::_internal::RandomAccessFileBodyStream(
-			    static_cast<void*>(file), offset, to_read);
-			append_client.AppendBlock(bodystream);
-			offset += to_read;
-			remaining -= to_read;
+			Azure::Core::IO::MemoryBodyStream memory_stream(relay_buffer.data(),
+									static_cast<size_t>(to_read));
+			append_client.AppendBlock(memory_stream);
+		}
+		if (!file_stream)
+		{
+			// unexpected short read or error of another kind
+			LogError("Error while reading from local file.");
+			return kFailure;
 		}
 	}
 	catch (const StorageException& e)
 	{
 		LogException("Error while writing to remote storage due to storage error.", e.what());
-		if (0 != std::fclose(file))
-		{
-			LogError("Source file failed to close properly.");
-		}
 		return kFailure;
 	}
 	catch (const std::exception& e)
 	{
 		LogException("Error while writing to remote storage unrelated to storage actions.", e.what());
-		if (0 != std::fclose(file))
-		{
-			LogError("Source file failed to close properly.");
-		}
 		return kFailure;
-	}
-
-	if (0 != std::fclose(file))
-	{
-		LogError("Source file failed to close properly.");
 	}
 
 	return kSuccess;
