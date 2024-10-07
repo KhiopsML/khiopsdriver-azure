@@ -1755,147 +1755,100 @@ long long int driver_diskFreeSpace(const char* filename)
 
 int driver_copyToLocal(const char* sSourceFilePathName, const char* sDestFilePathName)
 {
-	assert(driver_isConnected());
+	KH_AZ_CONNECTION_ERROR(kFailure);
 
-	if (!sSourceFilePathName || !sDestFilePathName)
+	ERROR_ON_NULL_ARG(sSourceFilePathName, kFailure);
+	ERROR_ON_NULL_ARG(sDestFilePathName, kFailure);
+
+	spdlog::debug("copyToLocal {} {}", sSourceFilePathName, sDestFilePathName);
+
+	// try opening the online source file
+	auto name_parsing_result = ParseAzureUri(sSourceFilePathName);
+	ERROR_ON_NAMES(name_parsing_result, kFailure);
+
+	auto& parsed_names = name_parsing_result.GetValue();
+	auto reader_ptr_res =
+	    MakeReaderPtr(std::move(parsed_names.bucket), std::move(parsed_names.object), ReaderMode::kNone);
+	if (!reader_ptr_res)
 	{
-		LogError("Error passing null pointer to driver_copyToLocal");
+		LogBadResult(reader_ptr_res, "Error while opening remote file.");
 		return kFailure;
 	}
 
-	spdlog::debug("copyToLocal {} {}", sSourceFilePathName, sDestFilePathName);
-	/*
-    auto maybe_names = GetBucketAndObjectNames(sSourceFilePathName);
-    ERROR_ON_NAMES(maybe_names, kFailure);
+	// open local file
+	std::ofstream file_stream(sDestFilePathName, std::ios::binary);
+	if (!file_stream.is_open())
+	{
+		std::ostringstream oss;
+		oss << "Failed to open local file for writing: " << sDestFilePathName;
+		LogError(oss.str());
+		return kFailure;
+	}
 
-    const std::string& bucket_name = maybe_names->bucket;
-    const std::string& object_name = maybe_names->object;
+	// limit download to a few MBs at a time.
+	constexpr long long dl_limit{10 * 1024 * 1024};
+	std::vector<uint8_t> relay_buff(dl_limit);
 
-    auto maybe_reader = MakeReaderPtr(bucket_name, object_name);
-    RETURN_ON_ERROR(maybe_reader, "Error while opening Remote file", kFailure);
+	Reader& reader = *(reader_ptr_res.GetValue());
+	long long& offset = reader.offset_;
 
-    ReaderPtr& reader = *maybe_reader;
-    const size_t nb_files = reader->filenames_.size();
+	// some constants
+	const std::string& bucket = reader.bucketname_;
+	const std::vector<std::string>& files = reader.filenames_;
+	const size_t nb_files = files.size();
+	const std::vector<long long>& cumul_sizes = reader.cumulativeSize_;
+	const long long to_read = reader.total_size_;
 
-    // Open the local file
-    std::ofstream file_stream(sDestFilePathName, std::ios::binary);
-    if (!file_stream.is_open())
-    {
-        std::ostringstream os;
-        os << "Failed to open local file for writing: " << sDestFilePathName;
-        LogError(os.str());
-        return kFailure;
-    }
+	// start with
+	size_t part = 0;
 
-    // Allocate a relay buffer
-    constexpr size_t buf_size{1024};
-    std::array<char, buf_size> buffer{};
-    char *buf_data = buffer.data();
+	while (file_stream && offset < to_read && part < nb_files)
+	{
+		long long curr_offset =
+		    (part == 0) ? offset : offset - cumul_sizes[part - 1] + reader.commonHeaderLength_;
+		try
+		{
+			const auto client =
+			    BlobClient::CreateFromConnectionString(GetConnectionStringFromEnv(), bucket, files[part]);
+			const size_t read = ReadPart(client, relay_buff, static_cast<int64_t>(curr_offset));
+			file_stream.write(reinterpret_cast<const char*>(relay_buff.data()), read);
+			offset += static_cast<long long>(read);
+		}
+		catch (const StorageException& e)
+		{
+			LogException("Error while reading from remote file.", e.what());
+			offset = 0;
+			return kFailure;
+		}
+		catch (const std::exception& e)
+		{
+			LogException("Error while copying to local file.", e.what());
+			offset = 0;
+			return kFailure;
+		}
 
-    // create a waste buffer now, so the lambdas can reference it
-    // memory allocation will occur later, before actual use
-    std::vector<char> waste;
-
-    auto read_and_write = [&](gcs::ObjectReadStream &from, bool skip_header = false, std::streamsize header_size = 0)
-    {
-        if (!from)
-        {
-            LogBadStatus(from.status(), "Error initializing download stream");
-            return false;
-        }
-
-        if (skip_header)
-        {
-            // according to gcs sources, seekg is not implemented
-            // waste a read on the first bytes
-            if (!from.read(waste.data(), header_size))
-            {
-                // check failure reasons to give feedback
-                std::string err_msg;
-                if (from.eof())
-                {
-                    err_msg = "Error reading header. Shorter header than expected";
-                }
-                else if (from.bad())
-                {
-                    err_msg = "Error reading header. Read failed";
-                }
-                LogBadStatus(from.status(), err_msg);
-                return false;
-            }
-        }
-
-        const std::streamsize buf_size_cast = static_cast<std::streamsize>(buf_size);
-        while (from.read(buf_data, buf_size_cast) && file_stream.write(buf_data, buf_size_cast))
-        {
-        }
-        // what made the process stop?
-        if (!file_stream)
-        {
-            // something went wrong on write side, abort
-            LogError("Error while writing data to local file");
-            return false;
-        }
-        else if (from.eof())
-        {
-            // short read, copy what remains, if any
-            const std::streamsize rem = from.gcount();
-            if (rem > 0 && !file_stream.write(buf_data, rem))
-            {
-                // something went wrong on write side, abort
-                LogError("Error while writing data to local file");
-                return false;
-            }
-        }
-        else if (from.bad())
-        {
-            // something went wrong on read side
-            LogBadStatus(from.status(), "Error while reading from cloud storage");
-            return false;
-        }
-
-        return true;
-    };
-
-    auto operation = [&](gcs::ObjectReadStream &from, const std::string &filename, bool skip_header = false, tOffset header_size = 0)
-    {
-        from = client.ReadObject(bucket_name, filename);
-        bool res = read_and_write(from, skip_header, header_size);
-        from.Close();
-        return res;
-    };
-
-    auto &filenames = reader->filenames_;
-
-    // Read the whole first file
-    gcs::ObjectReadStream read_stream;
-    if (!operation(read_stream, filenames.front()))
-    {
-        return kFailure;
-    }
-
-    // fast exit
-    if (nb_files == 1)
-    {
-        return kSuccess;
-    }
-
-    // Read from the next files
-    const tOffset header_size = reader->commonHeaderLength_;
-    const bool skip_header = header_size > 0;
-    waste.reserve(static_cast<size_t>(header_size));
-
-    for (size_t i = 1; i < nb_files; i++)
-    {
-        if (!operation(read_stream, filenames[i], skip_header, header_size))
-        {
-            return kFailure;
-        }
-    }
-
-    // done copying
-    spdlog::debug("Done copying");
-*/
+		// is the current part fully read?
+		if (offset == cumul_sizes[part])
+		{
+			part++;
+		}
+	}
+	// did it go wrong?
+	if (!file_stream || offset < to_read)
+	{
+		std::ostringstream oss;
+		if (!file_stream)
+		{
+			oss << "Error while copying data to local file. Writing on local file failed.";
+		}
+		else
+		{
+			oss << "Error while copying data to local file. Data is missing.";
+		}
+		LogError(oss.str());
+		offset = 0;
+		return kFailure;
+	}
 
 	return kSuccess;
 }
