@@ -30,7 +30,7 @@ TEST(AzureDriverTest, GetDriverName)
 
 TEST(AzureDriverTest, GetVersion)
 {
-    ASSERT_STREQ(driver_getVersion(), "0.1.0");
+    ASSERT_STREQ(driver_getVersion(), DRIVER_VERSION);
 }
 
 TEST(AzureDriverTest, GetScheme)
