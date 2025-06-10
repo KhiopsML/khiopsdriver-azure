@@ -20,13 +20,8 @@
 #include <gtest/gtest.h>
 
 using namespace azureplugin;
-/*
-namespace gc = ::google::cloud;
-namespace gcs = gc::storage;
 
-using ::testing::Return;
-using LOReturnType = gc::StatusOr<gcs::internal::ListObjectsResponse>;
-*/
+//using ::testing::Return;
 
 TEST(AzureDriverTest, GetDriverName)
 {
