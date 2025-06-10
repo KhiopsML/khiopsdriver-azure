@@ -68,6 +68,7 @@ TEST(AzureDriverTest, GetFileSize)
 {
 	ASSERT_EQ(driver_connect(), kSuccess);
 	ASSERT_EQ(driver_getFileSize("http://127.0.0.1:10000/devstoreaccount1/data-test-khiops-driver-azure/khiops_data/samples/Adult/Adult.txt"), 5585568);
+    /// TODO: Delete previous line and enable following line when Azure account will be ready
 	//ASSERT_EQ(driver_getFileSize("https://myaccount.file.core.windows.net/myshare/myfolder/myfile.txt"), 5585568);
 	ASSERT_EQ(driver_disconnect(), kSuccess);
 }
@@ -75,6 +76,7 @@ TEST(AzureDriverTest, GetFileSize)
 TEST(AzureDriverTest, GetMultipartFileSize)
 {
 	ASSERT_EQ(driver_connect(), kSuccess);
+    /// TODO: Replace URL below with actual Azure cloud storage URL
 	ASSERT_EQ(driver_getFileSize("http://127.0.0.1:10000/devstoreaccount1/data-test-khiops-driver-azure/khiops_data/bq_export/Adult/Adult-split-00000000000*.txt"), 5585568);
 	ASSERT_EQ(driver_disconnect(), kSuccess);
 }
@@ -82,6 +84,7 @@ TEST(AzureDriverTest, GetMultipartFileSize)
 TEST(AzureDriverTest, GetFileSizeNonexistentFailure)
 {
 	ASSERT_EQ(driver_connect(), kSuccess);
+    /// TODO: Replace URL below with actual Azure cloud storage URL
     ASSERT_EQ(driver_getFileSize("http://127.0.0.1:10000/devstoreaccount1/data-test-khiops-driver-azure/khiops_data/samples/non_existent_file.txt"), -1);
     ASSERT_STRNE(driver_getlasterror(), NULL);
 	ASSERT_EQ(driver_disconnect(), kSuccess);
@@ -90,6 +93,7 @@ TEST(AzureDriverTest, GetFileSizeNonexistentFailure)
 TEST(AzureDriverTest, FileExists)
 {
 	ASSERT_EQ(driver_connect(), kSuccess);
+    /// TODO: Replace URL below with actual Azure cloud storage URL
 	ASSERT_EQ(driver_exist("http://127.0.0.1:10000/devstoreaccount1/data-test-khiops-driver-azure/khiops_data/samples/Adult/Adult.txt"), kSuccess);
 	ASSERT_EQ(driver_disconnect(), kSuccess);
 }
@@ -97,6 +101,7 @@ TEST(AzureDriverTest, FileExists)
 TEST(AzureDriverTest, DirExists)
 {
 	ASSERT_EQ(driver_connect(), kSuccess);
+    /// TODO: Replace URL below with actual Azure cloud storage URL
 	ASSERT_EQ(driver_exist("http://127.0.0.1:10000/devstoreaccount1/data-test-khiops-driver-azure/khiops_data/samples/Adult/"), kSuccess);
 	ASSERT_EQ(driver_disconnect(), kSuccess);
 }
