@@ -72,7 +72,6 @@ TEST(BasicTest, GetFileSize)
 TEST(BasicTest, GetMultipartFileSize)
 {
 	ASSERT_EQ(driver_connect(), kSuccess);
-    /// TODO: Replace URL below with actual Azure cloud storage URL
 	ASSERT_EQ(driver_getFileSize(test_glob_file), 5585568);
 	ASSERT_EQ(driver_disconnect(), kSuccess);
 }
@@ -80,7 +79,6 @@ TEST(BasicTest, GetMultipartFileSize)
 TEST(BasicTest, GetFileSizeNonexistentFailure)
 {
 	ASSERT_EQ(driver_connect(), kSuccess);
-    /// TODO: Replace URL below with actual Azure cloud storage URL
     ASSERT_EQ(driver_getFileSize(test_non_existent_file), -1);
     ASSERT_STRNE(driver_getlasterror(), NULL);
 	ASSERT_EQ(driver_disconnect(), kSuccess);
@@ -89,7 +87,6 @@ TEST(BasicTest, GetFileSizeNonexistentFailure)
 TEST(BasicTest, FileExists)
 {
 	ASSERT_EQ(driver_connect(), kSuccess);
-    /// TODO: Replace URL below with actual Azure cloud storage URL
 	ASSERT_EQ(driver_fileExists(test_single_file), kSuccess);
 	ASSERT_EQ(driver_disconnect(), kSuccess);
 }
@@ -97,7 +94,6 @@ TEST(BasicTest, FileExists)
 TEST(BasicTest, DirExists)
 {
 	ASSERT_EQ(driver_connect(), kSuccess);
-    /// TODO: Replace URL below with actual Azure cloud storage URL
 	ASSERT_EQ(driver_dirExists(test_dir_name), kSuccess);
 	ASSERT_EQ(driver_disconnect(), kSuccess);
 }
