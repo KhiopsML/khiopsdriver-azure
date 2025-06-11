@@ -102,7 +102,7 @@ TEST(BasicTest, DirExists)
 // Setting of environment variables does not work on Windows
 TEST(BasicTest, DriverConnectMissingCredentialsFailure)
 {
-    FAIL(); // To be implemented
+    GTEST_SKIP() << "To be implemented.";
 }
 
 void setup_bad_credentials() {
