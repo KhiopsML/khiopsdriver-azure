@@ -33,7 +33,7 @@
 
 using namespace azureplugin;
 
-constexpr const char* version = "0.1.0";
+constexpr const char* version = DRIVER_VERSION;
 constexpr const char* driver_name = "Azure driver";
 constexpr const char* driver_scheme = "https";
 constexpr long long preferred_buffer_size = 4 * 1024 * 1024;
