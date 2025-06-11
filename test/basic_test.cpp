@@ -92,7 +92,7 @@ TEST(AzureDriverTest, FileExists)
 {
 	ASSERT_EQ(driver_connect(), kSuccess);
     /// TODO: Replace URL below with actual Azure cloud storage URL
-	ASSERT_EQ(driver_exist(test_single_file), kSuccess);
+	ASSERT_EQ(driver_fileExists(test_single_file), kSuccess);
 	ASSERT_EQ(driver_disconnect(), kSuccess);
 }
 
@@ -100,7 +100,7 @@ TEST(AzureDriverTest, DirExists)
 {
 	ASSERT_EQ(driver_connect(), kSuccess);
     /// TODO: Replace URL below with actual Azure cloud storage URL
-	ASSERT_EQ(driver_exist(test_dir_name), kSuccess);
+	ASSERT_EQ(driver_dirExists(test_dir_name), kSuccess);
 	ASSERT_EQ(driver_disconnect(), kSuccess);
 }
 

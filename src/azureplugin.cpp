@@ -566,28 +566,6 @@ long long int driver_getSystemPreferredBufferSize()
 	return preferred_buffer_size; // 4 Mo
 }
 
-int driver_exist(const char* filename)
-{
-	KH_AZ_CONNECTION_ERROR(kFalse);
-
-	ERROR_ON_NULL_ARG(filename, kFalse);
-
-	spdlog::debug("exist {}", filename);
-
-	std::string file_uri = filename;
-	spdlog::debug("exist file_uri {}", file_uri);
-	spdlog::debug("exist last char {}", file_uri.back());
-
-	if (file_uri.back() == '/')
-	{
-		return driver_dirExists(filename);
-	}
-	else
-	{
-		return driver_fileExists(filename);
-	}
-}
-
 #define RETURN_ON_ERROR(driver_result, msg, err_val)                                                                   \
 	if (!(driver_result))                                                                                          \
 	{                                                                                                              \
