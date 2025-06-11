@@ -110,10 +110,7 @@ TEST(AzureDriverTest, DirExists)
 // Setting of environment variables does not work on Windows
 TEST(AzureDriverTest, DriverConnectMissingCredentialsFailure)
 {
-    auto env = boost::this_process::environment();
-    env["GCP_TOKEN"] = "/tmp/notoken.json";
-	ASSERT_EQ(driver_connect(), kFailure);
-    env.erase("GCP_TOKEN");
+    FAIL(); // To be implemented
 }
 
 void setup_bad_credentials() {
