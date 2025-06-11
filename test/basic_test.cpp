@@ -67,9 +67,7 @@ TEST(AzureDriverTest, Disconnect)
 TEST(AzureDriverTest, GetFileSize)
 {
 	ASSERT_EQ(driver_connect(), kSuccess);
-	ASSERT_EQ(driver_getFileSize("http://127.0.0.1:10000/devstoreaccount1/data-test-khiops-driver-azure/khiops_data/samples/Adult/Adult.txt"), 5585568);
-    /// TODO: Delete previous line and enable following line when Azure account will be ready
-	//ASSERT_EQ(driver_getFileSize("https://myaccount.file.core.windows.net/myshare/myfolder/myfile.txt"), 5585568);
+	ASSERT_EQ(driver_getFileSize(test_single_file), 5585568);
 	ASSERT_EQ(driver_disconnect(), kSuccess);
 }
 
@@ -77,7 +75,7 @@ TEST(AzureDriverTest, GetMultipartFileSize)
 {
 	ASSERT_EQ(driver_connect(), kSuccess);
     /// TODO: Replace URL below with actual Azure cloud storage URL
-	ASSERT_EQ(driver_getFileSize("http://127.0.0.1:10000/devstoreaccount1/data-test-khiops-driver-azure/khiops_data/bq_export/Adult/Adult-split-00000000000*.txt"), 5585568);
+	ASSERT_EQ(driver_getFileSize(test_glob_file), 5585568);
 	ASSERT_EQ(driver_disconnect(), kSuccess);
 }
 
@@ -85,7 +83,7 @@ TEST(AzureDriverTest, GetFileSizeNonexistentFailure)
 {
 	ASSERT_EQ(driver_connect(), kSuccess);
     /// TODO: Replace URL below with actual Azure cloud storage URL
-    ASSERT_EQ(driver_getFileSize("http://127.0.0.1:10000/devstoreaccount1/data-test-khiops-driver-azure/khiops_data/samples/non_existent_file.txt"), -1);
+    ASSERT_EQ(driver_getFileSize(test_non_existent_file), -1);
     ASSERT_STRNE(driver_getlasterror(), NULL);
 	ASSERT_EQ(driver_disconnect(), kSuccess);
 }
@@ -94,7 +92,7 @@ TEST(AzureDriverTest, FileExists)
 {
 	ASSERT_EQ(driver_connect(), kSuccess);
     /// TODO: Replace URL below with actual Azure cloud storage URL
-	ASSERT_EQ(driver_exist("http://127.0.0.1:10000/devstoreaccount1/data-test-khiops-driver-azure/khiops_data/samples/Adult/Adult.txt"), kSuccess);
+	ASSERT_EQ(driver_exist(test_single_file), kSuccess);
 	ASSERT_EQ(driver_disconnect(), kSuccess);
 }
 
@@ -102,7 +100,7 @@ TEST(AzureDriverTest, DirExists)
 {
 	ASSERT_EQ(driver_connect(), kSuccess);
     /// TODO: Replace URL below with actual Azure cloud storage URL
-	ASSERT_EQ(driver_exist("http://127.0.0.1:10000/devstoreaccount1/data-test-khiops-driver-azure/khiops_data/samples/Adult/"), kSuccess);
+	ASSERT_EQ(driver_exist(test_dir_name), kSuccess);
 	ASSERT_EQ(driver_disconnect(), kSuccess);
 }
 
@@ -136,7 +134,7 @@ TEST(AzureDriverTest, GetFileSizeInvalidCredentialsFailure)
 {
     setup_bad_credentials();
 	ASSERT_EQ(driver_connect(), kSuccess);
-	ASSERT_EQ(driver_getFileSize("http://127.0.0.1:10000/devstoreaccount1/data-test-khiops-driver-azure/khiops_data/samples/Adult/Adult.txt"), -1);
+	ASSERT_EQ(driver_getFileSize(test_single_file), -1);
     ASSERT_STRNE(driver_getlasterror(), NULL);
 	ASSERT_EQ(driver_disconnect(), kSuccess);
     cleanup_bad_credentials();
@@ -164,7 +162,10 @@ TEST(AzureDriverTest, GetSystemPreferredBufferSize)
 
 constexpr const char* test_dir_name = "http://127.0.0.1:10000/devstoreaccount1/data-test-khiops-driver-azure/khiops_data/bq_export/Adult/";
 
+constexpr const char* test_non_existent_file = "http://127.0.0.1:10000/devstoreaccount1/data-test-khiops-driver-azure/khiops_data/samples/non_existent_file.txt";
+// Actual Azure storage URI: https://myaccount.file.core.windows.net/myshare/myfolder/myfile.txt
 constexpr const char* test_single_file = "http://127.0.0.1:10000/devstoreaccount1/data-test-khiops-driver-azure/khiops_data/samples/Adult/Adult.txt";
+constexpr const char* test_glob_file = "http://127.0.0.1:10000/devstoreaccount1/data-test-khiops-driver-azure/khiops_data/bq_export/Adult/Adult-split-00000000000*.txt";
 constexpr const char* test_range_file_one_header = "http://127.0.0.1:10000/devstoreaccount1/data-test-khiops-driver-azure/khiops_data/split/Adult/Adult-split-0[0-5].txt";
 constexpr const char* test_glob_file_header_each = "http://127.0.0.1:10000/devstoreaccount1/data-test-khiops-driver-azure/khiops_data/bq_export/Adult/*.txt";
 constexpr const char* test_double_glob_header_each = "http://127.0.0.1:10000/devstoreaccount1/data-test-khiops-driver-azure/khiops_data/split/Adult_subsplit/**/Adult-split-*.txt";
