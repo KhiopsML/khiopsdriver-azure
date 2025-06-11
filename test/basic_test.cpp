@@ -148,7 +148,7 @@ TEST(AzureDriverTest, RmDir)
 	ASSERT_EQ(driver_disconnect(), kSuccess);
 }
 
-TEST(AzureDriverTest, mkDir)
+TEST(AzureDriverTest, MkDir)
 {
 	ASSERT_EQ(driver_connect(), kSuccess);
 	ASSERT_EQ(driver_mkdir("dummy"), kSuccess);
