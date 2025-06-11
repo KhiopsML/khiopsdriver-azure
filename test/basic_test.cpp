@@ -1,4 +1,4 @@
-#include "basic_test.h"
+#include "test_uri.h"
 #include "azureplugin.h"
 #include "azureplugin_internal.h"
 

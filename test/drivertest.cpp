@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include "test_uri.h"
 #include "azureplugin.h"
 
 #include <sstream>
