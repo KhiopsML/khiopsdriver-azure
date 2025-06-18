@@ -25,11 +25,11 @@
 // Include to support file shares
 #include <azure/storage/files/shares.hpp>
 
-#include <azure/identity/default_azure_credential.hpp>
-
-#include <boost/uuid/uuid.hpp>            // uuid class
-#include <boost/uuid/uuid_generators.hpp> // generators
-#include <boost/uuid/uuid_io.hpp>         // streaming operators etc.
+#include <azure/identity/chained_token_credential.hpp>
+#include <azure/identity/environment_credential.hpp>
+#include <azure/identity/workload_identity_credential.hpp>
+#include <azure/identity/azure_cli_credential.hpp>
+#include <azure/identity/managed_identity_credential.hpp>
 
 using namespace azureplugin;
 
@@ -38,6 +38,16 @@ constexpr const char* driver_name = "Azure driver";
 constexpr const char* driver_scheme = "https";
 constexpr long long preferred_buffer_size = 4 * 1024 * 1024;
 
+constexpr char* emulated_storage_connection_string =
+	"DefaultEndpointsProtocol=http;"
+	"AccountName=devstoreaccount1;"
+	"AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;"
+	"BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;";
+
+bool is_storage_emulated = false;
+
+std::shared_ptr<ChainedTokenCredential> credential = nullptr;
+
 int bIsConnected = kFalse;
 
 // Add appropriate using namespace directives
@@ -45,25 +55,6 @@ using namespace Azure::Storage;
 using namespace Azure::Storage::Blobs;
 using namespace Azure::Storage::Files::Shares;
 using namespace Azure::Identity;
-
-// Secrets should be stored & retrieved from secure locations such as Azure::KeyVault. For
-// convenience and brevity of samples, the secrets are retrieved from environment variables.
-std::string GetEndpointUrl()
-{
-	return std::getenv("AZURE_STORAGE_ACCOUNT_URL");
-}
-std::string GetAccountName()
-{
-	return std::getenv("AZURE_STORAGE_ACCOUNT_NAME");
-}
-std::string GetAccountKey()
-{
-	return std::getenv("AZURE_STORAGE_ACCOUNT_KEY");
-}
-std::string GetConnectionString()
-{
-	return std::getenv("AZURE_STORAGE_CONNECTION_STRING");
-}
 
 // Global bucket name
 std::string globalBucketName;
@@ -80,6 +71,11 @@ enum class Service
 	BLOB,
 	SHARE
 };
+
+static bool is_supported_service(Service service)
+{
+	return service == Service::BLOB || service == Service::SHARE;
+}
 
 template <typename T> struct DriverResult
 {
@@ -234,12 +230,88 @@ template <typename T> DriverResult<T> MakeDriverSuccess(T value)
 	return DriverResult<T>{Azure::Response<T>(std::move(value), nullptr), true};
 }
 
-struct ParseUriResult
+static bool ends_with(const std::string& str, const std::string& suffix)
 {
-	Service service;
-	std::string bucket;
+	size_t str_len = str.length();
+	size_t suffix_len = str.length();
+	return suffix_len <= str_len && !str.compare(str_len - suffix_len, suffix_len, suffix);
+}
+
+struct BlobUri {
+	std::string host;
+	std::string account;
+	std::string container;
 	std::string object;
 };
+
+struct FileUri {
+	std::string host;
+	std::string account;
+	std::string share;
+	std::string path;
+	std::list<std::string> path_segments;
+};
+
+struct ParseUriResult {
+	Service service;
+	union {
+		BlobUri blobUri;
+		FileUri fileUri;
+	};
+
+	ParseUriResult(Service service, const BlobUri& blobUri): service(service), blobUri(blobUri) {}
+	ParseUriResult(Service service, BlobUri&& blobUri): service(service), blobUri(blobUri) {}
+	ParseUriResult(Service service, const FileUri& fileUri): service(service), fileUri(fileUri) {}
+	ParseUriResult(Service service, FileUri&& fileUri): service(service), fileUri(fileUri) {}
+	ParseUriResult(const ParseUriResult& source):
+		service(source.service)
+	{
+		if (source.service == Service::BLOB) {
+			this->blobUri = source.blobUri;
+		}
+		if (source.service == Service::SHARE) {
+			this->fileUri = source.fileUri;
+		}
+	}
+	ParseUriResult(ParseUriResult&& source):
+		service(std::move(source.service))
+	{
+		if (source.service == Service::BLOB) {
+			this->blobUri = std::move(source.blobUri);
+		}
+		if (source.service == Service::SHARE) {
+			this->fileUri = std::move(source.fileUri);
+		}
+	}
+	ParseUriResult& operator=(const ParseUriResult& source) {
+		this->service = source.service;
+		if (source.service == Service::BLOB) {
+			this->blobUri = source.blobUri;
+		}
+		if (source.service == Service::SHARE) {
+			this->fileUri = source.fileUri;
+		}
+		return *this;
+	}
+	ParseUriResult& operator=(ParseUriResult&& source) {
+		this->service = std::move(source.service);
+		if (source.service == Service::BLOB) {
+			this->blobUri = std::move(source.blobUri);
+		}
+		if (source.service == Service::SHARE) {
+			this->fileUri = std::move(source.fileUri);
+		}
+		return *this;
+	}
+	~ParseUriResult() {}
+};
+
+#define RETURN_IF_EMPTY(object, retval) if ((object).empty()) { return (retval); }
+
+#define RETURN_PATH_FAILURE_IF_EMPTY(object)																				   \
+	RETURN_IF_EMPTY(																										   \
+		(object),																											   \
+		MakeDriverHttpFailure<ParseUriResult>(Azure::Core::Http::HttpStatusCode::BadRequest, "Invalid emulated storage path"))
 
 // Parses URI in the following forms:
 //  - when accessing a real cloud service:
@@ -247,68 +319,76 @@ struct ParseUriResult
 //  - when a storage emulator like Azurite is used, the URI will have a different form:
 //    http[s]://127.0.0.1:10000/myaccount/mycontainer/myblob.txt
 // Note: file service URIs e.g. https://myaccount.file.core.windows.net/myshare/myfolder/myfile.txt
-//       are not supported at this time...
-DriverResult<ParseUriResult> ParseAzureUri(const std::string& azure_uri)
+//       are not supported by Azurite.
+static DriverResult<ParseUriResult> ParseAzureUri(const std::string& azure_uri)
 {
-	auto compare_suffix = [](const std::string& full, const std::string& suffix)
-	{
-		const size_t full_length = full.length();
-		const size_t suffix_length = suffix.length();
-		return (full_length >= suffix_length &&
-			full.compare(full_length - suffix_length, suffix_length, suffix) == 0);
-	};
+	const std::string emulated_domain = "127.0.0.1";
+	const std::string blob_domain = ".blob.core.windows.net";
+	const std::string file_domain = ".file.core.windows.net";
 
 	const Azure::Core::Url parsed_uri(azure_uri);
+	const std::string& scheme = parsed_uri.GetScheme();
+	const std::string& host = parsed_uri.GetHost();
+	const uint16_t port = parsed_uri.GetPort();
+	const std::string& path = parsed_uri.GetPath();
+	const char path_delim = '/';
 
-	if (parsed_uri.GetScheme() != "https" && parsed_uri.GetScheme() != "http")
-	{
-		return MakeDriverHttpFailure<ParseUriResult>(Azure::Core::Http::HttpStatusCode::BadRequest,
-							     "Invalid Azure URI");
+	if (scheme != "https" && scheme != "http") {
+		return MakeDriverHttpFailure<ParseUriResult>(Azure::Core::Http::HttpStatusCode::BadRequest, "Invalid URI scheme");
 	}
-
-	size_t bkt_pos = 0;
-	size_t obj_pos = parsed_uri.GetPath().find('/');
-	Service service = Service::UNKNOWN;
-
-	const std::string host = parsed_uri.GetHost();
-	constexpr auto az_domain = ".core.windows.net";
-
-	if (compare_suffix(host, az_domain))
-	{
-		spdlog::debug("Provided URI is a production one.");
-
-		constexpr auto blob_domain = ".blob.core.windows.net";
-		constexpr auto file_domain = ".file.core.windows.net";
-
-		if (compare_suffix(host, blob_domain))
-		{
-			spdlog::debug("Provided URI is a blob one.");
-			service = Service::BLOB;
+	if (is_storage_emulated) {
+		if (host != emulated_domain) {
+			return MakeDriverHttpFailure<ParseUriResult>(Azure::Core::Http::HttpStatusCode::BadRequest, "Invalid emulated storage host");
 		}
-		else if (compare_suffix(host, file_domain))
-		{
-			spdlog::debug("Provided URI is a file one.");
-			service = Service::SHARE;
+		if (port != 10000) {
+			return MakeDriverHttpFailure<ParseUriResult>(Azure::Core::Http::HttpStatusCode::BadRequest, "Invalid emulated storage port");
+		}
+		std::string account, container, object;
+		std::istringstream path_iss(path);
+		std::getline(path_iss, account, path_delim);
+		RETURN_PATH_FAILURE_IF_EMPTY(account);
+		std::getline(path_iss, container, path_delim);
+		RETURN_PATH_FAILURE_IF_EMPTY(container);
+		std::getline(path_iss, object, path_delim);
+		RETURN_PATH_FAILURE_IF_EMPTY(object);
+		return MakeDriverSuccess<ParseUriResult>(std::move(ParseUriResult { Service::BLOB, std::move(BlobUri { host, account, container, object }) }));
+	}
+	else { // real Azure storage
+		if (ends_with(host, blob_domain)) {
+			std::string account = host.substr(0, host.length() - blob_domain.length());
+			std::string container, object;
+			std::istringstream path_iss(path);
+			std::getline(path_iss, container, path_delim);
+			RETURN_PATH_FAILURE_IF_EMPTY(container);
+			std::getline(path_iss, object, path_delim);
+			RETURN_PATH_FAILURE_IF_EMPTY(object);
+			return MakeDriverSuccess<ParseUriResult>(std::move(ParseUriResult {
+				Service::BLOB, std::move(BlobUri { host, account, container, object }) 
+			}));
+		} else if (ends_with(host, file_domain)) {
+			std::string account = host.substr(0, host.length() - blob_domain.length());
+			std::string share;
+			std::string filepath;
+			std::list<std::string> filepath_segments;
+			std::istringstream path_iss(path);
+			std::getline(path_iss, share, path_delim);
+			RETURN_PATH_FAILURE_IF_EMPTY(share);
+			filepath = path_iss.str();
+			RETURN_PATH_FAILURE_IF_EMPTY(filepath);
+			for (std::string segment;;) {
+				std::getline(path_iss, segment, path_delim);
+				if (segment.empty()) {
+					break;
+				}
+				filepath_segments.push_back(std::move(segment));
+			}
+			return MakeDriverSuccess<ParseUriResult>(std::move(ParseUriResult {
+				Service::SHARE, std::move(FileUri { host, account, share, filepath, filepath_segments})
+			}));
+		} else { // Neither blob nor file service!
+			return MakeDriverHttpFailure<ParseUriResult>(Azure::Core::Http::HttpStatusCode::BadRequest, "Invalid domain");
 		}
 	}
-	else
-	{
-		spdlog::debug("Provided URI is a testing one.");
-		service = Service::BLOB;
-		bkt_pos = obj_pos + 1;
-		obj_pos = parsed_uri.GetPath().find('/', bkt_pos);
-	}
-
-	if (obj_pos == std::string::npos)
-	{
-		return MakeDriverHttpFailure<ParseUriResult>(Azure::Core::Http::HttpStatusCode::BadRequest,
-							     "Invalid Azure URI, missing object name: " + azure_uri);
-	}
-
-	ParseUriResult res{service, parsed_uri.GetPath().substr(bkt_pos, obj_pos - bkt_pos),
-			   parsed_uri.GetPath().substr(obj_pos + 1)};
-
-	return MakeDriverSuccess<ParseUriResult>(std::move(res));
 }
 
 DriverResult<ParseUriResult> GetServiceBucketAndObjectNames(const char* sFilePathName)
@@ -378,19 +458,21 @@ std::string GetEnvironmentVariableOrDefault(const std::string& variable_name, co
 	return default_value;
 }
 
-std::string GetConnectionStringFromEnv()
+bool IsStorageEmulated()
 {
-	// TODO Should allow different auth options like described in: https://learn.microsoft.com/en-us/azure/storage/blobs/authorize-data-operations-cli
-	return GetEnvironmentVariableOrDefault(
-	    "AZURE_STORAGE_CONNECTION_STRING",
-	    "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey="
-	    "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/"
-	    "KBHBeksoGMGw==;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;");
+	const char false_value[] = "false";
+	char* connstr = std::getenv("AZURE_EMULATED_STORAGE");
+	return connstr && strnicmp(connstr, false_value, sizeof(false_value) - 1);
 }
 
-template <typename ServiceClientType> ServiceClientType GetServiceClient()
+template <typename ServiceClientType> ServiceClientType&& GetServiceClient(const std::string& service_url)
 {
-	return ServiceClientType::CreateFromConnectionString(GetConnectionStringFromEnv());
+	return std::move(ServiceClientType(service_url, credential));
+}
+
+template <typename ServiceClientType> ServiceClientType&& GetServiceClient(const char* service_url)
+{
+	return GetServiceClient(std::string(service_url));
 }
 
 bool WillSizeCountProductOverflow(size_t size, size_t count)
@@ -526,23 +608,48 @@ int driver_connect()
 
 	spdlog::debug("Connect {}", loglevel);
 
-	// Initialize variables from environment
+	// Initialize variables from environment.
 	globalBucketName = GetEnvironmentVariableOrDefault("AZURE_BUCKET_NAME", "");
+	is_storage_emulated = IsStorageEmulated();
 
-	// Tester la connexion
-	const auto blobServiceClient = GetServiceClient<BlobServiceClient>();
-	try
+	if (is_storage_emulated)
 	{
-		blobServiceClient.GetProperties();
-		spdlog::debug("Connexion valide.");
-		bIsConnected = kTrue;
-		return kSuccess;
+		spdlog::debug("Using emulated Azure storage.");
+		// Credentials are contained in a connection string so we don't need to use usual TokenCredential classes.
+		// We can test the connection to the emulated storage thanks to the connection string.
+		auto client = BlobServiceClient::CreateFromConnectionString(emulated_storage_connection_string);
+
+		try
+		{
+			client.GetProperties();
+			spdlog::debug("Test connection to emulated storage completed successfully.");
+			return kSuccess;
+		}
+		catch (const std::exception& exc)
+		{
+			LogException("Failed to connect to emulated storage.", exc.what());
+			return kFailure;
+		}
 	}
-	catch (const std::exception& e)
+	else
 	{
-		LogException("Connection error.", e.what());
-		return kFailure;
+		spdlog::debug("Using real Azure storage.");
+		// Redefining DefaultAzureCredential chain which does not work.
+		// Chain schema: https://learn.microsoft.com/en-us/azure/developer/cpp/sdk/authentication/credential-chains#defaultazurecredential-overview.
+		credential = std::make_shared<ChainedTokenCredential>(
+			ChainedTokenCredential::Sources{
+				std::make_shared<EnvironmentCredential>(), // for Client ID + Client Secret or Certificate environment variables
+				std::make_shared<WorkloadIdentityCredential>(),
+				std::make_shared<AzureCliCredential>(),
+				std::make_shared<ManagedIdentityCredential>()
+			}
+		);
+
+		// We cannot test the connection because only the URL passed to the other functions will determine the type of service (blob, share...) and the account name.
 	}
+
+	bIsConnected = kTrue;
+	return kSuccess;
 }
 
 int driver_disconnect()
@@ -603,78 +710,126 @@ Azure::Nullable<size_t> FindPatternSpecialChar(const std::string& pattern)
 	return found_at != std::string::npos ? found_at : Azure::Nullable<size_t>{};
 }
 
-int driver_fileExists(const char* sFilePathName)
-{
+int driver_fileExists(const char* uri) {
 	KH_AZ_CONNECTION_ERROR(kFalse);
 
-	ERROR_ON_NULL_ARG(sFilePathName, kFalse);
+	ERROR_ON_NULL_ARG(uri, kFalse);
 
-	spdlog::debug("fileExist {}", sFilePathName);
+	spdlog::debug("fileExist {}", uri);
 
-	auto maybe_parsed_names = ParseAzureUri(sFilePathName);
-	if (!maybe_parsed_names)
-	{
+	auto maybe_parsed_uri = ParseAzureUri(uri);
+	if (!maybe_parsed_uri) {
 		std::ostringstream oss;
-		oss << "Error while parsing Uri. " << maybe_parsed_names.GetReasonPhrase();
+		oss << "Error while parsing Uri. " << maybe_parsed_uri.GetReasonPhrase();
 		LogError(oss.str());
+		return kFailure;
 	}
 
-	const auto& val = maybe_parsed_names.GetValue();
-	if (Service::BLOB != val.service)
-	{
-		LogError("Error checking blob's existence: not a URL of a blob service.");
-		return kFalse;
-	}
+	return FileExists(uri, maybe_parsed_uri.GetValue());
+}
 
-	const auto pattern_1st_sp_char_pos = FindPatternSpecialChar(val.object);
-	if (!pattern_1st_sp_char_pos)
-	{
-		const auto& blob_client =
-		    GetServiceClient<BlobServiceClient>().GetBlobContainerClient(val.bucket).GetBlobClient(val.object);
-		try
-		{
+static int FileExists(const char* uri, const ParseUriResult& parsed_uri) {
+	if (parsed_uri.service == Service::BLOB) {
+		return blob_FileExists(uri, parsed_uri.blobUri);
+	} else if (parsed_uri.service == Service::SHARE) {
+		return file_FileExists(uri, parsed_uri.fileUri);
+	}
+}
+
+static int blob_FileExists(const char* uri, const BlobUri&parsed_uri) {
+	const auto pattern_1st_sp_char_pos = FindPatternSpecialChar(parsed_uri.object);
+	if (!pattern_1st_sp_char_pos) { // Unifile
+		const auto& blob_client = GetServiceClient<BlobServiceClient>(uri).GetBlobContainerClient(parsed_uri.container).GetBlobClient(parsed_uri.object);
+		try {
 			// GetProperties throws in case of error, even if the error is NotFound.
 			blob_client.GetProperties();
-			spdlog::debug("file {} exists.", sFilePathName);
+			spdlog::debug("file {} exists.", uri);
 			return kTrue;
 		}
-		catch (const Azure::Storage::StorageException& e)
-		{
-			if (e.StatusCode == Azure::Core::Http::HttpStatusCode::NotFound)
-			{
+		catch (const Azure::Storage::StorageException& e) {
+			if (e.StatusCode == Azure::Core::Http::HttpStatusCode::NotFound) {
 				spdlog::debug("File not found. {}", e.what());
 			}
-			else
-			{
+			else {
 				LogException("Error while checking file's presence.", e.what());
 			}
 			return kFalse;
 		}
-		catch (const std::exception& e)
-		{
+		catch (const std::exception& e) {
 			LogException("Error while checking file's presence.", e.what());
 			return kFalse;
 		}
 	}
-
-	const auto filter_res = FilterList(val.bucket, val.object, *pattern_1st_sp_char_pos);
-	if (!filter_res)
-	{
-		if (spdlog::get_level() >= spdlog::level::debug)
+	else { // Multifile
+		const auto filter_res = FilterList(parsed_uri.container, parsed_uri.object, *pattern_1st_sp_char_pos);
+		if (!filter_res)
 		{
-			if (Azure::Core::Http::HttpStatusCode::NotFound == filter_res.GetStatusCode())
+			if (spdlog::get_level() >= spdlog::level::debug)
 			{
-				spdlog::debug(filter_res.GetReasonPhrase());
+				if (Azure::Core::Http::HttpStatusCode::NotFound == filter_res.GetStatusCode())
+				{
+					spdlog::debug(filter_res.GetReasonPhrase());
+				}
+				else
+				{
+					LogBadResult<BlobItems>(filter_res, "Error while listing blobs in container.");
+				}
 			}
-			else
-			{
-				LogBadResult<BlobItems>(filter_res, "Error while listing blobs in container.");
-			}
+			return kTrue;
 		}
 		return kFalse;
 	}
+}
 
-	return kTrue;
+static int file_FileExists(const char* uri, const FileUri& parsed_uri) {
+	const auto pattern_1st_sp_char_pos = FindPatternSpecialChar(parsed_uri.path);
+	if (!pattern_1st_sp_char_pos) { // Unifile
+		auto& dir_client = GetServiceClient<ShareServiceClient>(uri).GetShareClient(parsed_uri.share).GetRootDirectoryClient();
+		for (auto dir_it = parsed_uri.path_segments.begin(); dir_it != std::prev(parsed_uri.path_segments.end()); dir_it++) {
+			dir_client = dir_client.GetSubdirectoryClient(*dir_it);
+		}
+		const auto& file_client = dir_client.GetFileClient(*parsed_uri.path_segments.end());
+		file_client
+
+		try {
+			// GetProperties throws in case of error, even if the error is NotFound.
+			client.GetProperties();
+			spdlog::debug("file {} exists.", uri);
+			return kTrue;
+		}
+		catch (const Azure::Storage::StorageException& e) {
+			if (e.StatusCode == Azure::Core::Http::HttpStatusCode::NotFound) {
+				spdlog::debug("File not found. {}", e.what());
+			}
+			else {
+				LogException("Error while checking file's presence.", e.what());
+			}
+			return kFalse;
+		}
+		catch (const std::exception& e) {
+			LogException("Error while checking file's presence.", e.what());
+			return kFalse;
+		}
+	}
+	else { // Multifile
+		const auto filter_res = FilterList(parsed_uri.container, parsed_uri.object, *pattern_1st_sp_char_pos);
+		if (!filter_res)
+		{
+			if (spdlog::get_level() >= spdlog::level::debug)
+			{
+				if (Azure::Core::Http::HttpStatusCode::NotFound == filter_res.GetStatusCode())
+				{
+					spdlog::debug(filter_res.GetReasonPhrase());
+				}
+				else
+				{
+					LogBadResult<BlobItems>(filter_res, "Error while listing blobs in container.");
+				}
+			}
+			return kTrue;
+		}
+		return kFalse;
+	}
 }
 
 int driver_dirExists(const char* sFilePathName)
