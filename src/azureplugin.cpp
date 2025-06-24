@@ -345,6 +345,7 @@ static DriverResult<ParseUriResult> ParseAzureUri(const std::string& azure_uri)
 		}
 		std::string account, container, object;
 		std::istringstream path_iss(path);
+		/// TODO: Make a function with the following code
 		std::getline(path_iss, account, path_delim);
 		RETURN_PATH_FAILURE_IF_EMPTY(account);
 		std::getline(path_iss, container, path_delim);
@@ -578,25 +579,38 @@ DriverResult<BlobItems> FilterList(const std::string& bucket, const std::string&
 
 const char* driver_getDriverName()
 {
-	return driver_name;
+	return driver.GetName().c_str();
 }
 
 const char* driver_getVersion()
 {
-	return version;
+	return driver.GetVersion().c_str();
 }
 
 const char* driver_getScheme()
 {
-	return driver_scheme;
+	return driver.GetScheme().c_str();
 }
 
 int driver_isReadOnly()
 {
-	return kFalse;
+	return driver.IsReadOnly();
 }
 
 int driver_connect()
+{
+	try
+	{
+		driver.Connect();
+		return nSuccess; /// TODO: naming conv
+	}
+	catch (const exception& exc)
+	{
+		return nFailure;
+	}
+}
+
+#if false
 {
 	const std::string loglevel = GetEnvironmentVariableOrDefault("AZURE_DRIVER_LOGLEVEL", "info");
 	if (loglevel == "debug")
@@ -651,26 +665,29 @@ int driver_connect()
 	bIsConnected = kTrue;
 	return kSuccess;
 }
+#endif
 
 int driver_disconnect()
 {
-	// clear handles
-	active_reader_handles.clear();
-	active_writer_handles.clear();
-
-	// manage internal state
-	bIsConnected = kFalse;
-	return kSuccess;
+	try
+	{
+		driver.Disconnect();
+		return nSuccess; /// TODO: naming conv
+	}
+	catch (const exception& exc)
+	{
+		return nFailure;
+	}
 }
 
 int driver_isConnected()
 {
-	return bIsConnected;
+	return driver.IsConnected();
 }
 
 long long int driver_getSystemPreferredBufferSize()
 {
-	return preferred_buffer_size; // 4 Mo
+	return driver.GetSystemPreferredBufferSize();
 }
 
 #define RETURN_ON_ERROR(driver_result, msg, err_val)                                                                   \
@@ -710,7 +727,21 @@ Azure::Nullable<size_t> FindPatternSpecialChar(const std::string& pattern)
 	return found_at != std::string::npos ? found_at : Azure::Nullable<size_t>{};
 }
 
-int driver_fileExists(const char* uri) {
+int driver_fileExists(const char* uri)
+{
+	try
+	{
+		auto fileAccessor = driver.CreateFileAccessor(string(uri));
+		return fileAccessor.Exists() ? nTrue : nFalse;
+	}
+	catch (const exception& exc)
+	{
+		return nFalse;
+	}
+}
+
+#if false
+{
 	KH_AZ_CONNECTION_ERROR(kFalse);
 
 	ERROR_ON_NULL_ARG(uri, kFalse);
@@ -727,6 +758,7 @@ int driver_fileExists(const char* uri) {
 
 	return FileExists(uri, maybe_parsed_uri.GetValue());
 }
+#endif
 
 static int FileExists(const char* uri, const ParseUriResult& parsed_uri) {
 	if (parsed_uri.service == Service::BLOB) {
@@ -834,13 +866,25 @@ static int file_FileExists(const char* uri, const FileUri& parsed_uri) {
 
 int driver_dirExists(const char* sFilePathName)
 {
+	try
+	{
+		auto fileAccessor = driver.CreateFileAccessor(string(uri));
+		return fileAccessor.Exists() ? nTrue : nFalse;
+	}
+	catch (const exception& exc)
+	{
+		nFalse;
+	}
+}
+/*{
+
 	KH_AZ_CONNECTION_ERROR(kFalse);
 
 	ERROR_ON_NULL_ARG(sFilePathName, kFalse);
 
 	spdlog::debug("dirExist {}", sFilePathName);
 	return kTrue;
-}
+}*/
 
 DownloadBlobToOptions MakeDlBlobOptions(int64_t range_start, Azure::Nullable<int64_t> range_length = {})
 {
@@ -1018,6 +1062,19 @@ DriverResult<long long> GetFileSize(const ParseUriResult& parsed_names)
 
 long long int driver_getFileSize(const char* filename)
 {
+	try
+	{
+		auto fileAccessor = driver.CreateFileAccessor(string(uri));
+		return fileAccessor.GetSize();
+	}
+	catch (const exception& exc)
+	{
+		return nSizeFailure;
+	}
+}
+
+#if false
+{
 	KH_AZ_CONNECTION_ERROR(kBadSize);
 
 	ERROR_ON_NULL_ARG(filename, kBadSize);
@@ -1050,6 +1107,7 @@ long long int driver_getFileSize(const char* filename)
 
 	return res.GetValue();
 }
+#endif
 
 DriverResult<long long> ReadBytesInFile(Reader& multifile, unsigned char* buffer, tOffset to_read)
 {
@@ -1348,6 +1406,17 @@ DriverResult<Writer*> RegisterWriter(std::string&& bucket, std::string&& object,
 
 void* driver_fopen(const char* filename, char mode)
 {
+	try
+	{
+		auto fileAccessor = driver.CreateFileAccessor(string(uri));
+		return fileAccessor.Open(mode);
+	}
+	catch (const exception& exc)
+	{
+		nFailure;
+	}
+}
+/*{
 	KH_AZ_CONNECTION_ERROR(nullptr);
 
 	ERROR_ON_NULL_ARG(filename, nullptr);
@@ -1415,10 +1484,22 @@ void* driver_fopen(const char* filename, char mode)
 		LogError("Invalid open mode: " + mode);
 		return nullptr;
 	}
+}*/
+
+int driver_fclose(void* handle)
+{
+	try
+	{
+		driver.RetrieveFileStream(handle).Close();
+		return nCloseSuccess;
+	}
+	catch (const exception& exc)
+	{
+		return nCloseFailure;
+	}
 }
 
-int driver_fclose(void* stream)
-{
+/*{
 	assert(driver_isConnected());
 
 	ERROR_ON_NULL_ARG(stream, kCloseEOF);
@@ -1441,10 +1522,22 @@ int driver_fclose(void* stream)
 
 	LogError("Cannot identify stream.");
 	return kCloseEOF;
-}
+}*/
 
 int driver_fseek(void* stream, long long int offset, int whence)
 {
+	try
+	{
+		driver.RetrieveFileStream(handle).Seek(offset, whence);
+		return nSeekSuccess;
+	}
+	catch (const exception& exc)
+	{
+		return nSeekFailure;
+	}
+}
+
+/*{
 	KH_AZ_CONNECTION_ERROR(kBadSize);
 
 	ERROR_ON_NULL_ARG(stream, kBadSize);
@@ -1508,10 +1601,14 @@ int driver_fseek(void* stream, long long int offset, int whence)
 	}
 	reader.offset_ = computed_offset;
 	return 0;
-}
+}*/
 
 const char* driver_getlasterror()
 {
+	return driver.GetLastError().c_str();
+}
+
+/*{
 	spdlog::debug("getlasterror");
 
 	if (!lastError.empty())
@@ -1519,7 +1616,7 @@ const char* driver_getlasterror()
 		return lastError.c_str();
 	}
 	return NULL;
-}
+}*/
 
 long long int driver_fread(void* ptr, size_t size, size_t count, void* stream)
 {
