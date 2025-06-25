@@ -3,6 +3,16 @@
 class Driver;
 
 #include <string>
+#include "fileaccessor.h"
+#include "filestream.h"
+#include "util.h"
+
+// Release versions must have 3 digits, for example KHIOPS_STR(1.2.0)
+// Alpha, beta ou release candidates have an extra suffix, for example :
+// - KHIOPS_STR(1.2.0-a.1)
+// - KHIOPS_STR(1.2.0-b.3)
+// - KHIOPS_STR(1.2.0-rc.2)
+#define DRIVER_VERSION KHIOPS_STR(0.1.0)
 
 using namespace std;
 
