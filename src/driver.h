@@ -31,9 +31,9 @@ namespace az
 	public:
 		Driver();
 
-		string GetName() const;
-		string GetVersion() const;
-		string GetScheme() const;
+		const string& GetName() const;
+		const string& GetVersion() const;
+		const string& GetScheme() const;
 		bool IsReadOnly() const;
 		size_t GetPreferredBufferSize() const;
 

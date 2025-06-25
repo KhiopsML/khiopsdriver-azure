@@ -8,17 +8,17 @@ namespace az
 	{
 	}
 
-	string Driver::GetName() const
+	const string& Driver::GetName() const
 	{
 		return sName;
 	}
 
-	string Driver::GetVersion() const
+	const string& Driver::GetVersion() const
 	{
 		return sVersion;
 	}
 
-	string Driver::GetScheme() const
+	const string& Driver::GetScheme() const
 	{
 		return sScheme;
 	}
