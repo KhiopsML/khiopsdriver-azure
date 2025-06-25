@@ -21,7 +21,8 @@ public:
 	void Disconnect();
 	bool IsConnected() const;
 
-	CreateObjectAccessor();
+		FileAccessor CreateFileAccessor(string url);
+		FileStream RetrieveFileStream(void* handle) const;
 
 protected:
 	bool bIsConnected;
