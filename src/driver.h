@@ -8,7 +8,7 @@ namespace az
 #include <string>
 #include "fileaccessor.h"
 #include "filestream.h"
-#include "util.h"
+#include "util/macro.h"
 
 // Release versions must have 3 digits, for example KHIOPS_STR(1.2.0)
 // Alpha, beta ou release candidates have an extra suffix, for example :
@@ -41,7 +41,7 @@ namespace az
 		void Disconnect();
 		bool IsConnected() const;
 
-		FileAccessor CreateFileAccessor(string url);
+		FileAccessor& CreateFileAccessor(const string& url) const;
 		FileStream RetrieveFileStream(void* handle) const;
 
 	protected:
