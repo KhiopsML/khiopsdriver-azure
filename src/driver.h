@@ -6,6 +6,11 @@ class Driver;
 
 using namespace std;
 
+	static const string sName = "Azure driver";
+	static const string sVersion = DRIVER_VERSION;
+	static const string sScheme = "https";
+	static const size_t sPreferredBufferSize = 4 * 1024 * 1024;
+
 class Driver
 {
 public:
