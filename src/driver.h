@@ -15,7 +15,7 @@ public:
 	string GetVersion() const;
 	string GetScheme() const;
 	bool IsReadOnly() const;
-	size_t GetSystemPreferredBufferSize() const;
+		size_t GetPreferredBufferSize() const;
 
 	void Connect();
 	void Disconnect();
