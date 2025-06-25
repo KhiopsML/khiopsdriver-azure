@@ -16,4 +16,11 @@ namespace az
 		}
 		return move(fragments);
 	}
+
+	bool EndsWith(const std::string& str, const std::string& suffix)
+	{
+		size_t strLen = str.length();
+		size_t suffixLen = str.length();
+		return suffixLen <= strLen && !str.compare(strLen - suffixLen, suffixLen, suffix);
+	}
 }
