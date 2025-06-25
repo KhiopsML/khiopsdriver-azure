@@ -1060,11 +1060,11 @@ DriverResult<long long> GetFileSize(const ParseUriResult& parsed_names)
 	}
 }
 
-long long int driver_getFileSize(const char* filename)
+long long int driver_getFileSize(const char* url)
 {
 	try
 	{
-		auto fileAccessor = driver.CreateFileAccessor(string(uri));
+		auto fileAccessor = driver.CreateFileAccessor(string(url));
 		return fileAccessor.GetSize();
 	}
 	catch (const exception& exc)
