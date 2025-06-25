@@ -237,14 +237,14 @@ static bool ends_with(const std::string& str, const std::string& suffix)
 	return suffix_len <= str_len && !str.compare(str_len - suffix_len, suffix_len, suffix);
 }
 
-struct BlobUri {
+struct BlobUrl {
 	std::string host;
 	std::string account;
 	std::string container;
 	std::string object;
 };
 
-struct FileUri {
+struct FileUrl {
 	std::string host;
 	std::string account;
 	std::string share;
@@ -252,58 +252,58 @@ struct FileUri {
 	std::list<std::string> path_segments;
 };
 
-struct ParseUriResult {
+struct Url {
 	Service service;
 	union {
-		BlobUri blobUri;
-		FileUri fileUri;
+		BlobUrl blobUrl;
+		FileUrl fileUrl;
 	};
 
-	ParseUriResult(Service service, const BlobUri& blobUri): service(service), blobUri(blobUri) {}
-	ParseUriResult(Service service, BlobUri&& blobUri): service(service), blobUri(blobUri) {}
-	ParseUriResult(Service service, const FileUri& fileUri): service(service), fileUri(fileUri) {}
-	ParseUriResult(Service service, FileUri&& fileUri): service(service), fileUri(fileUri) {}
-	ParseUriResult(const ParseUriResult& source):
+	Url(Service service, const BlobUrl& blobUrl): service(service), blobUrl(blobUrl) {}
+	Url(Service service, BlobUrl&& blobUrl): service(service), blobUrl(blobUrl) {}
+	Url(Service service, const FileUrl& fileUrl): service(service), fileUrl(fileUrl) {}
+	Url(Service service, FileUrl&& fileUrl): service(service), fileUrl(fileUrl) {}
+	Url(const Url& source):
 		service(source.service)
 	{
 		if (source.service == Service::BLOB) {
-			this->blobUri = source.blobUri;
+			this->blobUrl = source.blobUrl;
 		}
 		if (source.service == Service::SHARE) {
-			this->fileUri = source.fileUri;
+			this->fileUrl = source.fileUrl;
 		}
 	}
-	ParseUriResult(ParseUriResult&& source):
+	Url(Url&& source):
 		service(std::move(source.service))
 	{
 		if (source.service == Service::BLOB) {
-			this->blobUri = std::move(source.blobUri);
+			this->blobUrl = std::move(source.blobUrl);
 		}
 		if (source.service == Service::SHARE) {
-			this->fileUri = std::move(source.fileUri);
+			this->fileUrl = std::move(source.fileUrl);
 		}
 	}
-	ParseUriResult& operator=(const ParseUriResult& source) {
+	Url& operator=(const Url& source) {
 		this->service = source.service;
 		if (source.service == Service::BLOB) {
-			this->blobUri = source.blobUri;
+			this->blobUrl = source.blobUrl;
 		}
 		if (source.service == Service::SHARE) {
-			this->fileUri = source.fileUri;
+			this->fileUrl = source.fileUrl;
 		}
 		return *this;
 	}
-	ParseUriResult& operator=(ParseUriResult&& source) {
+	Url& operator=(Url&& source) {
 		this->service = std::move(source.service);
 		if (source.service == Service::BLOB) {
-			this->blobUri = std::move(source.blobUri);
+			this->blobUrl = std::move(source.blobUrl);
 		}
 		if (source.service == Service::SHARE) {
-			this->fileUri = std::move(source.fileUri);
+			this->fileUrl = std::move(source.fileUrl);
 		}
 		return *this;
 	}
-	~ParseUriResult() {}
+	~Url() {}
 };
 
 #define RETURN_IF_EMPTY(object, retval) if ((object).empty()) { return (retval); }
@@ -311,7 +311,7 @@ struct ParseUriResult {
 #define RETURN_PATH_FAILURE_IF_EMPTY(object)																				   \
 	RETURN_IF_EMPTY(																										   \
 		(object),																											   \
-		MakeDriverHttpFailure<ParseUriResult>(Azure::Core::Http::HttpStatusCode::BadRequest, "Invalid emulated storage path"))
+		MakeDriverHttpFailure<Url>(Azure::Core::Http::HttpStatusCode::BadRequest, "Invalid emulated storage path"))
 
 // Parses URI in the following forms:
 //  - when accessing a real cloud service:
@@ -320,7 +320,7 @@ struct ParseUriResult {
 //    http[s]://127.0.0.1:10000/myaccount/mycontainer/myblob.txt
 // Note: file service URIs e.g. https://myaccount.file.core.windows.net/myshare/myfolder/myfile.txt
 //       are not supported by Azurite.
-static DriverResult<ParseUriResult> ParseAzureUri(const std::string& azure_uri)
+static DriverResult<Url> ParseAzureUri(const std::string& azure_uri)
 {
 	const std::string emulated_domain = "127.0.0.1";
 	const std::string blob_domain = ".blob.core.windows.net";
@@ -334,14 +334,14 @@ static DriverResult<ParseUriResult> ParseAzureUri(const std::string& azure_uri)
 	const char path_delim = '/';
 
 	if (scheme != "https" && scheme != "http") {
-		return MakeDriverHttpFailure<ParseUriResult>(Azure::Core::Http::HttpStatusCode::BadRequest, "Invalid URI scheme");
+		return MakeDriverHttpFailure<Url>(Azure::Core::Http::HttpStatusCode::BadRequest, "Invalid URI scheme");
 	}
 	if (is_storage_emulated) {
 		if (host != emulated_domain) {
-			return MakeDriverHttpFailure<ParseUriResult>(Azure::Core::Http::HttpStatusCode::BadRequest, "Invalid emulated storage host");
+			return MakeDriverHttpFailure<Url>(Azure::Core::Http::HttpStatusCode::BadRequest, "Invalid emulated storage host");
 		}
 		if (port != 10000) {
-			return MakeDriverHttpFailure<ParseUriResult>(Azure::Core::Http::HttpStatusCode::BadRequest, "Invalid emulated storage port");
+			return MakeDriverHttpFailure<Url>(Azure::Core::Http::HttpStatusCode::BadRequest, "Invalid emulated storage port");
 		}
 		std::string account, container, object;
 		std::istringstream path_iss(path);
@@ -352,7 +352,7 @@ static DriverResult<ParseUriResult> ParseAzureUri(const std::string& azure_uri)
 		RETURN_PATH_FAILURE_IF_EMPTY(container);
 		std::getline(path_iss, object, path_delim);
 		RETURN_PATH_FAILURE_IF_EMPTY(object);
-		return MakeDriverSuccess<ParseUriResult>(std::move(ParseUriResult { Service::BLOB, std::move(BlobUri { host, account, container, object }) }));
+		return MakeDriverSuccess<Url>(std::move(Url { Service::BLOB, std::move(BlobUrl { host, account, container, object }) }));
 	}
 	else { // real Azure storage
 		if (ends_with(host, blob_domain)) {
@@ -363,8 +363,8 @@ static DriverResult<ParseUriResult> ParseAzureUri(const std::string& azure_uri)
 			RETURN_PATH_FAILURE_IF_EMPTY(container);
 			std::getline(path_iss, object, path_delim);
 			RETURN_PATH_FAILURE_IF_EMPTY(object);
-			return MakeDriverSuccess<ParseUriResult>(std::move(ParseUriResult {
-				Service::BLOB, std::move(BlobUri { host, account, container, object }) 
+			return MakeDriverSuccess<Url>(std::move(Url {
+				Service::BLOB, std::move(BlobUrl { host, account, container, object }) 
 			}));
 		} else if (ends_with(host, file_domain)) {
 			std::string account = host.substr(0, host.length() - blob_domain.length());
@@ -383,22 +383,22 @@ static DriverResult<ParseUriResult> ParseAzureUri(const std::string& azure_uri)
 				}
 				filepath_segments.push_back(std::move(segment));
 			}
-			return MakeDriverSuccess<ParseUriResult>(std::move(ParseUriResult {
-				Service::SHARE, std::move(FileUri { host, account, share, filepath, filepath_segments})
+			return MakeDriverSuccess<Url>(std::move(Url {
+				Service::SHARE, std::move(FileUrl { host, account, share, filepath, filepath_segments})
 			}));
 		} else { // Neither blob nor file service!
-			return MakeDriverHttpFailure<ParseUriResult>(Azure::Core::Http::HttpStatusCode::BadRequest, "Invalid domain");
+			return MakeDriverHttpFailure<Url>(Azure::Core::Http::HttpStatusCode::BadRequest, "Invalid domain");
 		}
 	}
 }
 
-DriverResult<ParseUriResult> GetServiceBucketAndObjectNames(const char* sFilePathName)
+DriverResult<Url> GetServiceBucketAndObjectNames(const char* sFilePathName)
 {
 	auto maybe_parse_res = ParseAzureUri(sFilePathName);
 
 	if (maybe_parse_res)
 	{
-		const ParseUriResult& val = maybe_parse_res.GetValue();
+		const Url& val = maybe_parse_res.GetValue();
 		spdlog::debug("Bucket: {}, Object: {}", val.bucket, val.object);
 	}
 
@@ -760,15 +760,15 @@ int driver_fileExists(const char* uri)
 }
 #endif
 
-static int FileExists(const char* uri, const ParseUriResult& parsed_uri) {
+static int FileExists(const char* uri, const Url& parsed_uri) {
 	if (parsed_uri.service == Service::BLOB) {
-		return blob_FileExists(uri, parsed_uri.blobUri);
+		return blob_FileExists(uri, parsed_uri.blobUrl);
 	} else if (parsed_uri.service == Service::SHARE) {
-		return file_FileExists(uri, parsed_uri.fileUri);
+		return file_FileExists(uri, parsed_uri.fileUrl);
 	}
 }
 
-static int blob_FileExists(const char* uri, const BlobUri&parsed_uri) {
+static int blob_FileExists(const char* uri, const BlobUrl&parsed_uri) {
 	const auto pattern_1st_sp_char_pos = FindPatternSpecialChar(parsed_uri.object);
 	if (!pattern_1st_sp_char_pos) { // Unifile
 		const auto& blob_client = GetServiceClient<BlobServiceClient>(uri).GetBlobContainerClient(parsed_uri.container).GetBlobClient(parsed_uri.object);
@@ -813,7 +813,7 @@ static int blob_FileExists(const char* uri, const BlobUri&parsed_uri) {
 	}
 }
 
-static int file_FileExists(const char* uri, const FileUri& parsed_uri) {
+static int file_FileExists(const char* uri, const FileUrl& parsed_uri) {
 	const auto pattern_1st_sp_char_pos = FindPatternSpecialChar(parsed_uri.path);
 	if (!pattern_1st_sp_char_pos) { // Unifile
 		auto& dir_client = GetServiceClient<ShareServiceClient>(uri).GetShareClient(parsed_uri.share).GetRootDirectoryClient();
@@ -965,7 +965,7 @@ bool IsSameHeader(const BlobContainerClient& container_client, const Blobs::Mode
 	return part_buffer == header;
 }
 
-DriverResult<long long> GetFileSize(const ParseUriResult& parsed_names)
+DriverResult<long long> GetFileSize(const Url& parsed_names)
 {
 	using value_t = long long;
 
