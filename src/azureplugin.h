@@ -4,15 +4,6 @@
 
 #include <memory>
 
-#define KHIOPS_STR(s) #s
-// Driver version
-#define DRIVER_VERSION KHIOPS_STR(0.1.0)
-// Release versions must have 3 digits, for example KHIOPS_STR(1.2.0)
-// Alpha, beta ou release candidate have an extra suffix, for example :
-// - KHIOPS_STR(1.2.0-a.1)
-// - KHIOPS_STR(1.2.0-b.3)
-// - KHIOPS_STR(1.2.0-rc.2)
-
 #if defined(__unix__) || defined(__unix) || \
     (defined(__APPLE__) && defined(__MACH__))
 #define __unix_or_mac__
