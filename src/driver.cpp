@@ -69,6 +69,11 @@ namespace az
 		else
 		{
 
+	void Driver::CheckConnected() const
+	{
+		if (!IsConnected())
+		{
+			throw NotConnectedException();
 		}
 	}
 }

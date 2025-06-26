@@ -45,6 +45,8 @@ namespace az
 		FileStream RetrieveFileStream(void* handle) const;
 
 	protected:
+		void CheckConnected() const;
+
 		bool bIsConnected;
 	};
 }
