@@ -47,7 +47,7 @@ namespace az
 		bIsConnected = false;
 	}
 
-	bool Driver::IsConnected() const
+	inline bool Driver::IsConnected() const
 	{
 		return bIsConnected;
 	}
