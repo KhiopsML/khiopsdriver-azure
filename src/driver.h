@@ -41,7 +41,7 @@ namespace az
 		void Disconnect();
 		inline bool IsConnected() const;
 
-		FileAccessor& CreateFileAccessor(const string& url) const;
+		FileAccessor&& CreateFileAccessor(const string& url) const;
 		FileStream RetrieveFileStream(void* handle) const;
 
 	protected:

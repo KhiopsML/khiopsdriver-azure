@@ -2,6 +2,9 @@
 #include <spdlog/spdlog.h>
 #include <azure/core.hpp>
 #include "util/string.h"
+#include "blobaccessor.h"
+#include "shareaccessor.h"
+#include "exception.h"
 
 namespace az
 {
@@ -37,7 +40,6 @@ namespace az
 
 	void Driver::Connect()
 	{
-		spdlog::debug("Connecting");
 		bIsConnected = true;
 	}
 
@@ -52,7 +54,7 @@ namespace az
 		return bIsConnected;
 	}
 
-	FileAccessor& Driver::CreateFileAccessor(const string& sUrl) const
+	FileAccessor&& Driver::CreateFileAccessor(const string& sUrl) const
 	{
 		CheckConnected();
 		const string sBlobDomain = ".blob.core.windows.net";
@@ -61,14 +63,17 @@ namespace az
 		const string& sHost = url.GetHost();
 		if (EndsWith(sHost, sBlobDomain))
 		{
-
+			return move(BlobAccessor(url));
 		}
 		else if (EndsWith(sHost, sFileDomain))
 		{
-
+			return move(ShareAccessor(url));
 		}
 		else
 		{
+			throw InvalidDomainException();
+		}
+	}
 
 	void Driver::CheckConnected() const
 	{
