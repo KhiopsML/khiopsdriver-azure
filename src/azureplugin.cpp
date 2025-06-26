@@ -31,7 +31,12 @@
 #include <azure/identity/azure_cli_credential.hpp>
 #include <azure/identity/managed_identity_credential.hpp>
 
+#include "util/macro.h"
+#include "driver.h"
+
+using namespace std;
 using namespace azureplugin;
+using namespace az;
 
 constexpr const char* version = DRIVER_VERSION;
 constexpr const char* driver_name = "Azure driver";
@@ -43,6 +48,9 @@ constexpr char* emulated_storage_connection_string =
 	"AccountName=devstoreaccount1;"
 	"AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;"
 	"BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;";
+
+Driver driver;
+string sLastError;
 
 bool is_storage_emulated = false;
 
@@ -60,7 +68,6 @@ using namespace Azure::Identity;
 std::string globalBucketName;
 
 // Last error
-std::string lastError;
 
 StreamVec<Reader> active_reader_handles;
 StreamVec<Writer> active_writer_handles;
@@ -158,17 +165,20 @@ template <typename T> struct DriverResult
 		return (err_val);                                                                                      \
 	}
 
-void LogError(const std::string& msg)
+static void LogError(const string& error)
 {
-	lastError = msg;
-	spdlog::error(lastError);
+	sLastError = error;
+	spdlog::error(sLastError);
 }
 
-void LogException(const std::string& msg, const std::string& what)
+static void LogNullArgError(const string& funcname, const string& argname)
 {
-	std::ostringstream oss;
-	oss << msg << " " << what;
-	LogError(oss.str());
+	LogError((ostringstream() << "Error passing null pointer as '" << argname << "' argument to function '" << funcname << "'").str());
+}
+
+static void LogException(const exception& exc)
+{
+	LogError(exc.what());
 }
 
 #define LogBadStatus(a, b)
@@ -579,26 +589,31 @@ DriverResult<BlobItems> FilterList(const std::string& bucket, const std::string&
 
 const char* driver_getDriverName()
 {
+	spdlog::debug("Retrieving driver name");
 	return driver.GetName().c_str();
 }
 
 const char* driver_getVersion()
 {
+	spdlog::debug("Retrieving driver version");
 	return driver.GetVersion().c_str();
 }
 
 const char* driver_getScheme()
 {
+	spdlog::debug("Retrieving driver scheme");
 	return driver.GetScheme().c_str();
 }
 
 int driver_isReadOnly()
 {
+	spdlog::debug("Retrieving read-only state");
 	return driver.IsReadOnly();
 }
 
 int driver_connect()
 {
+	spdlog::debug("Connecting");
 	try
 	{
 		driver.Connect();
@@ -669,6 +684,7 @@ int driver_connect()
 
 int driver_disconnect()
 {
+	spdlog::debug("Disconnecting");
 	try
 	{
 		driver.Disconnect();
@@ -682,11 +698,13 @@ int driver_disconnect()
 
 int driver_isConnected()
 {
+	spdlog::debug("Retrieving connection state");
 	return driver.IsConnected();
 }
 
 long long int driver_getSystemPreferredBufferSize()
 {
+	spdlog::debug("Retrieving preferred buffer size");
 	return driver.GetSystemPreferredBufferSize();
 }
 
@@ -864,16 +882,23 @@ static int file_FileExists(const char* uri, const FileUrl& parsed_uri) {
 	}
 }
 
-int driver_dirExists(const char* sFilePathName)
+int driver_dirExists(const char* sUrl)
 {
+	spdlog::debug("Checking if directory exists");
+	if (!sUrl)
+	{
+		LogNullArgError(__func__, STRINGIFY(sUrl));
+		return nFalse;
+	}
 	try
 	{
-		auto fileAccessor = driver.CreateFileAccessor(string(uri));
+		auto&& fileAccessor = driver.CreateFileAccessor(sUrl);
 		return fileAccessor.Exists() ? nTrue : nFalse;
 	}
 	catch (const exception& exc)
 	{
-		nFalse;
+		LogException(exc);
+		return nFalse;
 	}
 }
 /*{
