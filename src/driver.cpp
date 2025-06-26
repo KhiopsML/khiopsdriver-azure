@@ -43,7 +43,7 @@ namespace az
 
 	void Driver::Disconnect()
 	{
-		spdlog::debug("Disconnecting");
+		CheckConnected();
 		bIsConnected = false;
 	}
 
@@ -54,6 +54,7 @@ namespace az
 
 	FileAccessor& Driver::CreateFileAccessor(const string& sUrl) const
 	{
+		CheckConnected();
 		const string sBlobDomain = ".blob.core.windows.net";
 		const string sFileDomain = ".file.core.windows.net";
 		const Azure::Core::Url url(sUrl);
