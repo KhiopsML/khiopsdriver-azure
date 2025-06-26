@@ -19,4 +19,8 @@ namespace az
 	class InvalidDomainException : public Exception
 	{
 	};
+
+	class NotConnectedException : public Exception
+	{
+	};
 }
