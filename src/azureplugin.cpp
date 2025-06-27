@@ -1277,6 +1277,130 @@ long long int driver_diskFreeSpace(const char* sUrl)
 	return free_space;
 }*/
 
+int driver_copyToLocal(const char* sSourceUrl, const char* sDestUrl)
+{
+	spdlog::debug("Copying file at URL {} to URL {}", sSourceUrl, sDestUrl);
+	if (!sSourceUrl)
+	{
+		LogNullArgError(__func__, STRINGIFY(sSourceUrl));
+		return nFailure;
+	}
+	if (!sDestUrl)
+	{
+		LogNullArgError(__func__, STRINGIFY(sDestUrl));
+		return nFailure;
+	}
+	try
+	{
+		driver.CreateFileAccessor(sSourceUrl).CopyTo(sDestUrl);
+		return nSuccess;
+	}
+	catch (const exception& exc)
+	{
+		LogException(exc);
+		return nFailure;
+	}
+}
+/*{
+	KH_AZ_CONNECTION_ERROR(kFailure);
+
+	ERROR_ON_NULL_ARG(sSourceFilePathName, kFailure);
+	ERROR_ON_NULL_ARG(sDestFilePathName, kFailure);
+
+	spdlog::debug("copyToLocal {} {}", sSourceFilePathName, sDestFilePathName);
+
+	// try opening the online source file
+	auto name_parsing_result = ParseAzureUri(sSourceFilePathName);
+	ERROR_ON_NAMES(name_parsing_result, kFailure);
+
+	auto& parsed_names = name_parsing_result.GetValue();
+	auto reader_ptr_res =
+		MakeReaderPtr(std::move(parsed_names.bucket), std::move(parsed_names.object), ReaderMode::kNone);
+	if (!reader_ptr_res)
+	{
+		LogBadResult(reader_ptr_res, "Error while opening remote file.");
+		return kFailure;
+	}
+
+	// open local file
+	std::ofstream file_stream(sDestFilePathName, std::ios::binary);
+	if (!file_stream.is_open())
+	{
+		std::ostringstream oss;
+		oss << "Failed to open local file for writing: " << sDestFilePathName;
+		LogError(oss.str());
+		return kFailure;
+	}
+
+	// limit download to a few MBs at a time.
+	constexpr long long dl_limit{ 10 * 1024 * 1024 };
+	std::vector<uint8_t> relay_buff(dl_limit);
+
+	Reader& reader = *(reader_ptr_res.GetValue());
+	long long& offset = reader.offset_;
+
+	// some constants
+	const std::string& bucket = reader.bucketname_;
+	const std::vector<std::string>& files = reader.filenames_;
+	const size_t nb_files = files.size();
+	const std::vector<long long>& cumul_sizes = reader.cumulativeSize_;
+	const long long to_read = reader.total_size_;
+
+	// start with
+	size_t part = 0;
+
+	while (file_stream && offset < to_read && part < nb_files)
+	{
+		long long curr_offset =
+			(part == 0) ? offset : offset - cumul_sizes[part - 1] + reader.commonHeaderLength_;
+		try
+		{
+			const auto client =
+				BlobClient::CreateFromConnectionString(GetConnectionStringFromEnv(), bucket, files[part]);
+			const size_t read = ReadPart(client, relay_buff, static_cast<int64_t>(curr_offset));
+			file_stream.write(reinterpret_cast<const char*>(relay_buff.data()),
+				static_cast<std::streamsize>(read));
+			offset += static_cast<long long>(read);
+		}
+		catch (const StorageException& e)
+		{
+			LogException("Error while reading from remote file.", e.what());
+			offset = 0;
+			return kFailure;
+		}
+		catch (const std::exception& e)
+		{
+			LogException("Error while copying to local file.", e.what());
+			offset = 0;
+			return kFailure;
+		}
+
+		// is the current part fully read?
+		if (offset == cumul_sizes[part])
+		{
+			part++;
+		}
+	}
+	// did it go wrong?
+	if (!file_stream || offset < to_read)
+	{
+		std::ostringstream oss;
+		if (!file_stream)
+		{
+			oss << "Error while copying data to local file. Writing on local file failed.";
+		}
+		else
+		{
+			oss << "Error while copying data to local file. Data is missing.";
+		}
+		LogError(oss.str());
+		offset = 0;
+		return kFailure;
+	}
+
+	return kSuccess;
+}*/
+
 
 
 
@@ -2001,107 +2125,6 @@ DriverResult<Writer*> RegisterWriter(std::string&& bucket, std::string&& object,
 {
 	return RegisterStream<Writer, WriterMode>(MakeWriterPtr, mode, std::move(bucket), std::move(object),
 						  active_writer_handles);
-}
-
-int driver_copyToLocal(const char* sSourceFilePathName, const char* sDestFilePathName)
-{
-	KH_AZ_CONNECTION_ERROR(kFailure);
-
-	ERROR_ON_NULL_ARG(sSourceFilePathName, kFailure);
-	ERROR_ON_NULL_ARG(sDestFilePathName, kFailure);
-
-	spdlog::debug("copyToLocal {} {}", sSourceFilePathName, sDestFilePathName);
-
-	// try opening the online source file
-	auto name_parsing_result = ParseAzureUri(sSourceFilePathName);
-	ERROR_ON_NAMES(name_parsing_result, kFailure);
-
-	auto& parsed_names = name_parsing_result.GetValue();
-	auto reader_ptr_res =
-	    MakeReaderPtr(std::move(parsed_names.bucket), std::move(parsed_names.object), ReaderMode::kNone);
-	if (!reader_ptr_res)
-	{
-		LogBadResult(reader_ptr_res, "Error while opening remote file.");
-		return kFailure;
-	}
-
-	// open local file
-	std::ofstream file_stream(sDestFilePathName, std::ios::binary);
-	if (!file_stream.is_open())
-	{
-		std::ostringstream oss;
-		oss << "Failed to open local file for writing: " << sDestFilePathName;
-		LogError(oss.str());
-		return kFailure;
-	}
-
-	// limit download to a few MBs at a time.
-	constexpr long long dl_limit{10 * 1024 * 1024};
-	std::vector<uint8_t> relay_buff(dl_limit);
-
-	Reader& reader = *(reader_ptr_res.GetValue());
-	long long& offset = reader.offset_;
-
-	// some constants
-	const std::string& bucket = reader.bucketname_;
-	const std::vector<std::string>& files = reader.filenames_;
-	const size_t nb_files = files.size();
-	const std::vector<long long>& cumul_sizes = reader.cumulativeSize_;
-	const long long to_read = reader.total_size_;
-
-	// start with
-	size_t part = 0;
-
-	while (file_stream && offset < to_read && part < nb_files)
-	{
-		long long curr_offset =
-		    (part == 0) ? offset : offset - cumul_sizes[part - 1] + reader.commonHeaderLength_;
-		try
-		{
-			const auto client =
-			    BlobClient::CreateFromConnectionString(GetConnectionStringFromEnv(), bucket, files[part]);
-			const size_t read = ReadPart(client, relay_buff, static_cast<int64_t>(curr_offset));
-			file_stream.write(reinterpret_cast<const char*>(relay_buff.data()),
-					  static_cast<std::streamsize>(read));
-			offset += static_cast<long long>(read);
-		}
-		catch (const StorageException& e)
-		{
-			LogException("Error while reading from remote file.", e.what());
-			offset = 0;
-			return kFailure;
-		}
-		catch (const std::exception& e)
-		{
-			LogException("Error while copying to local file.", e.what());
-			offset = 0;
-			return kFailure;
-		}
-
-		// is the current part fully read?
-		if (offset == cumul_sizes[part])
-		{
-			part++;
-		}
-	}
-	// did it go wrong?
-	if (!file_stream || offset < to_read)
-	{
-		std::ostringstream oss;
-		if (!file_stream)
-		{
-			oss << "Error while copying data to local file. Writing on local file failed.";
-		}
-		else
-		{
-			oss << "Error while copying data to local file. Data is missing.";
-		}
-		LogError(oss.str());
-		offset = 0;
-		return kFailure;
-	}
-
-	return kSuccess;
 }
 
 int driver_copyFromLocal(const char* sSourceFilePathName, const char* sDestFilePathName)
