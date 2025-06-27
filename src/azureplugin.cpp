@@ -107,7 +107,7 @@ int driver_disconnect()
 	}
 	catch (const exception& exc)
 	{
-		LogException(exc);
+		errorLogger.LogException(exc);
 		return nFailure;
 	}
 }
