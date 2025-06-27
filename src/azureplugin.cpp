@@ -1101,6 +1101,39 @@ long long int driver_fwrite(const void* source, size_t size, size_t count, void*
 	return kBadSize;
 }*/
 
+int driver_fflush(void* handle)
+{
+	spdlog::debug("Flushing file with handle {}", handle);
+	if (!handle)
+	{
+		LogNullArgError(__func__, STRINGIFY(handle));
+		return nFlushFailure;
+	}
+	try
+	{
+		return driver.RetrieveFileStream(handle).Flush();
+	}
+	catch (const exception& exc)
+	{
+		LogException(exc);
+		return nFlushFailure;
+	}
+}
+/*{
+	KH_AZ_CONNECTION_ERROR(-1);
+
+	ERROR_ON_NULL_ARG(stream, -1);
+
+	const auto& writer_ptr_it = FindWriter(stream);
+	if (writer_ptr_it == active_writer_handles.end())
+	{
+		LogError("Cannot identify stream as a writer stream.");
+		return -1;
+	}
+
+	return 0;
+}*/
+
 
 
 
@@ -1825,22 +1858,6 @@ DriverResult<Writer*> RegisterWriter(std::string&& bucket, std::string&& object,
 {
 	return RegisterStream<Writer, WriterMode>(MakeWriterPtr, mode, std::move(bucket), std::move(object),
 						  active_writer_handles);
-}
-
-int driver_fflush(void* stream)
-{
-	KH_AZ_CONNECTION_ERROR(-1);
-
-	ERROR_ON_NULL_ARG(stream, -1);
-
-	const auto& writer_ptr_it = FindWriter(stream);
-	if (writer_ptr_it == active_writer_handles.end())
-	{
-		LogError("Cannot identify stream as a writer stream.");
-		return -1;
-	}
-
-	return 0;
 }
 
 int driver_remove(const char* filename)
