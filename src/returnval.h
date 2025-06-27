@@ -6,4 +6,5 @@ namespace az
 	const int nFailure = 0;
 	const int nTrue = 1;
 	const int nFalse = 0;
+	const int nSizeFailure = -1;
 }

@@ -677,6 +677,25 @@ int driver_dirExists(const char* sUrl)
 	return FileOrDirExists(sUrl);
 }
 
+long long int driver_getFileSize(const char* sUrl)
+{
+	spdlog::debug("Retrieving size of file at URL {}", sUrl);
+	if (!sUrl)
+	{
+		LogNullArgError(__func__, STRINGIFY(sUrl));
+		return nFalse;
+	}
+	try
+	{
+		return driver.CreateFileAccessor(sUrl).GetSize();
+	}
+	catch (const exception& exc)
+	{
+		LogException(exc);
+		return nSizeFailure;
+	}
+}
+
 
 
 
@@ -764,8 +783,7 @@ static int FileOrDirExists(const char* sUrl)
 	}
 	try
 	{
-		auto&& fileAccessor = driver.CreateFileAccessor(sUrl);
-		return fileAccessor.Exists() ? nTrue : nFalse;
+		return driver.CreateFileAccessor(sUrl).Exists() ? nTrue : nFalse;
 	}
 	catch (const exception& exc)
 	{
@@ -1069,19 +1087,6 @@ DriverResult<long long> GetFileSize(const Url& parsed_names)
 	catch (const std::exception& e)
 	{
 		return MakeDriverFailureFromException<long long>(e);
-	}
-}
-
-long long int driver_getFileSize(const char* url)
-{
-	try
-	{
-		auto fileAccessor = driver.CreateFileAccessor(string(url));
-		return fileAccessor.GetSize();
-	}
-	catch (const exception& exc)
-	{
-		return nSizeFailure;
 	}
 }
 
