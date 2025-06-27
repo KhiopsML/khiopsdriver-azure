@@ -125,30 +125,6 @@ template <typename T> struct DriverResult
 	}
 };
 
-#define KH_AZ_CONNECTION_ERROR(err_val)                                                                                \
-	if (kFalse == bIsConnected)                                                                                    \
-	{                                                                                                              \
-		LogError("Error: driver not connected.");                                                              \
-		return (err_val);                                                                                      \
-	}
-
-#define RETURN_STATUS(x) return std::move((x)).status();
-
-#define RETURN_STATUS_ON_ERROR(x)                                                                                      \
-	if (!(x))                                                                                                      \
-	{                                                                                                              \
-		RETURN_STATUS((x));                                                                                    \
-	}
-
-#define ERROR_ON_NULL_ARG(arg, err_val)                                                                                \
-	if (!(arg))                                                                                                    \
-	{                                                                                                              \
-		std::ostringstream oss;                                                                                \
-		oss << "Error passing null pointer to " << __func__;                                                   \
-		LogError(oss.str());                                                                                   \
-		return (err_val);                                                                                      \
-	}
-
 static void LogError(const string& error)
 {
 	sLastError = error;
