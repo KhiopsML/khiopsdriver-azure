@@ -51,7 +51,7 @@ constexpr char* emulated_storage_connection_string =
 	"BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;";
 
 Driver driver;
-string sLastError;
+string sLastError("");
 
 bool is_storage_emulated = false;
 
@@ -1011,6 +1011,17 @@ int driver_fseek(void* handle, long long int offset, int whence)
 	return 0;
 }*/
 
+const char* driver_getlasterror()
+{
+	spdlog::debug("Retrieving last error");
+	const string& sLastError = driver.GetLastError();
+	if (sLastError.empty())
+	{
+		return nullptr;
+	}
+	return sLastError.c_str();
+}
+
 
 
 
@@ -1736,21 +1747,6 @@ DriverResult<Writer*> RegisterWriter(std::string&& bucket, std::string&& object,
 	return RegisterStream<Writer, WriterMode>(MakeWriterPtr, mode, std::move(bucket), std::move(object),
 						  active_writer_handles);
 }
-
-const char* driver_getlasterror()
-{
-	return driver.GetLastError().c_str();
-}
-
-/*{
-	spdlog::debug("getlasterror");
-
-	if (!lastError.empty())
-	{
-		return lastError.c_str();
-	}
-	return NULL;
-}*/
 
 long long int driver_fwrite(const void* ptr, size_t size, size_t count, void* stream)
 {
