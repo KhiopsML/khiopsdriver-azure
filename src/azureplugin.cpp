@@ -36,7 +36,6 @@
 #include "returnval.h"
 
 using namespace std;
-using namespace azureplugin;
 using namespace az;
 
 constexpr char* emulated_storage_connection_string =
