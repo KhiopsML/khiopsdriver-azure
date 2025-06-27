@@ -261,13 +261,6 @@ struct Url {
 	~Url() {}
 };
 
-#define RETURN_IF_EMPTY(object, retval) if ((object).empty()) { return (retval); }
-
-#define RETURN_PATH_FAILURE_IF_EMPTY(object)																				   \
-	RETURN_IF_EMPTY(																										   \
-		(object),																											   \
-		MakeDriverHttpFailure<Url>(Azure::Core::Http::HttpStatusCode::BadRequest, "Invalid emulated storage path"))
-
 // Parses URI in the following forms:
 //  - when accessing a real cloud service:
 //      https://myaccount.blob.core.windows.net/mycontainer/myblob.txt
