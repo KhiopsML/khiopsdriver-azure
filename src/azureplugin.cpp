@@ -39,11 +39,6 @@ using namespace std;
 using namespace azureplugin;
 using namespace az;
 
-constexpr const char* version = DRIVER_VERSION;
-constexpr const char* driver_name = "Azure driver";
-constexpr const char* driver_scheme = "https";
-constexpr long long preferred_buffer_size = 4 * 1024 * 1024;
-
 constexpr char* emulated_storage_connection_string =
 	"DefaultEndpointsProtocol=http;"
 	"AccountName=devstoreaccount1;"
