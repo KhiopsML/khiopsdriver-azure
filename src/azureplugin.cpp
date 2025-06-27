@@ -682,9 +682,10 @@ int driver_isConnected()
 long long int driver_getSystemPreferredBufferSize()
 {
 	spdlog::debug("Retrieving preferred buffer size");
-	return driver.GetSystemPreferredBufferSize();
+	return driver.GetPreferredBufferSize();
 }
 
+#if false
 #define RETURN_ON_ERROR(driver_result, msg, err_val)                                                                   \
 	if (!(driver_result))                                                                                          \
 	{                                                                                                              \
@@ -693,6 +694,7 @@ long long int driver_getSystemPreferredBufferSize()
 	}
 
 #define ERROR_ON_NAMES(names_result, err_val) RETURN_ON_ERROR((names_result), "Error parsing URL", (err_val))
+#endif
 
 Azure::Nullable<size_t> FindPatternSpecialChar(const std::string& pattern)
 {
