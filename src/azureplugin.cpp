@@ -47,22 +47,11 @@ constexpr char* emulated_storage_connection_string =
 Driver driver;
 string sLastError("");
 
-bool is_storage_emulated = false;
-
-std::shared_ptr<ChainedTokenCredential> credential = nullptr;
-
-int bIsConnected = kFalse;
-
 // Add appropriate using namespace directives
 using namespace Azure::Storage;
 using namespace Azure::Storage::Blobs;
 using namespace Azure::Storage::Files::Shares;
 using namespace Azure::Identity;
-
-// Global bucket name
-std::string globalBucketName;
-
-// Last error
 
 StreamVec<Reader> active_reader_handles;
 StreamVec<Writer> active_writer_handles;
