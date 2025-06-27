@@ -728,7 +728,7 @@ int driver_fileExists(const char* uri)
 {
 	try
 	{
-		auto fileAccessor = driver.CreateFileAccessor(string(uri));
+		auto&& fileAccessor = driver.CreateFileAccessor(uri);
 		return fileAccessor.Exists() ? nTrue : nFalse;
 	}
 	catch (const exception& exc)
