@@ -614,6 +614,8 @@ int driver_isReadOnly()
 
 int driver_connect()
 {
+	ConfigureLogLevel();
+
 	spdlog::debug("Connecting");
 	try
 	{
@@ -626,62 +628,36 @@ int driver_connect()
 	}
 }
 
-#if false
+static void ConfigureLogLevel()
 {
-	const std::string loglevel = GetEnvironmentVariableOrDefault("AZURE_DRIVER_LOGLEVEL", "info");
+	const string loglevel = GetEnvironmentVariableOrDefault("AZURE_DRIVER_LOGLEVEL", "info");
 	if (loglevel == "debug")
+	{
 		spdlog::set_level(spdlog::level::debug);
+	}
 	else if (loglevel == "trace")
+	{
 		spdlog::set_level(spdlog::level::trace);
+	}
 	else
+	{
 		spdlog::set_level(spdlog::level::info);
-
-	spdlog::debug("Connect {}", loglevel);
-
-	// Initialize variables from environment.
-	globalBucketName = GetEnvironmentVariableOrDefault("AZURE_BUCKET_NAME", "");
-	is_storage_emulated = IsStorageEmulated();
-
-	if (is_storage_emulated)
-	{
-		spdlog::debug("Using emulated Azure storage.");
-		// Credentials are contained in a connection string so we don't need to use usual TokenCredential classes.
-		// We can test the connection to the emulated storage thanks to the connection string.
-		auto client = BlobServiceClient::CreateFromConnectionString(emulated_storage_connection_string);
-
-		try
-		{
-			client.GetProperties();
-			spdlog::debug("Test connection to emulated storage completed successfully.");
-			return kSuccess;
-		}
-		catch (const std::exception& exc)
-		{
-			LogException("Failed to connect to emulated storage.", exc.what());
-			return kFailure;
-		}
 	}
-	else
-	{
-		spdlog::debug("Using real Azure storage.");
-		// Redefining DefaultAzureCredential chain which does not work.
-		// Chain schema: https://learn.microsoft.com/en-us/azure/developer/cpp/sdk/authentication/credential-chains#defaultazurecredential-overview.
-		credential = std::make_shared<ChainedTokenCredential>(
-			ChainedTokenCredential::Sources{
-				std::make_shared<EnvironmentCredential>(), // for Client ID + Client Secret or Certificate environment variables
-				std::make_shared<WorkloadIdentityCredential>(),
-				std::make_shared<AzureCliCredential>(),
-				std::make_shared<ManagedIdentityCredential>()
-			}
-		);
-
-		// We cannot test the connection because only the URL passed to the other functions will determine the type of service (blob, share...) and the account name.
-	}
-
-	bIsConnected = kTrue;
-	return kSuccess;
 }
-#endif
+
+static shared_ptr<ChainedTokenCredential> BuildChainedTokenCredential()
+{
+	// Redefining DefaultAzureCredential chain which does not work.
+	// Chain schema: https://learn.microsoft.com/en-us/azure/developer/cpp/sdk/authentication/credential-chains#defaultazurecredential-overview.
+	return std::make_shared<ChainedTokenCredential>(
+		ChainedTokenCredential::Sources{
+			std::make_shared<EnvironmentCredential>(), // for Client ID + Client Secret or Certificate environment variables
+			std::make_shared<WorkloadIdentityCredential>(),
+			std::make_shared<AzureCliCredential>(),
+			std::make_shared<ManagedIdentityCredential>()
+		}
+	);
+}
 
 int driver_disconnect()
 {
