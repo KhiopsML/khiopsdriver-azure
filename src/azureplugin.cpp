@@ -1401,6 +1401,110 @@ int driver_copyToLocal(const char* sSourceUrl, const char* sDestUrl)
 	return kSuccess;
 }*/
 
+int driver_copyFromLocal(const char* sSourceUrl, const char* sDestUrl)
+{
+	spdlog::debug("Copying file at URL {} to URL {}", sSourceUrl, sDestUrl);
+	if (!sSourceUrl)
+	{
+		LogNullArgError(__func__, STRINGIFY(sSourceUrl));
+		return nFailure;
+	}
+	if (!sDestUrl)
+	{
+		LogNullArgError(__func__, STRINGIFY(sDestUrl));
+		return nFailure;
+	}
+	try
+	{
+		driver.CreateFileAccessor(sDestUrl).CopyFrom(sSourceUrl);
+		return nSuccess;
+	}
+	catch (const exception& exc)
+	{
+		LogException(exc);
+		return nFailure;
+	}
+}
+/*{
+	KH_AZ_CONNECTION_ERROR(kFailure);
+
+	if (!sSourceFilePathName || !sDestFilePathName)
+	{
+		LogError("Error passing null pointers as arguments to copyFromLocal");
+		return kFailure;
+	}
+
+	spdlog::debug("copyFromLocal {} {}", sSourceFilePathName, sDestFilePathName);
+
+	auto name_parsing_result = ParseAzureUri(sDestFilePathName);
+	ERROR_ON_NAMES(name_parsing_result, kFailure);
+
+	// Open the local file
+	std::ifstream file_stream(sSourceFilePathName, std::ios::binary);
+	if (!file_stream.is_open())
+	{
+		std::ostringstream oss;
+		oss << "Failed to open local file: " << sSourceFilePathName;
+		LogError(oss.str());
+		return kFailure;
+	}
+	// size of file
+	file_stream.seekg(0, std::ios_base::end);
+	const int64_t file_size = static_cast<int64_t>(file_stream.tellg());
+	file_stream.seekg(0);
+
+	// Create a writer stream
+	auto& parsed_names = name_parsing_result.GetValue();
+	auto writer_ptr_res =
+		MakeWriterPtr(std::move(parsed_names.bucket), std::move(parsed_names.object), WriterMode::kWrite);
+	if (!writer_ptr_res)
+	{
+		LogBadResult(writer_ptr_res, "Error while creating writer stream to remote storage.");
+		return kFailure;
+	}
+
+	// append blobs by chunks of 100 MB, limit allowed by Azure
+	const auto& writer = *(writer_ptr_res.GetValue());
+	const AppendBlobClient& append_client = writer.client_;
+
+	constexpr int64_t max_size{ 100 * 1024 * 1024 };
+	std::vector<uint8_t> relay_buffer(static_cast<size_t>(std::min(max_size, file_size)));
+
+	try
+	{
+		// TODO: try to avoid copying to the relay buffer by using RandomAccessFileBodyStream. This requires the file descriptor
+		// of the opened source file.
+
+		for (int64_t remaining = file_size, to_read = std::min(remaining, max_size);
+			to_read > 0 && file_stream.read(reinterpret_cast<char*>(relay_buffer.data()),
+				static_cast<std::streamsize>(to_read));
+				remaining -= to_read, to_read = std::min(remaining, max_size))
+		{
+			Azure::Core::IO::MemoryBodyStream memory_stream(relay_buffer.data(),
+				static_cast<size_t>(to_read));
+			append_client.AppendBlock(memory_stream);
+		}
+		if (!file_stream)
+		{
+			// unexpected short read or error of another kind
+			LogError("Error while reading from local file.");
+			return kFailure;
+		}
+	}
+	catch (const StorageException& e)
+	{
+		LogException("Error while writing to remote storage due to storage error.", e.what());
+		return kFailure;
+	}
+	catch (const std::exception& e)
+	{
+		LogException("Error while writing to remote storage unrelated to storage actions.", e.what());
+		return kFailure;
+	}
+
+	return kSuccess;
+}*/
+
 
 
 
@@ -2125,85 +2229,4 @@ DriverResult<Writer*> RegisterWriter(std::string&& bucket, std::string&& object,
 {
 	return RegisterStream<Writer, WriterMode>(MakeWriterPtr, mode, std::move(bucket), std::move(object),
 						  active_writer_handles);
-}
-
-int driver_copyFromLocal(const char* sSourceFilePathName, const char* sDestFilePathName)
-{
-	KH_AZ_CONNECTION_ERROR(kFailure);
-
-	if (!sSourceFilePathName || !sDestFilePathName)
-	{
-		LogError("Error passing null pointers as arguments to copyFromLocal");
-		return kFailure;
-	}
-
-	spdlog::debug("copyFromLocal {} {}", sSourceFilePathName, sDestFilePathName);
-
-	auto name_parsing_result = ParseAzureUri(sDestFilePathName);
-	ERROR_ON_NAMES(name_parsing_result, kFailure);
-
-	// Open the local file
-	std::ifstream file_stream(sSourceFilePathName, std::ios::binary);
-	if (!file_stream.is_open())
-	{
-		std::ostringstream oss;
-		oss << "Failed to open local file: " << sSourceFilePathName;
-		LogError(oss.str());
-		return kFailure;
-	}
-	// size of file
-	file_stream.seekg(0, std::ios_base::end);
-	const int64_t file_size = static_cast<int64_t>(file_stream.tellg());
-	file_stream.seekg(0);
-
-	// Create a writer stream
-	auto& parsed_names = name_parsing_result.GetValue();
-	auto writer_ptr_res =
-	    MakeWriterPtr(std::move(parsed_names.bucket), std::move(parsed_names.object), WriterMode::kWrite);
-	if (!writer_ptr_res)
-	{
-		LogBadResult(writer_ptr_res, "Error while creating writer stream to remote storage.");
-		return kFailure;
-	}
-
-	// append blobs by chunks of 100 MB, limit allowed by Azure
-	const auto& writer = *(writer_ptr_res.GetValue());
-	const AppendBlobClient& append_client = writer.client_;
-
-	constexpr int64_t max_size{100 * 1024 * 1024};
-	std::vector<uint8_t> relay_buffer(static_cast<size_t>(std::min(max_size, file_size)));
-
-	try
-	{
-		// TODO: try to avoid copying to the relay buffer by using RandomAccessFileBodyStream. This requires the file descriptor
-		// of the opened source file.
-
-		for (int64_t remaining = file_size, to_read = std::min(remaining, max_size);
-		     to_read > 0 && file_stream.read(reinterpret_cast<char*>(relay_buffer.data()),
-						     static_cast<std::streamsize>(to_read));
-		     remaining -= to_read, to_read = std::min(remaining, max_size))
-		{
-			Azure::Core::IO::MemoryBodyStream memory_stream(relay_buffer.data(),
-									static_cast<size_t>(to_read));
-			append_client.AppendBlock(memory_stream);
-		}
-		if (!file_stream)
-		{
-			// unexpected short read or error of another kind
-			LogError("Error while reading from local file.");
-			return kFailure;
-		}
-	}
-	catch (const StorageException& e)
-	{
-		LogException("Error while writing to remote storage due to storage error.", e.what());
-		return kFailure;
-	}
-	catch (const std::exception& e)
-	{
-		LogException("Error while writing to remote storage unrelated to storage actions.", e.what());
-		return kFailure;
-	}
-
-	return kSuccess;
 }
