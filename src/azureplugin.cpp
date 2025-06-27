@@ -588,6 +588,16 @@ DriverResult<BlobItems> FilterList(const std::string& bucket, const std::string&
 	}
 }
 
+
+
+
+
+
+
+
+
+
+
 const char* driver_getDriverName()
 {
 	spdlog::debug("Retrieving driver name");
@@ -628,6 +638,53 @@ int driver_connect()
 	}
 }
 
+int driver_disconnect()
+{
+	spdlog::debug("Disconnecting");
+	try
+	{
+		driver.Disconnect();
+		return nSuccess;
+	}
+	catch (const exception& exc)
+	{
+		LogException(exc);
+		return nFailure;
+	}
+}
+
+int driver_isConnected()
+{
+	spdlog::debug("Retrieving connection state");
+	return driver.IsConnected();
+}
+
+long long int driver_getSystemPreferredBufferSize()
+{
+	spdlog::debug("Retrieving preferred buffer size");
+	return driver.GetPreferredBufferSize();
+}
+
+int driver_fileExists(const char* sUrl)
+{
+	spdlog::debug("Checking if file exists at URL {}", sUrl);
+	return fileOrDirExists(sUrl);
+}
+
+int driver_dirExists(const char* sUrl)
+{
+	spdlog::debug("Checking if directory exists");
+	return fileOrDirExists(sUrl);
+}
+
+
+
+
+
+
+
+
+
 static void ConfigureLogLevel()
 {
 	const string loglevel = GetEnvironmentVariableOrDefault("AZURE_DRIVER_LOGLEVEL", "info");
@@ -657,33 +714,6 @@ static shared_ptr<ChainedTokenCredential> BuildChainedTokenCredential()
 			std::make_shared<ManagedIdentityCredential>()
 		}
 	);
-}
-
-int driver_disconnect()
-{
-	spdlog::debug("Disconnecting");
-	try
-	{
-		driver.Disconnect();
-		return nSuccess;
-	}
-	catch (const exception& exc)
-	{
-		LogException(exc);
-		return nFailure;
-	}
-}
-
-int driver_isConnected()
-{
-	spdlog::debug("Retrieving connection state");
-	return driver.IsConnected();
-}
-
-long long int driver_getSystemPreferredBufferSize()
-{
-	spdlog::debug("Retrieving preferred buffer size");
-	return driver.GetPreferredBufferSize();
 }
 
 #if false
@@ -723,12 +753,6 @@ static Azure::Nullable<size_t> FindPatternSpecialChar(const string& pattern)
 		}
 	}
 	return foundAt != std::string::npos ? foundAt : Azure::Nullable<size_t>{};
-}
-
-int driver_fileExists(const char* sUrl)
-{
-	spdlog::debug("Checking if file exists at URL {}", sUrl);
-	return fileOrDirExists(sUrl);
 }
 
 static int fileOrDirExists(const char* sUrl)
@@ -872,12 +896,6 @@ static int file_FileExists(const char* uri, const FileUrl& parsed_uri) {
 		}
 		return kFalse;
 	}
-}
-
-int driver_dirExists(const char* sUrl)
-{
-	spdlog::debug("Checking if directory exists");
-	return fileOrDirExists(sUrl);
 }
 
 DownloadBlobToOptions MakeDlBlobOptions(int64_t range_start, Azure::Nullable<int64_t> range_length = {})
