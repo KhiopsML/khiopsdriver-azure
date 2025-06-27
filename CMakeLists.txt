@@ -53,7 +53,7 @@ if((CMAKE_SYSTEM_NAME STREQUAL "Linux") AND NOT(CMAKE_BUILD_TYPE STREQUAL "Relea
 	setup_target_for_coverage_cobertura(${PROJECT_NAME}_cobertura basic_test coverage --gtest_output=xml:coverage.junit.xml)
 endif()
 
-add_library(khiopsdriver_file_azure SHARED src/azureplugin.h src/azureplugin_internal.h src/azureplugin.cpp src/driver.h src/driver.cpp src/fileaccessor.h src/fileaccessor.cpp src/blobaccessor.h src/blobaccessor.cpp src/shareaccessor.h src/shareaccessor.cpp src/filestream.h src/filestream.cpp src/util/macro.h src/util/string.h src/util/string.cpp src/exception.h src/returnval.h)
+add_library(khiopsdriver_file_azure SHARED src/azureplugin.h src/azureplugin_internal.h src/azureplugin.cpp src/driver.h src/driver.cpp src/fileaccessor.h src/fileaccessor.cpp src/blobaccessor.h src/blobaccessor.cpp src/shareaccessor.h src/shareaccessor.cpp src/filestream.h src/filestream.cpp src/util/macro.h src/util/string.h src/util/string.cpp src/exception.h src/returnval.h src/errorlogger.h src/errorlogger.cpp)
 
 target_include_directories(khiopsdriver_file_azure PRIVATE src/contrib)
 target_link_options(khiopsdriver_file_azure PRIVATE $<$<CONFIG:RELEASE>:-s>) # stripping

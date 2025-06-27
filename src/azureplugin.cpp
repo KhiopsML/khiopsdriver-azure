@@ -125,22 +125,6 @@ template <typename T> struct DriverResult
 	}
 };
 
-static void LogError(const string& error)
-{
-	sLastError = error;
-	spdlog::error(sLastError);
-}
-
-static void LogNullArgError(const string& funcname, const string& argname)
-{
-	LogError((ostringstream() << "Error passing null pointer as '" << argname << "' argument to function '" << funcname << "'").str());
-}
-
-static void LogException(const exception& exc)
-{
-	LogError(exc.what());
-}
-
 #define LogBadStatus(a, b)
 
 template <typename T> void LogBadResult(const DriverResult<T>& result, const std::string& msg)
