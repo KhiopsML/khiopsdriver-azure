@@ -33,6 +33,7 @@
 
 #include "util/macro.h"
 #include "driver.h"
+#include "returnval.h"
 
 using namespace std;
 using namespace azureplugin;
@@ -617,7 +618,7 @@ int driver_connect()
 	try
 	{
 		driver.Connect();
-		return nSuccess; /// TODO: naming conv
+		return nSuccess;
 	}
 	catch (const exception& exc)
 	{
