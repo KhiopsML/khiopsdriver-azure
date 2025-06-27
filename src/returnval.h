@@ -10,4 +10,6 @@ namespace az
 	const int nCloseSuccess = 0;
 	const int nCloseFailure = -1;
 	const int nReadFailure = -1;
+	const int nSeekSuccess = 0;
+	const int nSeekFailure = -1;
 }

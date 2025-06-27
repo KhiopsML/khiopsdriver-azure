@@ -926,6 +926,91 @@ long long int driver_fread(void* dest, size_t size, size_t count, void* handle)
 	return to_read;
 }*/
 
+int driver_fseek(void* handle, long long int offset, int whence)
+{
+	spdlog::debug("Seeking offset {} from {} in file with handle {}", offset, whence, handle);
+	if (!handle)
+	{
+		LogNullArgError(__func__, STRINGIFY(handle));
+		return nSeekFailure;
+	}
+	try
+	{
+		driver.RetrieveFileStream(handle).Seek(offset, whence);
+		return nSeekSuccess;
+	}
+	catch (const exception& exc)
+	{
+		LogException(exc);
+		return nSeekFailure;
+	}
+}
+/*{
+	KH_AZ_CONNECTION_ERROR(kBadSize);
+
+	ERROR_ON_NULL_ARG(stream, kBadSize);
+
+	spdlog::debug("fseek {} {} {}", stream, offset, whence);
+
+	// confirm stream's presence
+	auto reader_ptr_it = FindReader(stream);
+	if (reader_ptr_it == active_reader_handles.end())
+	{
+		LogError("Cannot identify stream as a reader stream.");
+		return kBadSize;
+	}
+
+	Reader& reader = **reader_ptr_it;
+
+	constexpr long long max_val = std::numeric_limits<long long>::max();
+
+	tOffset computed_offset{0};
+
+	switch (whence)
+	{
+	case std::ios::beg:
+		computed_offset = offset;
+		break;
+	case std::ios::cur:
+		if (offset > max_val - reader.offset_)
+		{
+			LogError("Signed overflow prevented");
+			return kBadSize;
+		}
+		computed_offset = reader.offset_ + offset;
+		break;
+	case std::ios::end:
+		if (reader.total_size_ > 0)
+		{
+			long long minus1 = reader.total_size_ - 1;
+			if (offset > max_val - minus1)
+			{
+				LogError("Signed overflow prevented");
+				return kBadSize;
+			}
+		}
+		if ((offset == std::numeric_limits<long long>::min()) && (reader.total_size_ == 0))
+		{
+			LogError("Signed overflow prevented");
+			return kBadSize;
+		}
+
+		computed_offset = (reader.total_size_ == 0) ? offset : reader.total_size_ - 1 + offset;
+		break;
+	default:
+		LogError("Invalid seek mode " + std::to_string(whence));
+		return kBadSize;
+	}
+
+	if (computed_offset < 0)
+	{
+		LogError("Invalid seek offset " + std::to_string(computed_offset));
+		return kBadSize;
+	}
+	reader.offset_ = computed_offset;
+	return 0;
+}*/
+
 
 
 
@@ -1651,85 +1736,6 @@ DriverResult<Writer*> RegisterWriter(std::string&& bucket, std::string&& object,
 	return RegisterStream<Writer, WriterMode>(MakeWriterPtr, mode, std::move(bucket), std::move(object),
 						  active_writer_handles);
 }
-
-int driver_fseek(void* stream, long long int offset, int whence)
-{
-	try
-	{
-		driver.RetrieveFileStream(handle).Seek(offset, whence);
-		return nSeekSuccess;
-	}
-	catch (const exception& exc)
-	{
-		return nSeekFailure;
-	}
-}
-
-/*{
-	KH_AZ_CONNECTION_ERROR(kBadSize);
-
-	ERROR_ON_NULL_ARG(stream, kBadSize);
-
-	spdlog::debug("fseek {} {} {}", stream, offset, whence);
-
-	// confirm stream's presence
-	auto reader_ptr_it = FindReader(stream);
-	if (reader_ptr_it == active_reader_handles.end())
-	{
-		LogError("Cannot identify stream as a reader stream.");
-		return kBadSize;
-	}
-
-	Reader& reader = **reader_ptr_it;
-
-	constexpr long long max_val = std::numeric_limits<long long>::max();
-
-	tOffset computed_offset{0};
-
-	switch (whence)
-	{
-	case std::ios::beg:
-		computed_offset = offset;
-		break;
-	case std::ios::cur:
-		if (offset > max_val - reader.offset_)
-		{
-			LogError("Signed overflow prevented");
-			return kBadSize;
-		}
-		computed_offset = reader.offset_ + offset;
-		break;
-	case std::ios::end:
-		if (reader.total_size_ > 0)
-		{
-			long long minus1 = reader.total_size_ - 1;
-			if (offset > max_val - minus1)
-			{
-				LogError("Signed overflow prevented");
-				return kBadSize;
-			}
-		}
-		if ((offset == std::numeric_limits<long long>::min()) && (reader.total_size_ == 0))
-		{
-			LogError("Signed overflow prevented");
-			return kBadSize;
-		}
-
-		computed_offset = (reader.total_size_ == 0) ? offset : reader.total_size_ - 1 + offset;
-		break;
-	default:
-		LogError("Invalid seek mode " + std::to_string(whence));
-		return kBadSize;
-	}
-
-	if (computed_offset < 0)
-	{
-		LogError("Invalid seek offset " + std::to_string(computed_offset));
-		return kBadSize;
-	}
-	reader.offset_ = computed_offset;
-	return 0;
-}*/
 
 const char* driver_getlasterror()
 {
