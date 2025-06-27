@@ -14,4 +14,5 @@ namespace az
 	const int nSeekFailure = -1;
 	const int nWriteFailure = -1;
 	const int nFlushFailure = -1;
+	const int nFreeDiskSpaceFailure = -1;
 }

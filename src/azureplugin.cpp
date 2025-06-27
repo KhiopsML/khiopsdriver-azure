@@ -1194,7 +1194,7 @@ int driver_remove(const char* sUrl)
 
 int driver_mkdir(const char* sUrl)
 {
-	spdlog::debug("Creating directory at URL{}", sUrl);
+	spdlog::debug("Creating directory at URL {}", sUrl);
 	if (!sUrl)
 	{
 		LogNullArgError(__func__, STRINGIFY(sUrl));
@@ -1222,7 +1222,7 @@ int driver_mkdir(const char* sUrl)
 
 int driver_rmdir(const char* sUrl)
 {
-	spdlog::debug("Creating directory at URL{}", sUrl);
+	spdlog::debug("Removing directory at URL {}", sUrl);
 	if (!sUrl)
 	{
 		LogNullArgError(__func__, STRINGIFY(sUrl));
@@ -1247,6 +1247,34 @@ int driver_rmdir(const char* sUrl)
 	assert(driver_isConnected());
 	spdlog::debug("Remove dir (does nothing...)");
 	return kSuccess;
+}*/
+
+long long int driver_diskFreeSpace(const char* sUrl)
+{
+	spdlog::debug("Retrieving free disk space at URL {}", sUrl);
+	if (!sUrl)
+	{
+		LogNullArgError(__func__, STRINGIFY(sUrl));
+		return nFreeDiskSpaceFailure;
+	}
+	try
+	{
+		return driver.CreateFileAccessor(sUrl).GetFreeDiskSpace();
+	}
+	catch (const exception& exc)
+	{
+		LogException(exc);
+		return nFreeDiskSpaceFailure;
+	}
+}
+/*{
+	ERROR_ON_NULL_ARG(filename, kFailure);
+
+	spdlog::debug("diskFreeSpace {}", filename);
+
+	assert(driver_isConnected());
+	constexpr long long free_space{ 5LL * 1024LL * 1024LL * 1024LL * 1024LL };
+	return free_space;
 }*/
 
 
@@ -1973,17 +2001,6 @@ DriverResult<Writer*> RegisterWriter(std::string&& bucket, std::string&& object,
 {
 	return RegisterStream<Writer, WriterMode>(MakeWriterPtr, mode, std::move(bucket), std::move(object),
 						  active_writer_handles);
-}
-
-long long int driver_diskFreeSpace(const char* filename)
-{
-	ERROR_ON_NULL_ARG(filename, kFailure);
-
-	spdlog::debug("diskFreeSpace {}", filename);
-
-	assert(driver_isConnected());
-	constexpr long long free_space{5LL * 1024LL * 1024LL * 1024LL * 1024LL};
-	return free_space;
 }
 
 int driver_copyToLocal(const char* sSourceFilePathName, const char* sDestFilePathName)
