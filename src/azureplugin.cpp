@@ -665,7 +665,7 @@ int driver_disconnect()
 	try
 	{
 		driver.Disconnect();
-		return nSuccess; /// TODO: naming conv
+		return nSuccess;
 	}
 	catch (const exception& exc)
 	{
