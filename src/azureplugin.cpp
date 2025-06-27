@@ -669,6 +669,7 @@ int driver_disconnect()
 	}
 	catch (const exception& exc)
 	{
+		LogException(exc);
 		return nFailure;
 	}
 }
