@@ -9,4 +9,5 @@ namespace az
 	const int nSizeFailure = -1;
 	const int nCloseSuccess = 0;
 	const int nCloseFailure = -1;
+	const int nReadFailure = -1;
 }

@@ -828,6 +828,104 @@ int driver_fclose(void* handle)
 	return kCloseEOF;
 }*/
 
+long long int driver_fread(void* dest, size_t size, size_t count, void* handle)
+{
+	spdlog::debug("Reading {}*{} bytes from file with handle {} to {}", size, count, handle, dest);
+	if (!dest)
+	{
+		LogNullArgError(__func__, STRINGIFY(dest));
+		return nReadFailure;
+	}
+	if (!handle)
+	{
+		LogNullArgError(__func__, STRINGIFY(handle));
+		return nReadFailure;
+	}
+	try
+	{
+		return driver.RetrieveFileStream(handle).Read(dest, size, count);
+	}
+	catch (const exception& exc)
+	{
+		LogException(exc);
+		return nReadFailure;
+	}
+}
+/*{
+	KH_AZ_CONNECTION_ERROR(kBadSize);
+
+	ERROR_ON_NULL_ARG(stream, kBadSize);
+	ERROR_ON_NULL_ARG(ptr, kBadSize);
+
+	if (0 == size)
+	{
+		LogError("Error passing size of 0");
+		return kBadSize;
+	}
+
+	spdlog::debug("fread {} {} {} {}", ptr, size, count, stream);
+
+	// confirm stream's presence
+	const auto& reader_ptr_it = FindReader(stream);
+	if (reader_ptr_it == active_reader_handles.end())
+	{
+		LogError("Cannot identify stream as a reader stream.");
+		return kBadSize;
+	}
+
+	// fast exit for 0 read
+	if (0 == count)
+	{
+		return 0;
+	}
+
+	// prevent overflow
+	if (WillSizeCountProductOverflow(size, count))
+	{
+		LogError("product size * count is too large, would overflow");
+		return kBadSize;
+	}
+	tOffset to_read{ static_cast<tOffset>(size * count) };
+
+	Reader& reader = **reader_ptr_it;
+	const tOffset offset = reader.offset_;
+	if (offset > std::numeric_limits<long long>::max() - to_read)
+	{
+		LogError("signed overflow prevented on reading attempt");
+		return kBadSize;
+	}
+	// end of overflow prevention
+
+	// special case: if offset >= total_size, error if not 0 byte required. 0 byte required is already done above
+	const tOffset total_size = reader.total_size_;
+	if (offset >= total_size)
+	{
+		LogError("Error trying to read more bytes while already out of bounds");
+		return kBadSize;
+	}
+
+	// normal cases
+	if (offset + to_read > total_size)
+	{
+		to_read = total_size - offset;
+		spdlog::debug("offset {}, req len {} exceeds file size ({}) -> reducing len to {}", offset, to_read,
+			total_size, to_read);
+	}
+	else
+	{
+		spdlog::debug("offset = {} to_read = {}", offset, to_read);
+	}
+
+	const auto read_res = ReadBytesInFile(reader, reinterpret_cast<unsigned char*>(ptr), to_read);
+	if (!read_res)
+	{
+		LogBadResult(read_res, "Error while reading from file.");
+		return kBadSize;
+	}
+
+	return to_read;
+}*/
+
 
 
 
@@ -1647,82 +1745,6 @@ const char* driver_getlasterror()
 	}
 	return NULL;
 }*/
-
-long long int driver_fread(void* ptr, size_t size, size_t count, void* stream)
-{
-	KH_AZ_CONNECTION_ERROR(kBadSize);
-
-	ERROR_ON_NULL_ARG(stream, kBadSize);
-	ERROR_ON_NULL_ARG(ptr, kBadSize);
-
-	if (0 == size)
-	{
-		LogError("Error passing size of 0");
-		return kBadSize;
-	}
-
-	spdlog::debug("fread {} {} {} {}", ptr, size, count, stream);
-
-	// confirm stream's presence
-	const auto& reader_ptr_it = FindReader(stream);
-	if (reader_ptr_it == active_reader_handles.end())
-	{
-		LogError("Cannot identify stream as a reader stream.");
-		return kBadSize;
-	}
-
-	// fast exit for 0 read
-	if (0 == count)
-	{
-		return 0;
-	}
-
-	// prevent overflow
-	if (WillSizeCountProductOverflow(size, count))
-	{
-		LogError("product size * count is too large, would overflow");
-		return kBadSize;
-	}
-	tOffset to_read{static_cast<tOffset>(size * count)};
-
-	Reader& reader = **reader_ptr_it;
-	const tOffset offset = reader.offset_;
-	if (offset > std::numeric_limits<long long>::max() - to_read)
-	{
-		LogError("signed overflow prevented on reading attempt");
-		return kBadSize;
-	}
-	// end of overflow prevention
-
-	// special case: if offset >= total_size, error if not 0 byte required. 0 byte required is already done above
-	const tOffset total_size = reader.total_size_;
-	if (offset >= total_size)
-	{
-		LogError("Error trying to read more bytes while already out of bounds");
-		return kBadSize;
-	}
-
-	// normal cases
-	if (offset + to_read > total_size)
-	{
-		to_read = total_size - offset;
-		spdlog::debug("offset {}, req len {} exceeds file size ({}) -> reducing len to {}", offset, to_read,
-			      total_size, to_read);
-	}
-	else
-	{
-		spdlog::debug("offset = {} to_read = {}", offset, to_read);
-	}
-
-	const auto read_res = ReadBytesInFile(reader, reinterpret_cast<unsigned char*>(ptr), to_read);
-	if (!read_res)
-	{
-		LogBadResult(read_res, "Error while reading from file.");
-		return kBadSize;
-	}
-
-	return to_read;
-}
 
 long long int driver_fwrite(const void* ptr, size_t size, size_t count, void* stream)
 {
