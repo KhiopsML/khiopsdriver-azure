@@ -1202,7 +1202,8 @@ int driver_mkdir(const char* sUrl)
 	}
 	try
 	{
-		return driver.CreateFileAccessor(sUrl).MkDir();
+		driver.CreateFileAccessor(sUrl).MkDir();
+		return nSuccess;
 	}
 	catch (const exception& exc)
 	{
@@ -1216,6 +1217,35 @@ int driver_mkdir(const char* sUrl)
 	spdlog::debug("mkdir {}", filename);
 
 	assert(driver_isConnected());
+	return kSuccess;
+}*/
+
+int driver_rmdir(const char* sUrl)
+{
+	spdlog::debug("Creating directory at URL{}", sUrl);
+	if (!sUrl)
+	{
+		LogNullArgError(__func__, STRINGIFY(sUrl));
+		return nFailure;
+	}
+	try
+	{
+		driver.CreateFileAccessor(sUrl).RmDir();
+		return nSuccess;
+	}
+	catch (const exception& exc)
+	{
+		LogException(exc);
+		return nFailure;
+	}
+}
+/*{
+	ERROR_ON_NULL_ARG(filename, kFailure);
+
+	spdlog::debug("rmdir {}", filename);
+
+	assert(driver_isConnected());
+	spdlog::debug("Remove dir (does nothing...)");
 	return kSuccess;
 }*/
 
@@ -1943,17 +1973,6 @@ DriverResult<Writer*> RegisterWriter(std::string&& bucket, std::string&& object,
 {
 	return RegisterStream<Writer, WriterMode>(MakeWriterPtr, mode, std::move(bucket), std::move(object),
 						  active_writer_handles);
-}
-
-int driver_rmdir(const char* filename)
-{
-	ERROR_ON_NULL_ARG(filename, kFailure);
-
-	spdlog::debug("rmdir {}", filename);
-
-	assert(driver_isConnected());
-	spdlog::debug("Remove dir (does nothing...)");
-	return kSuccess;
 }
 
 long long int driver_diskFreeSpace(const char* filename)
