@@ -668,13 +668,13 @@ long long int driver_getSystemPreferredBufferSize()
 int driver_fileExists(const char* sUrl)
 {
 	spdlog::debug("Checking if file exists at URL {}", sUrl);
-	return fileOrDirExists(sUrl);
+	return FileOrDirExists(sUrl);
 }
 
 int driver_dirExists(const char* sUrl)
 {
 	spdlog::debug("Checking if directory exists");
-	return fileOrDirExists(sUrl);
+	return FileOrDirExists(sUrl);
 }
 
 
@@ -755,7 +755,7 @@ static Azure::Nullable<size_t> FindPatternSpecialChar(const string& pattern)
 	return foundAt != std::string::npos ? foundAt : Azure::Nullable<size_t>{};
 }
 
-static int fileOrDirExists(const char* sUrl)
+static int FileOrDirExists(const char* sUrl)
 {
 	if (!sUrl)
 	{
