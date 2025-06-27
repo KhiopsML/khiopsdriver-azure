@@ -34,6 +34,7 @@
 #include "util/macro.h"
 #include "driver.h"
 #include "returnval.h"
+#include "errorlogger.h"
 
 using namespace std;
 using namespace az;
@@ -44,8 +45,9 @@ constexpr char* emulated_storage_connection_string =
 	"AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;"
 	"BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;";
 
+
 Driver driver;
-string sLastError("");
+ErrorLogger errorLogger;
 
 // Add appropriate using namespace directives
 using namespace Azure::Storage;
