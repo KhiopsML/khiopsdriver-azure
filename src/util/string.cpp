@@ -1,5 +1,6 @@
 #include "string.h"
 #include <sstream>
+#include <algorithm>
 
 namespace az
 {
@@ -22,5 +23,12 @@ namespace az
 		size_t strLen = str.length();
 		size_t suffixLen = str.length();
 		return suffixLen <= strLen && !str.compare(strLen - suffixLen, suffixLen, suffix);
+	}
+
+	inline string&& ToLower(const string& str)
+	{
+		string lower(str.length(), '\0');
+		transform(str.begin(), str.end(), lower.begin(), tolower);
+		return move(lower);
 	}
 }

@@ -35,6 +35,7 @@
 #include "driver.h"
 #include "returnval.h"
 #include "errorlogger.h"
+#include "logging.h"
 
 using namespace std;
 using namespace az;
@@ -1291,40 +1292,6 @@ DriverResult<Url> GetServiceBucketAndObjectNames(const char* sFilePathName)
 	return maybe_parse_res;
 }
 
-std::string ToLower(const std::string& str)
-{
-	std::string low{str};
-	const size_t cnt = low.length();
-	for (size_t i = 0; i < cnt; i++)
-	{
-		low[i] = static_cast<char>(std::tolower(
-		    static_cast<unsigned char>(low[i]))); // see https://en.cppreference.com/w/cpp/string/byte/tolower
-	}
-	return low;
-}
-
-std::string GetEnvironmentVariableOrDefault(const std::string& variable_name, const std::string& default_value)
-{
-	char* value = std::getenv(variable_name.c_str());
-
-	if (value && std::strlen(value) > 0)
-	{
-		return value;
-	}
-
-	const std::string low_key = ToLower(variable_name);
-	if (low_key.find("token") || low_key.find("password") || low_key.find("key") || low_key.find("secret"))
-	{
-		spdlog::debug("No {} specified, using **REDACTED** as default.", variable_name);
-	}
-	else
-	{
-		spdlog::debug("No {} specified, using '{}' as default.", variable_name, default_value);
-	}
-
-	return default_value;
-}
-
 bool IsStorageEmulated()
 {
 	const char false_value[] = "false";
@@ -1440,23 +1407,6 @@ DriverResult<BlobItems> FilterList(const std::string& bucket, const std::string&
 	catch (const std::exception& e)
 	{
 		return MakeDriverFailureFromException<value_t>(e);
-	}
-}
-
-static void ConfigureLogLevel()
-{
-	const string loglevel = GetEnvironmentVariableOrDefault("AZURE_DRIVER_LOGLEVEL", "info");
-	if (loglevel == "debug")
-	{
-		spdlog::set_level(spdlog::level::debug);
-	}
-	else if (loglevel == "trace")
-	{
-		spdlog::set_level(spdlog::level::trace);
-	}
-	else
-	{
-		spdlog::set_level(spdlog::level::info);
 	}
 }
 
