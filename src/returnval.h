@@ -4,4 +4,6 @@ namespace az
 {
 	const int nSuccess = 1;
 	const int nFailure = 0;
+	const int nTrue = 1;
+	const int nFalse = 0;
 }
