@@ -1134,6 +1134,61 @@ int driver_fflush(void* handle)
 	return 0;
 }*/
 
+int driver_remove(const char* sUrl)
+{
+	spdlog::debug("Removing file at URL {}", sUrl);
+	if (!sUrl)
+	{
+		LogNullArgError(__func__, STRINGIFY(sUrl));
+		return nFailure;
+	}
+	try
+	{
+		return driver.CreateFileAccessor(sUrl).Remove();
+	}
+	catch (const exception& exc)
+	{
+		LogException(exc);
+		return nFailure;
+	}
+}
+/*{
+	KH_AZ_CONNECTION_ERROR(kFailure);
+
+	ERROR_ON_NULL_ARG(filename, kFailure);
+
+	spdlog::debug("remove {}", filename);
+
+	const auto name_parsing_result = ParseAzureUri(filename);
+	ERROR_ON_NAMES(name_parsing_result, kFailure);
+	const auto& names = name_parsing_result.GetValue();
+
+	spdlog::info("Deleting blob: {}.", names.object);
+
+	// Create the blob client and send the delete request
+	const BlobClient blob_client =
+		BlobClient::CreateFromConnectionString(GetConnectionStringFromEnv(), names.bucket, names.object);
+	try
+	{
+		const auto delete_res = blob_client.DeleteIfExists();
+		if (!delete_res.Value.Deleted)
+		{
+			spdlog::info("The blob didn't exist.");
+		}
+		return kSuccess;
+	}
+	catch (const StorageException& e)
+	{
+		LogException("Error while deleting blob.", e.what());
+		return kFailure;
+	}
+	catch (const std::exception& e)
+	{
+		LogException("Error while deleting blob, unrelated to a Storage error.", e.what());
+		return kFailure;
+	}
+}*/
+
 
 
 
@@ -1858,44 +1913,6 @@ DriverResult<Writer*> RegisterWriter(std::string&& bucket, std::string&& object,
 {
 	return RegisterStream<Writer, WriterMode>(MakeWriterPtr, mode, std::move(bucket), std::move(object),
 						  active_writer_handles);
-}
-
-int driver_remove(const char* filename)
-{
-	KH_AZ_CONNECTION_ERROR(kFailure);
-
-	ERROR_ON_NULL_ARG(filename, kFailure);
-
-	spdlog::debug("remove {}", filename);
-
-	const auto name_parsing_result = ParseAzureUri(filename);
-	ERROR_ON_NAMES(name_parsing_result, kFailure);
-	const auto& names = name_parsing_result.GetValue();
-
-	spdlog::info("Deleting blob: {}.", names.object);
-
-	// Create the blob client and send the delete request
-	const BlobClient blob_client =
-	    BlobClient::CreateFromConnectionString(GetConnectionStringFromEnv(), names.bucket, names.object);
-	try
-	{
-		const auto delete_res = blob_client.DeleteIfExists();
-		if (!delete_res.Value.Deleted)
-		{
-			spdlog::info("The blob didn't exist.");
-		}
-		return kSuccess;
-	}
-	catch (const StorageException& e)
-	{
-		LogException("Error while deleting blob.", e.what());
-		return kFailure;
-	}
-	catch (const std::exception& e)
-	{
-		LogException("Error while deleting blob, unrelated to a Storage error.", e.what());
-		return kFailure;
-	}
 }
 
 int driver_rmdir(const char* filename)
