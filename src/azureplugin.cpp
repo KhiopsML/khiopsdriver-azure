@@ -724,15 +724,27 @@ static Azure::Nullable<size_t> FindPatternSpecialChar(const string& pattern)
 	return foundAt != std::string::npos ? foundAt : Azure::Nullable<size_t>{};
 }
 
-int driver_fileExists(const char* uri)
+int driver_fileExists(const char* sUrl)
 {
+	spdlog::debug("Checking if file exists at URL {}", sUrl);
+	return fileOrDirExists(sUrl);
+}
+
+static int fileOrDirExists(const char* sUrl)
+{
+	if (!sUrl)
+	{
+		LogNullArgError(__func__, STRINGIFY(sUrl));
+		return nFalse;
+	}
 	try
 	{
-		auto&& fileAccessor = driver.CreateFileAccessor(uri);
+		auto&& fileAccessor = driver.CreateFileAccessor(sUrl);
 		return fileAccessor.Exists() ? nTrue : nFalse;
 	}
 	catch (const exception& exc)
 	{
+		LogException(exc);
 		return nFalse;
 	}
 }
@@ -864,21 +876,7 @@ static int file_FileExists(const char* uri, const FileUrl& parsed_uri) {
 int driver_dirExists(const char* sUrl)
 {
 	spdlog::debug("Checking if directory exists");
-	if (!sUrl)
-	{
-		LogNullArgError(__func__, STRINGIFY(sUrl));
-		return nFalse;
-	}
-	try
-	{
-		auto&& fileAccessor = driver.CreateFileAccessor(sUrl);
-		return fileAccessor.Exists() ? nTrue : nFalse;
-	}
-	catch (const exception& exc)
-	{
-		LogException(exc);
-		return nFalse;
-	}
+	return fileOrDirExists(sUrl);
 }
 
 DownloadBlobToOptions MakeDlBlobOptions(int64_t range_start, Azure::Nullable<int64_t> range_length = {})
