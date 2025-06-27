@@ -1022,6 +1022,85 @@ const char* driver_getlasterror()
 	return sLastError.c_str();
 }
 
+long long int driver_fwrite(const void* source, size_t size, size_t count, void* handle)
+{
+	spdlog::debug("Writing {}*{} bytes from {} to file with handle {}", size, count, source, handle);
+	if (!source)
+	{
+		LogNullArgError(__func__, STRINGIFY(source));
+		return nWriteFailure;
+	}
+	if (!handle)
+	{
+		LogNullArgError(__func__, STRINGIFY(handle));
+		return nWriteFailure;
+	}
+	try
+	{
+		return driver.RetrieveFileStream(handle).Write(source, size, count);
+	}
+	catch (const exception& exc)
+	{
+		LogException(exc);
+		return nWriteFailure;
+	}
+}
+/*{
+	KH_AZ_CONNECTION_ERROR(kBadSize);
+
+	ERROR_ON_NULL_ARG(stream, kBadSize);
+	ERROR_ON_NULL_ARG(ptr, kBadSize);
+
+	if (0 == size)
+	{
+		LogError("Error passing size 0 to fwrite");
+		return kBadSize;
+	}
+
+	spdlog::debug("fwrite {} {} {} {}", ptr, size, count, stream);
+
+	const auto& writer_ptr_it = FindWriter(stream);
+	if (writer_ptr_it == active_writer_handles.end())
+	{
+		LogError("Cannot identify stream as a writer stream.");
+		return kBadSize;
+	}
+
+	// fast exit for 0
+	if (0 == count)
+	{
+		return 0;
+	}
+
+	// prevent integer overflow
+	if (WillSizeCountProductOverflow(size, count))
+	{
+		LogError("Error on write: product size * count is too large, would overflow");
+		return kBadSize;
+	}
+
+	// stage a block containing the data from the buffer
+	auto& writer = **writer_ptr_it;
+	const size_t to_write = size * count;
+	Azure::Core::IO::MemoryBodyStream streambuf(reinterpret_cast<const uint8_t*>(ptr), to_write);
+
+	try
+	{
+		writer.client_.AppendBlock(streambuf);
+		return static_cast<long long>(to_write);
+	}
+	catch (const StorageException& e)
+	{
+		LogException("Error while writing data.", e.what());
+	}
+	catch (const std::exception& e)
+	{
+		LogException("Error while writing data.", e.what());
+	}
+
+	return kBadSize;
+}*/
+
 
 
 
@@ -1746,63 +1825,6 @@ DriverResult<Writer*> RegisterWriter(std::string&& bucket, std::string&& object,
 {
 	return RegisterStream<Writer, WriterMode>(MakeWriterPtr, mode, std::move(bucket), std::move(object),
 						  active_writer_handles);
-}
-
-long long int driver_fwrite(const void* ptr, size_t size, size_t count, void* stream)
-{
-	KH_AZ_CONNECTION_ERROR(kBadSize);
-
-	ERROR_ON_NULL_ARG(stream, kBadSize);
-	ERROR_ON_NULL_ARG(ptr, kBadSize);
-
-	if (0 == size)
-	{
-		LogError("Error passing size 0 to fwrite");
-		return kBadSize;
-	}
-
-	spdlog::debug("fwrite {} {} {} {}", ptr, size, count, stream);
-
-	const auto& writer_ptr_it = FindWriter(stream);
-	if (writer_ptr_it == active_writer_handles.end())
-	{
-		LogError("Cannot identify stream as a writer stream.");
-		return kBadSize;
-	}
-
-	// fast exit for 0
-	if (0 == count)
-	{
-		return 0;
-	}
-
-	// prevent integer overflow
-	if (WillSizeCountProductOverflow(size, count))
-	{
-		LogError("Error on write: product size * count is too large, would overflow");
-		return kBadSize;
-	}
-
-	// stage a block containing the data from the buffer
-	auto& writer = **writer_ptr_it;
-	const size_t to_write = size * count;
-	Azure::Core::IO::MemoryBodyStream streambuf(reinterpret_cast<const uint8_t*>(ptr), to_write);
-
-	try
-	{
-		writer.client_.AppendBlock(streambuf);
-		return static_cast<long long>(to_write);
-	}
-	catch (const StorageException& e)
-	{
-		LogException("Error while writing data.", e.what());
-	}
-	catch (const std::exception& e)
-	{
-		LogException("Error while writing data.", e.what());
-	}
-
-	return kBadSize;
 }
 
 int driver_fflush(void* stream)
