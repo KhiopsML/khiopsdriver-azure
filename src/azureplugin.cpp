@@ -901,15 +901,6 @@ int driver_dirExists(const char* sUrl)
 		return nFalse;
 	}
 }
-/*{
-
-	KH_AZ_CONNECTION_ERROR(kFalse);
-
-	ERROR_ON_NULL_ARG(sFilePathName, kFalse);
-
-	spdlog::debug("dirExist {}", sFilePathName);
-	return kTrue;
-}*/
 
 DownloadBlobToOptions MakeDlBlobOptions(int64_t range_start, Azure::Nullable<int64_t> range_length = {})
 {
