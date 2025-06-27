@@ -1144,7 +1144,8 @@ int driver_remove(const char* sUrl)
 	}
 	try
 	{
-		return driver.CreateFileAccessor(sUrl).Remove();
+		driver.CreateFileAccessor(sUrl).Remove();
+		return nSuccess;
 	}
 	catch (const exception& exc)
 	{
@@ -1187,6 +1188,35 @@ int driver_remove(const char* sUrl)
 		LogException("Error while deleting blob, unrelated to a Storage error.", e.what());
 		return kFailure;
 	}
+}*/
+
+
+
+int driver_mkdir(const char* sUrl)
+{
+	spdlog::debug("Creating directory at URL{}", sUrl);
+	if (!sUrl)
+	{
+		LogNullArgError(__func__, STRINGIFY(sUrl));
+		return nFailure;
+	}
+	try
+	{
+		return driver.CreateFileAccessor(sUrl).MkDir();
+	}
+	catch (const exception& exc)
+	{
+		LogException(exc);
+		return nFailure;
+	}
+}
+/*{
+	ERROR_ON_NULL_ARG(filename, kFailure);
+
+	spdlog::debug("mkdir {}", filename);
+
+	assert(driver_isConnected());
+	return kSuccess;
 }*/
 
 
@@ -1923,16 +1953,6 @@ int driver_rmdir(const char* filename)
 
 	assert(driver_isConnected());
 	spdlog::debug("Remove dir (does nothing...)");
-	return kSuccess;
-}
-
-int driver_mkdir(const char* filename)
-{
-	ERROR_ON_NULL_ARG(filename, kFailure);
-
-	spdlog::debug("mkdir {}", filename);
-
-	assert(driver_isConnected());
 	return kSuccess;
 }
 
