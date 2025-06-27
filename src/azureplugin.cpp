@@ -696,24 +696,24 @@ long long int driver_getSystemPreferredBufferSize()
 #define ERROR_ON_NAMES(names_result, err_val) RETURN_ON_ERROR((names_result), "Error parsing URL", (err_val))
 #endif
 
-Azure::Nullable<size_t> FindPatternSpecialChar(const std::string& pattern)
+static Azure::Nullable<size_t> FindPatternSpecialChar(const string& pattern)
 {
 	spdlog::debug("Parse multifile pattern {}", pattern);
 
-	constexpr auto special_chars = "*?![^";
+	constexpr auto sSpecialChars = "*?![^";
 
-	size_t from_offset = 0;
-	size_t found_at = pattern.find_first_of(special_chars, from_offset);
-	while (found_at != std::string::npos)
+	size_t offset = 0;
+	size_t foundAt = pattern.find_first_of(sSpecialChars, offset);
+	while (foundAt != string::npos)
 	{
-		const char found = pattern[found_at];
-		spdlog::debug("special char {} found at {}", found, found_at);
+		const char found = pattern[foundAt];
+		spdlog::debug("Special char {} found at {}", found, foundAt);
 
-		if (found_at > 0 && pattern[found_at - 1] == '\\')
+		if (foundAt > 0 && pattern[foundAt - 1] == '\\')
 		{
-			spdlog::debug("preceded by a \\, so not so special");
-			from_offset = found_at + 1;
-			found_at = pattern.find_first_of(special_chars, from_offset);
+			spdlog::debug("Special char escaped");
+			offset = foundAt + 1;
+			foundAt = pattern.find_first_of(sSpecialChars, offset);
 		}
 		else
 		{
@@ -721,7 +721,7 @@ Azure::Nullable<size_t> FindPatternSpecialChar(const std::string& pattern)
 			break;
 		}
 	}
-	return found_at != std::string::npos ? found_at : Azure::Nullable<size_t>{};
+	return foundAt != std::string::npos ? foundAt : Azure::Nullable<size_t>{};
 }
 
 int driver_fileExists(const char* uri)
