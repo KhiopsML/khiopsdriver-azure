@@ -696,6 +696,95 @@ long long int driver_getFileSize(const char* sUrl)
 	}
 }
 
+void* driver_fopen(const char* sUrl, char mode)
+{
+	spdlog::debug("Opening file at URL {} in mode {}", sUrl, mode);
+	if (!sUrl)
+	{
+		LogNullArgError(__func__, STRINGIFY(sUrl));
+		return nFalse;
+	}
+	try
+	{
+		return driver.CreateFileAccessor(sUrl).Open(mode);
+	}
+	catch (const exception& exc)
+	{
+		LogException(exc);
+		return nullptr;
+	}
+}
+/*{
+	KH_AZ_CONNECTION_ERROR(nullptr);
+
+	ERROR_ON_NULL_ARG(filename, nullptr);
+
+	spdlog::debug("fopen {} {}", filename, mode);
+
+	auto name_parsing_result = ParseAzureUri(filename);
+	ERROR_ON_NAMES(name_parsing_result, nullptr);
+
+	auto& parsed_names = name_parsing_result.GetValue();
+
+	switch (mode)
+	{
+	case 'r':
+	{
+		auto register_res = RegisterReader(std::move(parsed_names.bucket), std::move(parsed_names.object));
+		if (!register_res)
+		{
+			LogBadResult(register_res, "Error while opening reader stream.");
+			return nullptr;
+		}
+		return register_res.GetValue();
+	}
+	case 'w':
+	{
+		auto register_res =
+			RegisterWriter(std::move(parsed_names.bucket), std::move(parsed_names.object), WriterMode::kWrite);
+		if (!register_res)
+		{
+			LogBadResult(register_res, "Error while opening writer stream.");
+			return nullptr;
+		}
+		return register_res.GetValue();
+	}
+	case 'a':
+	{
+		std::string target = std::move(parsed_names.object);
+		// determine if object is a multifile
+		const auto pattern_1st_sp_char_pos = FindPatternSpecialChar(target);
+		if (pattern_1st_sp_char_pos)
+		{
+			// filter the present blobs and pick the last file as target
+			const auto container_client = BlobContainerClient::CreateFromConnectionString(
+				GetConnectionStringFromEnv(), parsed_names.bucket);
+			auto filter_res = FilterList(parsed_names.bucket, target, *pattern_1st_sp_char_pos);
+			if (!filter_res)
+			{
+				LogBadResult(filter_res, "Error while opening stream in append mode.");
+				return nullptr;
+			}
+			target = std::move(filter_res.GetValue().back().Name);
+		}
+
+		// open the stream
+		auto register_res =
+			RegisterWriter(std::move(parsed_names.bucket), std::move(target), WriterMode::kAppend);
+		if (!register_res)
+		{
+			LogBadResult(register_res, "Error while opening stream in append mode.");
+			return nullptr;
+		}
+		return register_res.GetValue();
+	}
+	default:
+		LogError("Invalid open mode: " + mode);
+		return nullptr;
+	}
+}*/
+
+
 
 
 
@@ -1420,88 +1509,6 @@ DriverResult<Writer*> RegisterWriter(std::string&& bucket, std::string&& object,
 	return RegisterStream<Writer, WriterMode>(MakeWriterPtr, mode, std::move(bucket), std::move(object),
 						  active_writer_handles);
 }
-
-void* driver_fopen(const char* filename, char mode)
-{
-	try
-	{
-		auto fileAccessor = driver.CreateFileAccessor(string(uri));
-		return fileAccessor.Open(mode);
-	}
-	catch (const exception& exc)
-	{
-		nFailure;
-	}
-}
-/*{
-	KH_AZ_CONNECTION_ERROR(nullptr);
-
-	ERROR_ON_NULL_ARG(filename, nullptr);
-
-	spdlog::debug("fopen {} {}", filename, mode);
-
-	auto name_parsing_result = ParseAzureUri(filename);
-	ERROR_ON_NAMES(name_parsing_result, nullptr);
-
-	auto& parsed_names = name_parsing_result.GetValue();
-
-	switch (mode)
-	{
-	case 'r':
-	{
-		auto register_res = RegisterReader(std::move(parsed_names.bucket), std::move(parsed_names.object));
-		if (!register_res)
-		{
-			LogBadResult(register_res, "Error while opening reader stream.");
-			return nullptr;
-		}
-		return register_res.GetValue();
-	}
-	case 'w':
-	{
-		auto register_res =
-		    RegisterWriter(std::move(parsed_names.bucket), std::move(parsed_names.object), WriterMode::kWrite);
-		if (!register_res)
-		{
-			LogBadResult(register_res, "Error while opening writer stream.");
-			return nullptr;
-		}
-		return register_res.GetValue();
-	}
-	case 'a':
-	{
-		std::string target = std::move(parsed_names.object);
-		// determine if object is a multifile
-		const auto pattern_1st_sp_char_pos = FindPatternSpecialChar(target);
-		if (pattern_1st_sp_char_pos)
-		{
-			// filter the present blobs and pick the last file as target
-			const auto container_client = BlobContainerClient::CreateFromConnectionString(
-			    GetConnectionStringFromEnv(), parsed_names.bucket);
-			auto filter_res = FilterList(parsed_names.bucket, target, *pattern_1st_sp_char_pos);
-			if (!filter_res)
-			{
-				LogBadResult(filter_res, "Error while opening stream in append mode.");
-				return nullptr;
-			}
-			target = std::move(filter_res.GetValue().back().Name);
-		}
-
-		// open the stream
-		auto register_res =
-		    RegisterWriter(std::move(parsed_names.bucket), std::move(target), WriterMode::kAppend);
-		if (!register_res)
-		{
-			LogBadResult(register_res, "Error while opening stream in append mode.");
-			return nullptr;
-		}
-		return register_res.GetValue();
-	}
-	default:
-		LogError("Invalid open mode: " + mode);
-		return nullptr;
-	}
-}*/
 
 int driver_fclose(void* handle)
 {
