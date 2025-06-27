@@ -57,484 +57,6 @@ using namespace Azure::Identity;
 StreamVec<Reader> active_reader_handles;
 StreamVec<Writer> active_writer_handles;
 
-enum class Service
-{
-	UNKNOWN,
-	BLOB,
-	SHARE
-};
-
-static bool is_supported_service(Service service)
-{
-	return service == Service::BLOB || service == Service::SHARE;
-}
-
-template <typename T> struct DriverResult
-{
-	Azure::Response<T> response_;
-	bool success_{false};
-
-	DriverResult() : response_{{}, nullptr} // Azure::Response only has an explicit contructor
-	{
-	}
-
-	explicit DriverResult(Azure::Response<T>&& response, bool success)
-	    : response_{std::move(response)}, success_{success}
-	{
-	}
-
-	template <typename U> DriverResult<U> ConvertFailureTo()
-	{
-		DriverResult<U> to;
-		to.response_.RawResponse = std::move(response_.RawResponse);
-		return to;
-	}
-
-	const T& GetValue() const
-	{
-		return response_.Value;
-	}
-
-	T& GetValue()
-	{
-		return response_.Value;
-	}
-
-	T&& TakeValue()
-	{
-		return std::move(response_.Value);
-	}
-
-	const decltype(response_.RawResponse)& GetRawResponse() const
-	{
-		return response_.RawResponse;
-	}
-
-	Azure::Core::Http::HttpStatusCode GetStatusCode() const
-	{
-		return GetRawResponse()->GetStatusCode();
-	}
-
-	const std::string& GetReasonPhrase() const
-	{
-		return GetRawResponse()->GetReasonPhrase();
-	}
-
-	explicit operator bool() const
-	{
-		return success_;
-	}
-};
-
-#define LogBadStatus(a, b)
-
-template <typename T> void LogBadResult(const DriverResult<T>& result, const std::string& msg)
-{
-	std::ostringstream oss;
-	oss << msg << ": " << result.GetReasonPhrase();
-	LogError(oss.str());
-}
-
-template <typename Stream> StreamIt<Stream> FindHandle(void* h, StreamVec<Stream>& handles)
-{
-	return std::find_if(handles.begin(), handles.end(),
-			    [h](const StreamPtr<Stream>& act_h_ptr)
-			    { return h == static_cast<void*>(act_h_ptr.get()); });
-}
-
-StreamIt<Reader> FindReader(void* h)
-{
-	return FindHandle<Reader>(h, active_reader_handles);
-}
-
-StreamIt<Writer> FindWriter(void* h)
-{
-	return FindHandle<Writer>(h, active_writer_handles);
-}
-
-template <typename Stream> void EraseRemove(StreamIt<Stream> pos, StreamVec<Stream>& handles)
-{
-	*pos = std::move(handles.back());
-	handles.pop_back();
-}
-
-std::unique_ptr<Azure::Core::Http::RawResponse> MakeRawHttpResponsePtr(Azure::Core::Http::HttpStatusCode code,
-								       const std::string& reason)
-{
-	return std::unique_ptr<Azure::Core::Http::RawResponse>(new Azure::Core::Http::RawResponse(1, 0, code, reason));
-}
-
-template <typename T>
-DriverResult<T> MakeDriverHttpFailure(Azure::Core::Http::HttpStatusCode code, const std::string& reason)
-{
-	return DriverResult<T>{Azure::Response<T>(T{}, MakeRawHttpResponsePtr(code, reason)), false};
-}
-
-template <typename T> DriverResult<T> MakeDriverFailureFromException(const Azure::Storage::StorageException& e)
-{
-	return MakeDriverHttpFailure<T>(e.StatusCode, e.ReasonPhrase);
-}
-
-template <typename T> DriverResult<T> MakeDriverFailureFromException(const std::exception& e)
-{
-	return MakeDriverHttpFailure<T>(Azure::Core::Http::HttpStatusCode::None, e.what());
-}
-
-template <typename T> DriverResult<T> MakeDriverSuccess(T value)
-{
-	return DriverResult<T>{Azure::Response<T>(std::move(value), nullptr), true};
-}
-
-static bool ends_with(const std::string& str, const std::string& suffix)
-{
-	size_t str_len = str.length();
-	size_t suffix_len = str.length();
-	return suffix_len <= str_len && !str.compare(str_len - suffix_len, suffix_len, suffix);
-}
-
-struct BlobUrl {
-	std::string host;
-	std::string account;
-	std::string container;
-	std::string object;
-};
-
-struct FileUrl {
-	std::string host;
-	std::string account;
-	std::string share;
-	std::string path;
-	std::list<std::string> path_segments;
-};
-
-struct Url {
-	Service service;
-	union {
-		BlobUrl blobUrl;
-		FileUrl fileUrl;
-	};
-
-	Url(Service service, const BlobUrl& blobUrl): service(service), blobUrl(blobUrl) {}
-	Url(Service service, BlobUrl&& blobUrl): service(service), blobUrl(blobUrl) {}
-	Url(Service service, const FileUrl& fileUrl): service(service), fileUrl(fileUrl) {}
-	Url(Service service, FileUrl&& fileUrl): service(service), fileUrl(fileUrl) {}
-	Url(const Url& source):
-		service(source.service)
-	{
-		if (source.service == Service::BLOB) {
-			this->blobUrl = source.blobUrl;
-		}
-		if (source.service == Service::SHARE) {
-			this->fileUrl = source.fileUrl;
-		}
-	}
-	Url(Url&& source):
-		service(std::move(source.service))
-	{
-		if (source.service == Service::BLOB) {
-			this->blobUrl = std::move(source.blobUrl);
-		}
-		if (source.service == Service::SHARE) {
-			this->fileUrl = std::move(source.fileUrl);
-		}
-	}
-	Url& operator=(const Url& source) {
-		this->service = source.service;
-		if (source.service == Service::BLOB) {
-			this->blobUrl = source.blobUrl;
-		}
-		if (source.service == Service::SHARE) {
-			this->fileUrl = source.fileUrl;
-		}
-		return *this;
-	}
-	Url& operator=(Url&& source) {
-		this->service = std::move(source.service);
-		if (source.service == Service::BLOB) {
-			this->blobUrl = std::move(source.blobUrl);
-		}
-		if (source.service == Service::SHARE) {
-			this->fileUrl = std::move(source.fileUrl);
-		}
-		return *this;
-	}
-	~Url() {}
-};
-
-// Parses URI in the following forms:
-//  - when accessing a real cloud service:
-//      https://myaccount.blob.core.windows.net/mycontainer/myblob.txt
-//  - when a storage emulator like Azurite is used, the URI will have a different form:
-//    http[s]://127.0.0.1:10000/myaccount/mycontainer/myblob.txt
-// Note: file service URIs e.g. https://myaccount.file.core.windows.net/myshare/myfolder/myfile.txt
-//       are not supported by Azurite.
-static DriverResult<Url> ParseAzureUri(const std::string& azure_uri)
-{
-	const std::string emulated_domain = "127.0.0.1";
-	const std::string blob_domain = ".blob.core.windows.net";
-	const std::string file_domain = ".file.core.windows.net";
-
-	const Azure::Core::Url parsed_uri(azure_uri);
-	const std::string& scheme = parsed_uri.GetScheme();
-	const std::string& host = parsed_uri.GetHost();
-	const uint16_t port = parsed_uri.GetPort();
-	const std::string& path = parsed_uri.GetPath();
-	const char path_delim = '/';
-
-	if (scheme != "https" && scheme != "http") {
-		return MakeDriverHttpFailure<Url>(Azure::Core::Http::HttpStatusCode::BadRequest, "Invalid URI scheme");
-	}
-	if (is_storage_emulated) {
-		if (host != emulated_domain) {
-			return MakeDriverHttpFailure<Url>(Azure::Core::Http::HttpStatusCode::BadRequest, "Invalid emulated storage host");
-		}
-		if (port != 10000) {
-			return MakeDriverHttpFailure<Url>(Azure::Core::Http::HttpStatusCode::BadRequest, "Invalid emulated storage port");
-		}
-		std::string account, container, object;
-		std::istringstream path_iss(path);
-		/// TODO: Make a function with the following code
-		std::getline(path_iss, account, path_delim);
-		RETURN_PATH_FAILURE_IF_EMPTY(account);
-		std::getline(path_iss, container, path_delim);
-		RETURN_PATH_FAILURE_IF_EMPTY(container);
-		std::getline(path_iss, object, path_delim);
-		RETURN_PATH_FAILURE_IF_EMPTY(object);
-		return MakeDriverSuccess<Url>(std::move(Url { Service::BLOB, std::move(BlobUrl { host, account, container, object }) }));
-	}
-	else { // real Azure storage
-		if (ends_with(host, blob_domain)) {
-			std::string account = host.substr(0, host.length() - blob_domain.length());
-			std::string container, object;
-			std::istringstream path_iss(path);
-			std::getline(path_iss, container, path_delim);
-			RETURN_PATH_FAILURE_IF_EMPTY(container);
-			std::getline(path_iss, object, path_delim);
-			RETURN_PATH_FAILURE_IF_EMPTY(object);
-			return MakeDriverSuccess<Url>(std::move(Url {
-				Service::BLOB, std::move(BlobUrl { host, account, container, object }) 
-			}));
-		} else if (ends_with(host, file_domain)) {
-			std::string account = host.substr(0, host.length() - blob_domain.length());
-			std::string share;
-			std::string filepath;
-			std::list<std::string> filepath_segments;
-			std::istringstream path_iss(path);
-			std::getline(path_iss, share, path_delim);
-			RETURN_PATH_FAILURE_IF_EMPTY(share);
-			filepath = path_iss.str();
-			RETURN_PATH_FAILURE_IF_EMPTY(filepath);
-			for (std::string segment;;) {
-				std::getline(path_iss, segment, path_delim);
-				if (segment.empty()) {
-					break;
-				}
-				filepath_segments.push_back(std::move(segment));
-			}
-			return MakeDriverSuccess<Url>(std::move(Url {
-				Service::SHARE, std::move(FileUrl { host, account, share, filepath, filepath_segments})
-			}));
-		} else { // Neither blob nor file service!
-			return MakeDriverHttpFailure<Url>(Azure::Core::Http::HttpStatusCode::BadRequest, "Invalid domain");
-		}
-	}
-}
-
-DriverResult<Url> GetServiceBucketAndObjectNames(const char* sFilePathName)
-{
-	auto maybe_parse_res = ParseAzureUri(sFilePathName);
-
-	if (maybe_parse_res)
-	{
-		const Url& val = maybe_parse_res.GetValue();
-		spdlog::debug("Bucket: {}, Object: {}", val.bucket, val.object);
-	}
-
-	// std::cout << "Bucket: " << val.bucket << ", Object: " << val.object << "\n";
-	/*
-    if (!maybe_parse_res)
-    {
-        return maybe_parse_res;
-    }
-
-    // fallback to default bucket if bucket empty
-    if (maybe_parse_res->bucket.empty())
-    {
-        if (globalBucketName.empty())
-        {
-            maybe_parse_res = gc::Status{gc::StatusCode::kInternal, "No bucket specified and GCS_BUCKET_NAME is not set!"};
-        }
-        else
-        {
-            maybe_parse_res->bucket = globalBucketName;
-        }
-    }
-    */
-	return maybe_parse_res;
-}
-
-std::string ToLower(const std::string& str)
-{
-	std::string low{str};
-	const size_t cnt = low.length();
-	for (size_t i = 0; i < cnt; i++)
-	{
-		low[i] = static_cast<char>(std::tolower(
-		    static_cast<unsigned char>(low[i]))); // see https://en.cppreference.com/w/cpp/string/byte/tolower
-	}
-	return low;
-}
-
-std::string GetEnvironmentVariableOrDefault(const std::string& variable_name, const std::string& default_value)
-{
-	char* value = std::getenv(variable_name.c_str());
-
-	if (value && std::strlen(value) > 0)
-	{
-		return value;
-	}
-
-	const std::string low_key = ToLower(variable_name);
-	if (low_key.find("token") || low_key.find("password") || low_key.find("key") || low_key.find("secret"))
-	{
-		spdlog::debug("No {} specified, using **REDACTED** as default.", variable_name);
-	}
-	else
-	{
-		spdlog::debug("No {} specified, using '{}' as default.", variable_name, default_value);
-	}
-
-	return default_value;
-}
-
-bool IsStorageEmulated()
-{
-	const char false_value[] = "false";
-	char* connstr = std::getenv("AZURE_EMULATED_STORAGE");
-	return connstr && strnicmp(connstr, false_value, sizeof(false_value) - 1);
-}
-
-template <typename ServiceClientType> ServiceClientType&& GetServiceClient(const std::string& service_url)
-{
-	return std::move(ServiceClientType(service_url, credential));
-}
-
-template <typename ServiceClientType> ServiceClientType&& GetServiceClient(const char* service_url)
-{
-	return GetServiceClient(std::string(service_url));
-}
-
-bool WillSizeCountProductOverflow(size_t size, size_t count)
-{
-	constexpr size_t max_prod_usable{static_cast<size_t>(std::numeric_limits<tOffset>::max())};
-	return (max_prod_usable / size < count || max_prod_usable / count < size);
-}
-
-/*
-// pre condition: stream is of a writing type. do not call otherwise.
-gc::Status CloseWriterStream(Handle &stream)
-{
-    gc::StatusOr<gcs::ObjectMetadata> maybe_meta;
-    std::ostringstream err_msg_os;
-
-    // close the stream to flush all remaining bytes in the put area
-    auto &writer = stream.GetWriter().writer_;
-    writer.Close();
-    maybe_meta = writer.metadata();
-    if (!maybe_meta)
-    {
-        err_msg_os << "Error during upload";
-    }
-    else if (HandleType::kAppend == stream.type)
-    {
-        // the tmp file is valid and ready for composition with the source
-        const auto &writer_h = stream.GetWriter();
-        const std::string &bucket = writer_h.bucketname_;
-        const std::string &append_source = writer_h.filename_;
-        const std::string &dest = writer_h.append_target_;
-        std::vector<gcs::ComposeSourceObject> source_objects = {{dest, {}, {}}, {append_source, {}, {}}};
-        maybe_meta = client.ComposeObject(bucket, std::move(source_objects), dest);
-
-        // whatever happened, delete the tmp file
-        gc::Status delete_status = client.DeleteObject(bucket, append_source);
-
-        // TODO: what to do with an error on Delete?
-        (void)delete_status;
-
-        // if composition failed, nothing is written, the source did not change. signal it
-        if (!maybe_meta)
-        {
-            err_msg_os << "Error while uploading the data to append";
-        }
-    }
-
-    if (maybe_meta)
-    {
-        return {};
-    }
-
-    const gc::Status &status = maybe_meta.status();
-    err_msg_os << ": " << maybe_meta.status().message();
-    return gc::Status{status.code(), err_msg_os.str()};
-}
-*/
-// Implementation of driver functions
-
-// Get from a container a list of blobs matching a name pattern.
-// To get a limited list of blobs to filter per request, the request includes a well defined
-// prefix contained in the pattern
-using BlobItems = std::vector<Azure::Storage::Blobs::Models::BlobItem>;
-DriverResult<BlobItems> FilterList(const std::string& bucket, const std::string& pattern,
-				   size_t pattern_1st_sp_char_pos)
-{
-	using value_t = BlobItems;
-
-	std::vector<Azure::Storage::Blobs::Models::BlobItem> res;
-
-	auto container_client = GetServiceClient<BlobServiceClient>().GetBlobContainerClient(bucket);
-	ListBlobsOptions options;
-	options.Prefix = pattern.substr(0, pattern_1st_sp_char_pos);
-	try
-	{
-		for (auto blobs_page = container_client.ListBlobs(options); blobs_page.HasPage();
-		     blobs_page.MoveToNextPage())
-		{
-			// filter blobs by match with pattern
-			for (auto& item : blobs_page.Blobs)
-			{
-				if (!item.IsDeleted && utils::gitignore_glob_match(item.Name, pattern))
-				{
-					res.emplace_back(std::move(item));
-				}
-			}
-		}
-		if (res.empty())
-		{
-			return MakeDriverHttpFailure<value_t>(Azure::Core::Http::HttpStatusCode::NotFound,
-							      "No blob matching pattern in container.");
-		}
-		return MakeDriverSuccess<value_t>(std::move(res));
-	}
-	catch (const Azure::Storage::StorageException& e)
-	{
-		return MakeDriverFailureFromException<value_t>(e);
-	}
-	catch (const std::exception& e)
-	{
-		return MakeDriverFailureFromException<value_t>(e);
-	}
-}
-
-
-
-
-
-
-
-
-
-
-
 const char* driver_getDriverName()
 {
 	spdlog::debug("Retrieving driver name");
@@ -1450,6 +972,476 @@ int driver_copyFromLocal(const char* sSourceUrl, const char* sDestUrl)
 
 
 
+
+
+
+enum class Service
+{
+	UNKNOWN,
+	BLOB,
+	SHARE
+};
+
+static bool is_supported_service(Service service)
+{
+	return service == Service::BLOB || service == Service::SHARE;
+}
+
+template <typename T> struct DriverResult
+{
+	Azure::Response<T> response_;
+	bool success_{false};
+
+	DriverResult() : response_{{}, nullptr} // Azure::Response only has an explicit contructor
+	{
+	}
+
+	explicit DriverResult(Azure::Response<T>&& response, bool success)
+	    : response_{std::move(response)}, success_{success}
+	{
+	}
+
+	template <typename U> DriverResult<U> ConvertFailureTo()
+	{
+		DriverResult<U> to;
+		to.response_.RawResponse = std::move(response_.RawResponse);
+		return to;
+	}
+
+	const T& GetValue() const
+	{
+		return response_.Value;
+	}
+
+	T& GetValue()
+	{
+		return response_.Value;
+	}
+
+	T&& TakeValue()
+	{
+		return std::move(response_.Value);
+	}
+
+	const decltype(response_.RawResponse)& GetRawResponse() const
+	{
+		return response_.RawResponse;
+	}
+
+	Azure::Core::Http::HttpStatusCode GetStatusCode() const
+	{
+		return GetRawResponse()->GetStatusCode();
+	}
+
+	const std::string& GetReasonPhrase() const
+	{
+		return GetRawResponse()->GetReasonPhrase();
+	}
+
+	explicit operator bool() const
+	{
+		return success_;
+	}
+};
+
+#define LogBadStatus(a, b)
+
+template <typename T> void LogBadResult(const DriverResult<T>& result, const std::string& msg)
+{
+	std::ostringstream oss;
+	oss << msg << ": " << result.GetReasonPhrase();
+	LogError(oss.str());
+}
+
+template <typename Stream> StreamIt<Stream> FindHandle(void* h, StreamVec<Stream>& handles)
+{
+	return std::find_if(handles.begin(), handles.end(),
+			    [h](const StreamPtr<Stream>& act_h_ptr)
+			    { return h == static_cast<void*>(act_h_ptr.get()); });
+}
+
+StreamIt<Reader> FindReader(void* h)
+{
+	return FindHandle<Reader>(h, active_reader_handles);
+}
+
+StreamIt<Writer> FindWriter(void* h)
+{
+	return FindHandle<Writer>(h, active_writer_handles);
+}
+
+template <typename Stream> void EraseRemove(StreamIt<Stream> pos, StreamVec<Stream>& handles)
+{
+	*pos = std::move(handles.back());
+	handles.pop_back();
+}
+
+std::unique_ptr<Azure::Core::Http::RawResponse> MakeRawHttpResponsePtr(Azure::Core::Http::HttpStatusCode code,
+								       const std::string& reason)
+{
+	return std::unique_ptr<Azure::Core::Http::RawResponse>(new Azure::Core::Http::RawResponse(1, 0, code, reason));
+}
+
+template <typename T>
+DriverResult<T> MakeDriverHttpFailure(Azure::Core::Http::HttpStatusCode code, const std::string& reason)
+{
+	return DriverResult<T>{Azure::Response<T>(T{}, MakeRawHttpResponsePtr(code, reason)), false};
+}
+
+template <typename T> DriverResult<T> MakeDriverFailureFromException(const Azure::Storage::StorageException& e)
+{
+	return MakeDriverHttpFailure<T>(e.StatusCode, e.ReasonPhrase);
+}
+
+template <typename T> DriverResult<T> MakeDriverFailureFromException(const std::exception& e)
+{
+	return MakeDriverHttpFailure<T>(Azure::Core::Http::HttpStatusCode::None, e.what());
+}
+
+template <typename T> DriverResult<T> MakeDriverSuccess(T value)
+{
+	return DriverResult<T>{Azure::Response<T>(std::move(value), nullptr), true};
+}
+
+static bool ends_with(const std::string& str, const std::string& suffix)
+{
+	size_t str_len = str.length();
+	size_t suffix_len = str.length();
+	return suffix_len <= str_len && !str.compare(str_len - suffix_len, suffix_len, suffix);
+}
+
+struct BlobUrl {
+	std::string host;
+	std::string account;
+	std::string container;
+	std::string object;
+};
+
+struct FileUrl {
+	std::string host;
+	std::string account;
+	std::string share;
+	std::string path;
+	std::list<std::string> path_segments;
+};
+
+struct Url {
+	Service service;
+	union {
+		BlobUrl blobUrl;
+		FileUrl fileUrl;
+	};
+
+	Url(Service service, const BlobUrl& blobUrl): service(service), blobUrl(blobUrl) {}
+	Url(Service service, BlobUrl&& blobUrl): service(service), blobUrl(blobUrl) {}
+	Url(Service service, const FileUrl& fileUrl): service(service), fileUrl(fileUrl) {}
+	Url(Service service, FileUrl&& fileUrl): service(service), fileUrl(fileUrl) {}
+	Url(const Url& source):
+		service(source.service)
+	{
+		if (source.service == Service::BLOB) {
+			this->blobUrl = source.blobUrl;
+		}
+		if (source.service == Service::SHARE) {
+			this->fileUrl = source.fileUrl;
+		}
+	}
+	Url(Url&& source):
+		service(std::move(source.service))
+	{
+		if (source.service == Service::BLOB) {
+			this->blobUrl = std::move(source.blobUrl);
+		}
+		if (source.service == Service::SHARE) {
+			this->fileUrl = std::move(source.fileUrl);
+		}
+	}
+	Url& operator=(const Url& source) {
+		this->service = source.service;
+		if (source.service == Service::BLOB) {
+			this->blobUrl = source.blobUrl;
+		}
+		if (source.service == Service::SHARE) {
+			this->fileUrl = source.fileUrl;
+		}
+		return *this;
+	}
+	Url& operator=(Url&& source) {
+		this->service = std::move(source.service);
+		if (source.service == Service::BLOB) {
+			this->blobUrl = std::move(source.blobUrl);
+		}
+		if (source.service == Service::SHARE) {
+			this->fileUrl = std::move(source.fileUrl);
+		}
+		return *this;
+	}
+	~Url() {}
+};
+
+// Parses URI in the following forms:
+//  - when accessing a real cloud service:
+//      https://myaccount.blob.core.windows.net/mycontainer/myblob.txt
+//  - when a storage emulator like Azurite is used, the URI will have a different form:
+//    http[s]://127.0.0.1:10000/myaccount/mycontainer/myblob.txt
+// Note: file service URIs e.g. https://myaccount.file.core.windows.net/myshare/myfolder/myfile.txt
+//       are not supported by Azurite.
+static DriverResult<Url> ParseAzureUri(const std::string& azure_uri)
+{
+	const std::string emulated_domain = "127.0.0.1";
+	const std::string blob_domain = ".blob.core.windows.net";
+	const std::string file_domain = ".file.core.windows.net";
+
+	const Azure::Core::Url parsed_uri(azure_uri);
+	const std::string& scheme = parsed_uri.GetScheme();
+	const std::string& host = parsed_uri.GetHost();
+	const uint16_t port = parsed_uri.GetPort();
+	const std::string& path = parsed_uri.GetPath();
+	const char path_delim = '/';
+
+	if (scheme != "https" && scheme != "http") {
+		return MakeDriverHttpFailure<Url>(Azure::Core::Http::HttpStatusCode::BadRequest, "Invalid URI scheme");
+	}
+	if (is_storage_emulated) {
+		if (host != emulated_domain) {
+			return MakeDriverHttpFailure<Url>(Azure::Core::Http::HttpStatusCode::BadRequest, "Invalid emulated storage host");
+		}
+		if (port != 10000) {
+			return MakeDriverHttpFailure<Url>(Azure::Core::Http::HttpStatusCode::BadRequest, "Invalid emulated storage port");
+		}
+		std::string account, container, object;
+		std::istringstream path_iss(path);
+		/// TODO: Make a function with the following code
+		std::getline(path_iss, account, path_delim);
+		RETURN_PATH_FAILURE_IF_EMPTY(account);
+		std::getline(path_iss, container, path_delim);
+		RETURN_PATH_FAILURE_IF_EMPTY(container);
+		std::getline(path_iss, object, path_delim);
+		RETURN_PATH_FAILURE_IF_EMPTY(object);
+		return MakeDriverSuccess<Url>(std::move(Url { Service::BLOB, std::move(BlobUrl { host, account, container, object }) }));
+	}
+	else { // real Azure storage
+		if (ends_with(host, blob_domain)) {
+			std::string account = host.substr(0, host.length() - blob_domain.length());
+			std::string container, object;
+			std::istringstream path_iss(path);
+			std::getline(path_iss, container, path_delim);
+			RETURN_PATH_FAILURE_IF_EMPTY(container);
+			std::getline(path_iss, object, path_delim);
+			RETURN_PATH_FAILURE_IF_EMPTY(object);
+			return MakeDriverSuccess<Url>(std::move(Url {
+				Service::BLOB, std::move(BlobUrl { host, account, container, object }) 
+			}));
+		} else if (ends_with(host, file_domain)) {
+			std::string account = host.substr(0, host.length() - blob_domain.length());
+			std::string share;
+			std::string filepath;
+			std::list<std::string> filepath_segments;
+			std::istringstream path_iss(path);
+			std::getline(path_iss, share, path_delim);
+			RETURN_PATH_FAILURE_IF_EMPTY(share);
+			filepath = path_iss.str();
+			RETURN_PATH_FAILURE_IF_EMPTY(filepath);
+			for (std::string segment;;) {
+				std::getline(path_iss, segment, path_delim);
+				if (segment.empty()) {
+					break;
+				}
+				filepath_segments.push_back(std::move(segment));
+			}
+			return MakeDriverSuccess<Url>(std::move(Url {
+				Service::SHARE, std::move(FileUrl { host, account, share, filepath, filepath_segments})
+			}));
+		} else { // Neither blob nor file service!
+			return MakeDriverHttpFailure<Url>(Azure::Core::Http::HttpStatusCode::BadRequest, "Invalid domain");
+		}
+	}
+}
+
+DriverResult<Url> GetServiceBucketAndObjectNames(const char* sFilePathName)
+{
+	auto maybe_parse_res = ParseAzureUri(sFilePathName);
+
+	if (maybe_parse_res)
+	{
+		const Url& val = maybe_parse_res.GetValue();
+		spdlog::debug("Bucket: {}, Object: {}", val.bucket, val.object);
+	}
+
+	// std::cout << "Bucket: " << val.bucket << ", Object: " << val.object << "\n";
+	/*
+    if (!maybe_parse_res)
+    {
+        return maybe_parse_res;
+    }
+
+    // fallback to default bucket if bucket empty
+    if (maybe_parse_res->bucket.empty())
+    {
+        if (globalBucketName.empty())
+        {
+            maybe_parse_res = gc::Status{gc::StatusCode::kInternal, "No bucket specified and GCS_BUCKET_NAME is not set!"};
+        }
+        else
+        {
+            maybe_parse_res->bucket = globalBucketName;
+        }
+    }
+    */
+	return maybe_parse_res;
+}
+
+std::string ToLower(const std::string& str)
+{
+	std::string low{str};
+	const size_t cnt = low.length();
+	for (size_t i = 0; i < cnt; i++)
+	{
+		low[i] = static_cast<char>(std::tolower(
+		    static_cast<unsigned char>(low[i]))); // see https://en.cppreference.com/w/cpp/string/byte/tolower
+	}
+	return low;
+}
+
+std::string GetEnvironmentVariableOrDefault(const std::string& variable_name, const std::string& default_value)
+{
+	char* value = std::getenv(variable_name.c_str());
+
+	if (value && std::strlen(value) > 0)
+	{
+		return value;
+	}
+
+	const std::string low_key = ToLower(variable_name);
+	if (low_key.find("token") || low_key.find("password") || low_key.find("key") || low_key.find("secret"))
+	{
+		spdlog::debug("No {} specified, using **REDACTED** as default.", variable_name);
+	}
+	else
+	{
+		spdlog::debug("No {} specified, using '{}' as default.", variable_name, default_value);
+	}
+
+	return default_value;
+}
+
+bool IsStorageEmulated()
+{
+	const char false_value[] = "false";
+	char* connstr = std::getenv("AZURE_EMULATED_STORAGE");
+	return connstr && strnicmp(connstr, false_value, sizeof(false_value) - 1);
+}
+
+template <typename ServiceClientType> ServiceClientType&& GetServiceClient(const std::string& service_url)
+{
+	return std::move(ServiceClientType(service_url, credential));
+}
+
+template <typename ServiceClientType> ServiceClientType&& GetServiceClient(const char* service_url)
+{
+	return GetServiceClient(std::string(service_url));
+}
+
+bool WillSizeCountProductOverflow(size_t size, size_t count)
+{
+	constexpr size_t max_prod_usable{static_cast<size_t>(std::numeric_limits<tOffset>::max())};
+	return (max_prod_usable / size < count || max_prod_usable / count < size);
+}
+
+/*
+// pre condition: stream is of a writing type. do not call otherwise.
+gc::Status CloseWriterStream(Handle &stream)
+{
+    gc::StatusOr<gcs::ObjectMetadata> maybe_meta;
+    std::ostringstream err_msg_os;
+
+    // close the stream to flush all remaining bytes in the put area
+    auto &writer = stream.GetWriter().writer_;
+    writer.Close();
+    maybe_meta = writer.metadata();
+    if (!maybe_meta)
+    {
+        err_msg_os << "Error during upload";
+    }
+    else if (HandleType::kAppend == stream.type)
+    {
+        // the tmp file is valid and ready for composition with the source
+        const auto &writer_h = stream.GetWriter();
+        const std::string &bucket = writer_h.bucketname_;
+        const std::string &append_source = writer_h.filename_;
+        const std::string &dest = writer_h.append_target_;
+        std::vector<gcs::ComposeSourceObject> source_objects = {{dest, {}, {}}, {append_source, {}, {}}};
+        maybe_meta = client.ComposeObject(bucket, std::move(source_objects), dest);
+
+        // whatever happened, delete the tmp file
+        gc::Status delete_status = client.DeleteObject(bucket, append_source);
+
+        // TODO: what to do with an error on Delete?
+        (void)delete_status;
+
+        // if composition failed, nothing is written, the source did not change. signal it
+        if (!maybe_meta)
+        {
+            err_msg_os << "Error while uploading the data to append";
+        }
+    }
+
+    if (maybe_meta)
+    {
+        return {};
+    }
+
+    const gc::Status &status = maybe_meta.status();
+    err_msg_os << ": " << maybe_meta.status().message();
+    return gc::Status{status.code(), err_msg_os.str()};
+}
+*/
+// Implementation of driver functions
+
+// Get from a container a list of blobs matching a name pattern.
+// To get a limited list of blobs to filter per request, the request includes a well defined
+// prefix contained in the pattern
+using BlobItems = std::vector<Azure::Storage::Blobs::Models::BlobItem>;
+DriverResult<BlobItems> FilterList(const std::string& bucket, const std::string& pattern,
+				   size_t pattern_1st_sp_char_pos)
+{
+	using value_t = BlobItems;
+
+	std::vector<Azure::Storage::Blobs::Models::BlobItem> res;
+
+	auto container_client = GetServiceClient<BlobServiceClient>().GetBlobContainerClient(bucket);
+	ListBlobsOptions options;
+	options.Prefix = pattern.substr(0, pattern_1st_sp_char_pos);
+	try
+	{
+		for (auto blobs_page = container_client.ListBlobs(options); blobs_page.HasPage();
+		     blobs_page.MoveToNextPage())
+		{
+			// filter blobs by match with pattern
+			for (auto& item : blobs_page.Blobs)
+			{
+				if (!item.IsDeleted && utils::gitignore_glob_match(item.Name, pattern))
+				{
+					res.emplace_back(std::move(item));
+				}
+			}
+		}
+		if (res.empty())
+		{
+			return MakeDriverHttpFailure<value_t>(Azure::Core::Http::HttpStatusCode::NotFound,
+							      "No blob matching pattern in container.");
+		}
+		return MakeDriverSuccess<value_t>(std::move(res));
+	}
+	catch (const Azure::Storage::StorageException& e)
+	{
+		return MakeDriverFailureFromException<value_t>(e);
+	}
+	catch (const std::exception& e)
+	{
+		return MakeDriverFailureFromException<value_t>(e);
+	}
+}
 
 static void ConfigureLogLevel()
 {
