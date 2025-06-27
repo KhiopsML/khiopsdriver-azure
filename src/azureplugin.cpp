@@ -683,7 +683,7 @@ long long int driver_getFileSize(const char* sUrl)
 	if (!sUrl)
 	{
 		LogNullArgError(__func__, STRINGIFY(sUrl));
-		return nFalse;
+		return nSizeFailure;
 	}
 	try
 	{
@@ -702,7 +702,7 @@ void* driver_fopen(const char* sUrl, char mode)
 	if (!sUrl)
 	{
 		LogNullArgError(__func__, STRINGIFY(sUrl));
-		return nFalse;
+		return nullptr;
 	}
 	try
 	{
@@ -782,6 +782,50 @@ void* driver_fopen(const char* sUrl, char mode)
 		LogError("Invalid open mode: " + mode);
 		return nullptr;
 	}
+}*/
+
+int driver_fclose(void* handle)
+{
+	spdlog::debug("Closing file with handle {}", handle);
+	if (!handle)
+	{
+		LogNullArgError(__func__, STRINGIFY(handle));
+		return nCloseFailure;
+	}
+	try
+	{
+		driver.RetrieveFileStream(handle).Close();
+		return nCloseSuccess;
+	}
+	catch (const exception& exc)
+	{
+		LogException(exc);
+		return nCloseFailure;
+	}
+}
+/*{
+	assert(driver_isConnected());
+
+	ERROR_ON_NULL_ARG(stream, kCloseEOF);
+
+	spdlog::debug("fclose {}", (void*)stream);
+
+	const auto reader_stream_it = FindReader(stream);
+	if (reader_stream_it != active_reader_handles.end())
+	{
+		EraseRemove<Reader>(reader_stream_it, active_reader_handles);
+		return kCloseSuccess;
+	}
+
+	const auto writer_stream_it = FindWriter(stream);
+	if (writer_stream_it != active_writer_handles.end())
+	{
+		EraseRemove<Writer>(writer_stream_it, active_writer_handles);
+		return kCloseSuccess;
+	}
+
+	LogError("Cannot identify stream.");
+	return kCloseEOF;
 }*/
 
 
@@ -1509,44 +1553,6 @@ DriverResult<Writer*> RegisterWriter(std::string&& bucket, std::string&& object,
 	return RegisterStream<Writer, WriterMode>(MakeWriterPtr, mode, std::move(bucket), std::move(object),
 						  active_writer_handles);
 }
-
-int driver_fclose(void* handle)
-{
-	try
-	{
-		driver.RetrieveFileStream(handle).Close();
-		return nCloseSuccess;
-	}
-	catch (const exception& exc)
-	{
-		return nCloseFailure;
-	}
-}
-
-/*{
-	assert(driver_isConnected());
-
-	ERROR_ON_NULL_ARG(stream, kCloseEOF);
-
-	spdlog::debug("fclose {}", (void*)stream);
-
-	const auto reader_stream_it = FindReader(stream);
-	if (reader_stream_it != active_reader_handles.end())
-	{
-		EraseRemove<Reader>(reader_stream_it, active_reader_handles);
-		return kCloseSuccess;
-	}
-
-	const auto writer_stream_it = FindWriter(stream);
-	if (writer_stream_it != active_writer_handles.end())
-	{
-		EraseRemove<Writer>(writer_stream_it, active_writer_handles);
-		return kCloseSuccess;
-	}
-
-	LogError("Cannot identify stream.");
-	return kCloseEOF;
-}*/
 
 int driver_fseek(void* stream, long long int offset, int whence)
 {
