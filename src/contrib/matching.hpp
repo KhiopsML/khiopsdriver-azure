@@ -1,4 +1,4 @@
-// File:        matching.h, derived from orginal match.cpp
+// File:        matching.hpp, derived from orginal match.cpp
 // Author:      Robert A. van Engelen, engelen@genivia.com
 // Date:        August 5, 2019
 // License:     The Code Project Open License (CPOL)

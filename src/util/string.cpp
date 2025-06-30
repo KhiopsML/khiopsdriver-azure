@@ -1,4 +1,4 @@
-#include "string.h"
+#include "string.hpp"
 #include <sstream>
 #include <algorithm>
 
@@ -25,7 +25,7 @@ namespace az
 		return suffixLen <= strLen && !str.compare(strLen - suffixLen, suffixLen, suffix);
 	}
 
-	inline string&& ToLower(const string& str)
+	string&& ToLower(const string& str)
 	{
 		string lower(str.length(), '\0');
 		transform(str.begin(), str.end(), lower.begin(), tolower);

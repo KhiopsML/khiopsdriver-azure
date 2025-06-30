@@ -1,7 +1,7 @@
-#include "test_uri.h"
-#include "azureplugin.h"
-#include "azureplugin_internal.h"
-#include "driver.h"
+#include "test_uri.hpp"
+#include "azureplugin.hpp"
+#include "azureplugin_internal.hpp"
+#include "driver.hpp"
 
 #include <cstring>
 #include <functional>

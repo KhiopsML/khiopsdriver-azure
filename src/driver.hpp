@@ -6,9 +6,9 @@ namespace az
 }
 
 #include <string>
-#include "fileaccessor.h"
-#include "filestream.h"
-#include "util/macro.h"
+#include "fileaccessor.hpp"
+#include "filestream.hpp"
+#include "util/macro.hpp"
 
 // Release versions must have 3 digits, for example STRINGIFY(1.2.0)
 // Alpha, beta ou release candidates have an extra suffix, for example :

@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "path_helper.h"
+#include "path_helper.hpp"
 
 #if defined(__unix__) || defined(__unix)
 	#define __is_unix__

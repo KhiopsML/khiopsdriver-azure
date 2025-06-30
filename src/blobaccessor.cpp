@@ -1,6 +1,6 @@
-#include "blobaccessor.h"
+#include "blobaccessor.hpp"
 #include <azure/storage/blobs.hpp>
-#include "exception.h"
+#include "exception.hpp"
 
 namespace az
 {

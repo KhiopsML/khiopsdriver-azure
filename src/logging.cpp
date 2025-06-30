@@ -1,7 +1,7 @@
-#include "logging.h"
+#include "logging.hpp"
 #include <string>
 #include <spdlog/spdlog.h>
-#include "util/env.h"
+#include "util/env.hpp"
 
 using namespace std;
 

@@ -1,4 +1,4 @@
-#include "path_helper.h"
+#include "path_helper.hpp"
 
 #if defined(_WIN32)
     #include <windows.h>

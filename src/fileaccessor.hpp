@@ -7,7 +7,7 @@ namespace az
 
 #include <string>
 #include <azure/core.hpp>
-#include "filestream.h"
+#include "filestream.hpp"
 
 namespace az
 {
@@ -16,9 +16,9 @@ namespace az
 	class FileAccessor
 	{
 	public:
-		inline const Azure::Core::Url& GetUrl() const;
-		inline bool HasDirUrl() const;
-		inline shared_ptr<Azure::Core::Credentials::TokenCredential> GetCredential() const;
+		const Azure::Core::Url& GetUrl() const;
+		bool HasDirUrl() const;
+		shared_ptr<Azure::Core::Credentials::TokenCredential> GetCredential() const;
 
 		virtual bool Exists() const = 0;
 		virtual size_t GetSize() const = 0;

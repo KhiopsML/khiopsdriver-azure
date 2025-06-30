@@ -1,24 +1,24 @@
-#include "fileaccessor.h"
+#include "fileaccessor.hpp"
 #include <azure/identity/chained_token_credential.hpp>
 #include <azure/identity/environment_credential.hpp>
 #include <azure/identity/workload_identity_credential.hpp>
 #include <azure/identity/azure_cli_credential.hpp>
 #include <azure/identity/managed_identity_credential.hpp>
-#include "util/string.h"
+#include "util/string.hpp"
 
 namespace az
 {
-	inline const Azure::Core::Url& FileAccessor::GetUrl() const
+	const Azure::Core::Url& FileAccessor::GetUrl() const
 	{
 		return url;
 	}
 
-	inline bool FileAccessor::HasDirUrl() const
+	bool FileAccessor::HasDirUrl() const
 	{
 		return bHasDirUrl;
 	}
 
-	inline shared_ptr<Azure::Core::Credentials::TokenCredential> FileAccessor::GetCredential() const
+	shared_ptr<Azure::Core::Credentials::TokenCredential> FileAccessor::GetCredential() const
 	{
 		return credential;
 	}

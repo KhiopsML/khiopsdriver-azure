@@ -1,10 +1,10 @@
-#include "driver.h"
+#include "driver.hpp"
 #include <spdlog/spdlog.h>
 #include <azure/core.hpp>
-#include "util/string.h"
-#include "blobaccessor.h"
-#include "shareaccessor.h"
-#include "exception.h"
+#include "util/string.hpp"
+#include "blobaccessor.hpp"
+#include "shareaccessor.hpp"
+#include "exception.hpp"
 
 namespace az
 {

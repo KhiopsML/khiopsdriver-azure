@@ -1,5 +1,5 @@
-#include "shareaccessor.h"
-#include "exception.h"
+#include "shareaccessor.hpp"
+#include "exception.hpp"
 
 namespace az
 {

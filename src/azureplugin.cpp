@@ -2,9 +2,9 @@
 #define _CRT_SECURE_NO_WARNINGS
 #endif
 
-#include "azureplugin.h"
-#include "azureplugin_internal.h"
-#include "contrib/matching.h"
+#include "azureplugin.hpp"
+#include "azureplugin_internal.hpp"
+#include "contrib/matching.hpp"
 
 #include <algorithm>
 #include <assert.h>
@@ -31,11 +31,11 @@
 #include <azure/identity/azure_cli_credential.hpp>
 #include <azure/identity/managed_identity_credential.hpp>
 
-#include "util/macro.h"
-#include "driver.h"
-#include "returnval.h"
-#include "errorlogger.h"
-#include "logging.h"
+#include "util/macro.hpp"
+#include "driver.hpp"
+#include "returnval.hpp"
+#include "errorlogger.hpp"
+#include "logging.hpp"
 
 using namespace std;
 using namespace az;

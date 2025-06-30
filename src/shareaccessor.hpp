@@ -5,7 +5,7 @@ namespace az
 	class ShareAccessor;
 }
 
-#include "fileaccessor.h"
+#include "fileaccessor.hpp"
 #include <azure/core.hpp>
 
 namespace az

@@ -11,5 +11,5 @@ namespace az
 
 	bool EndsWith(const std::string& str, const std::string& suffix);
 
-	inline string&& ToLower(const string& str);
+	string&& ToLower(const string& str);
 }

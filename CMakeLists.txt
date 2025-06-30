@@ -5,7 +5,7 @@
 # or when letting CMake start vcpkg at configure/generate time.
 # Note: this logic must happen before PROJECT command.
 if(DEFINED ENV{VCPKG_DEFAULT_TRIPLET} AND NOT DEFINED VCPKG_TARGET_TRIPLET)
-  set(VCPKG_TARGET_TRIPLET "$ENV{VCPKG_DEFAULT_TRIPLET}" CACHE STRING "The vcpkg triplet")
+    set(VCPKG_TARGET_TRIPLET "$ENV{VCPKG_DEFAULT_TRIPLET}" CACHE STRING "The vcpkg triplet")
 endif()
 
 cmake_minimum_required(VERSION 3.20)
@@ -43,36 +43,52 @@ message(STATUS "Executables will be stored in ${CMAKE_BINARY_DIR}/bin/")
 message(STATUS "Libraries will be stored in ${CMAKE_BINARY_DIR}/lib/")
 
 if((CMAKE_SYSTEM_NAME STREQUAL "Linux") AND NOT(CMAKE_BUILD_TYPE STREQUAL "Release"))
-	message("Build system == Linux, build with sanitizer tools")
-	add_compile_options(-fsanitize=undefined -fsanitize=address -fno-sanitize-recover=all)
-	add_link_options(-fsanitize=undefined -fsanitize=address -fno-sanitize-recover=all)
-	set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/modules/)
-	include(CodeCoverage)
-	set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_COVERAGE} ${CMAKE_CXX_FLAGS_DEBUG}")
-	setup_target_for_coverage(${PROJECT_NAME}_coverage basic_test coverage)
-	setup_target_for_coverage_cobertura(${PROJECT_NAME}_cobertura basic_test coverage --gtest_output=xml:coverage.junit.xml)
+    message("Build system == Linux, build with sanitizer tools")
+    add_compile_options(-fsanitize=undefined -fsanitize=address -fno-sanitize-recover=all)
+    add_link_options(-fsanitize=undefined -fsanitize=address -fno-sanitize-recover=all)
+    set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/modules/)
+    include(CodeCoverage)
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_COVERAGE} ${CMAKE_CXX_FLAGS_DEBUG}")
+    setup_target_for_coverage(${PROJECT_NAME}_coverage basic_test coverage)
+    setup_target_for_coverage_cobertura(${PROJECT_NAME}_cobertura basic_test coverage --gtest_output=xml:coverage.junit.xml)
 endif()
 
-add_library(khiopsdriver_file_azure SHARED src/azureplugin.h src/azureplugin_internal.h src/azureplugin.cpp src/driver.h src/driver.cpp src/fileaccessor.h src/fileaccessor.cpp src/blobaccessor.h src/blobaccessor.cpp src/shareaccessor.h src/shareaccessor.cpp src/filestream.h src/filestream.cpp src/util/macro.h src/util/string.h src/util/string.cpp src/exception.h src/returnval.h src/errorlogger.h src/errorlogger.cpp src/logging.h src/logging.cpp src/util/env.h src/util/env.cpp)
+add_library(khiopsdriver_file_azure SHARED
+    src/azureplugin.hpp
+    src/azureplugin_internal.hpp
+    src/azureplugin.cpp
+    src/driver.hpp src/driver.cpp
+    src/util/macro.hpp
+    src/util/string.hpp src/util/string.cpp
+    src/util/env.hpp src/util/env.cpp
+    src/exception.hpp
+    src/returnval.hpp
+    src/logging.hpp src/logging.cpp
+    src/errorlogger.hpp src/errorlogger.cpp
+    src/fileaccessor.hpp src/fileaccessor.cpp
+    src/blobaccessor.hpp src/blobaccessor.cpp
+    src/shareaccessor.hpp src/shareaccessor.cpp
+    src/filestream.hpp src/filestream.cpp
+)
 
 target_include_directories(khiopsdriver_file_azure PRIVATE src/contrib)
 target_link_options(khiopsdriver_file_azure PRIVATE $<$<CONFIG:RELEASE>:-s>) # stripping
 if(WIN32)
-	target_link_libraries(khiopsdriver_file_azure PRIVATE Azure::azure-identity Azure::azure-storage-blobs Azure::azure-storage-files-shares spdlog::spdlog bcrypt)
+    target_link_libraries(khiopsdriver_file_azure PRIVATE Azure::azure-identity Azure::azure-storage-blobs Azure::azure-storage-files-shares spdlog::spdlog bcrypt)
 else()
-        target_link_libraries(khiopsdriver_file_azure PRIVATE Azure::azure-identity Azure::azure-storage-blobs Azure::azure-storage-files-shares spdlog::spdlog)
+    target_link_libraries(khiopsdriver_file_azure PRIVATE Azure::azure-identity Azure::azure-storage-blobs Azure::azure-storage-files-shares spdlog::spdlog)
 endif()
 target_compile_options(khiopsdriver_file_azure
-  PRIVATE $<$<CXX_COMPILER_ID:MSVC>:-Wall;/wd4582;/wd4583;/wd4625;/wd4626;/wd4710;/wd4711;/wd4820;/wd4868>
-  PRIVATE $<$<CXX_COMPILER_ID:AppleClang,Clang,GNU>:-Wall;-Wextra;-pedantic>)
+    PRIVATE $<$<CXX_COMPILER_ID:MSVC>:-Wall;/wd4582;/wd4583;/wd4625;/wd4626;/wd4710;/wd4711;/wd4820;/wd4868>
+    PRIVATE $<$<CXX_COMPILER_ID:AppleClang,Clang,GNU>:-Wall;-Wextra;-pedantic>)
 
 option(BUILD_TESTS "Build test programs" OFF)
 
 if(BUILD_TESTS)
-	add_executable(KhiopsPluginTest src/khiopsplugintest.cpp)
-	target_link_libraries(KhiopsPluginTest PRIVATE fmt::fmt ${CMAKE_DL_LIBS})
-	add_executable(drivertest src/drivertest.cpp)
-	target_link_libraries(drivertest ${CMAKE_DL_LIBS}) # Link to dl
+    add_executable(KhiopsPluginTest src/khiopsplugintest.cpp)
+    target_link_libraries(KhiopsPluginTest PRIVATE fmt::fmt ${CMAKE_DL_LIBS})
+    add_executable(drivertest src/drivertest.cpp)
+    target_link_libraries(drivertest ${CMAKE_DL_LIBS}) # Link to dl
 endif(BUILD_TESTS)
 
 add_subdirectory(test)

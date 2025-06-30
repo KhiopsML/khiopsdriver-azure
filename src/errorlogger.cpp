@@ -1,4 +1,4 @@
-#include "errorlogger.h"
+#include "errorlogger.hpp"
 #include <sstream>
 #include "spdlog/spdlog.h"
 

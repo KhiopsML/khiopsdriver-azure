@@ -1,6 +1,6 @@
-#include "env.h"
+#include "env.hpp"
 #include <spdlog/spdlog.h>
-#include "string.h"
+#include "string.hpp"
 
 namespace az
 {
