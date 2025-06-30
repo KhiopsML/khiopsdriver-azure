@@ -17,7 +17,15 @@ namespace az
 		}
 		else
 		{
-			Azure::Storage::Blobs::BlobClient(GetUrl().GetAbsoluteUrl())
+			try
+			{
+				Azure::Storage::Blobs::BlobClient(GetUrl().GetAbsoluteUrl(), GetCredential()).GetProperties();
+				return true;
+			}
+			catch (const exception& exc)
+			{
+				return false;
+			}
 		}
 	}
 
