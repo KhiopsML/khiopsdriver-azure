@@ -55,8 +55,8 @@ using namespace Azure::Storage::Blobs;
 using namespace Azure::Storage::Files::Shares;
 using namespace Azure::Identity;
 
-StreamVec<Reader> active_reader_handles;
-StreamVec<Writer> active_writer_handles;
+//StreamVec<Reader> active_reader_handles;
+//StreamVec<Writer> active_writer_handles;
 
 const char* driver_getDriverName()
 {
