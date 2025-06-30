@@ -20,5 +20,11 @@ namespace az
 		bool Exists() const;
 		size_t GetSize() const;
 		FileStream Open(char mode) const;
+		void Remove() const;
+		void MkDir() const;
+		void RmDir() const;
+		size_t GetFreeDiskSpace() const;
+		void CopyTo(const Azure::Core::Url& destUrl) const;
+		void CopyFrom(const Azure::Core::Url& sourceUrl) const;
 	};
 }
