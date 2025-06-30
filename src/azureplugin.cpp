@@ -1478,7 +1478,7 @@ static int FileOrDirExists(const char* sUrl)
 	}
 	catch (const exception& exc)
 	{
-		LogException(exc);
+		errorLogger.LogException(exc);
 		return nFalse;
 	}
 }
