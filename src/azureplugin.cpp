@@ -135,7 +135,7 @@ int driver_fileExists(const char* sUrl)
 
 int driver_dirExists(const char* sUrl)
 {
-	spdlog::debug("Checking if directory exists");
+	spdlog::debug("Checking if directory exists at URL {}", sUrl);
 	return FileOrDirExists(sUrl);
 }
 
