@@ -22,20 +22,22 @@ namespace az
 				Azure::Storage::Blobs::BlobClient(GetUrl().GetAbsoluteUrl(), GetCredential()).GetProperties();
 				return true;
 			}
-			catch (const exception& exc)
+			catch (const exception&)
 			{
 				return false;
 			}
 		}
 	}
 
-	size_t BlobAccessor::GetSize() const
-	{
+	//size_t BlobAccessor::GetSize() const
+	//{
+	//	// TODO: Implement
+	//	return 0;
+	//}
 
-	}
-
-	FileStream BlobAccessor::Open(char mode) const
-	{
-
-	}
+	//FileStream BlobAccessor::Open(char mode) const
+	//{
+	//	// TODO: Implement
+	//	return FileStream();
+	//}
 }

@@ -55,6 +55,9 @@ using namespace Azure::Storage::Blobs;
 using namespace Azure::Storage::Files::Shares;
 using namespace Azure::Identity;
 
+
+static int FileOrDirExists(const char* sUrl);
+
 //StreamVec<Reader> active_reader_handles;
 //StreamVec<Writer> active_writer_handles;
 
