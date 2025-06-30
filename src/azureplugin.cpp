@@ -94,6 +94,7 @@ int driver_connect()
 	}
 	catch (const exception& exc)
 	{
+		errorLogger.LogException(exc);
 		return nFailure;
 	}
 }
