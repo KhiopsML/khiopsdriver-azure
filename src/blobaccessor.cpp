@@ -1,4 +1,5 @@
 #include "blobaccessor.h"
+#include <azure/storage/blobs.hpp>
 #include "exception.h"
 
 namespace az
@@ -13,6 +14,10 @@ namespace az
 		if (HasDirUrl())
 		{
 			return true;
+		}
+		else
+		{
+			Azure::Storage::Blobs::BlobClient(GetUrl().GetAbsoluteUrl())
 		}
 	}
 

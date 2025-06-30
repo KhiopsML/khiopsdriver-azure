@@ -1412,20 +1412,6 @@ DriverResult<BlobItems> FilterList(const std::string& bucket, const std::string&
 	}
 }
 
-static shared_ptr<ChainedTokenCredential> BuildChainedTokenCredential()
-{
-	// Redefining DefaultAzureCredential chain which does not work.
-	// Chain schema: https://learn.microsoft.com/en-us/azure/developer/cpp/sdk/authentication/credential-chains#defaultazurecredential-overview.
-	return std::make_shared<ChainedTokenCredential>(
-		ChainedTokenCredential::Sources{
-			std::make_shared<EnvironmentCredential>(), // for Client ID + Client Secret or Certificate environment variables
-			std::make_shared<WorkloadIdentityCredential>(),
-			std::make_shared<AzureCliCredential>(),
-			std::make_shared<ManagedIdentityCredential>()
-		}
-	);
-}
-
 #if false
 #define RETURN_ON_ERROR(driver_result, msg, err_val)                                                                   \
 	if (!(driver_result))                                                                                          \
