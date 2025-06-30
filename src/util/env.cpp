@@ -13,7 +13,7 @@ namespace az
 			return value;
 		}
 
-		const string low_key = ToLower(varName);
+		string&& low_key = ToLower(varName);
 		if (low_key.find("token") || low_key.find("password") || low_key.find("key") || low_key.find("secret"))
 		{
 			spdlog::debug("No {} specified, using **REDACTED** as default.", varName);
