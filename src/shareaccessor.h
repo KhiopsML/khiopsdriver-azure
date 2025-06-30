@@ -19,6 +19,6 @@ namespace az
 
 		bool Exists() const;
 		size_t GetSize() const;
-		FileStream Open() const;
+		FileStream Open(char mode) const;
 	};
 }

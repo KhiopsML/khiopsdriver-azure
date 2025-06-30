@@ -22,7 +22,13 @@ namespace az
 
 		virtual bool Exists() const = 0;
 		virtual size_t GetSize() const = 0;
-		virtual FileStream Open() const = 0;
+		virtual FileStream Open(char mode) const = 0;
+		virtual void Remove() const = 0;
+		virtual void MkDir() const = 0;
+		virtual void RmDir() const = 0;
+		virtual size_t GetFreeDiskSpace() const = 0;
+		virtual void CopyTo(const Azure::Core::Url& destUrl) const = 0;
+		virtual void CopyFrom(const Azure::Core::Url& sourceUrl) const = 0;
 
 	protected:
 		FileAccessor(const Azure::Core::Url& url);

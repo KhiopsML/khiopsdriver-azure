@@ -18,7 +18,7 @@ namespace az
 
 	}
 
-	FileStream ShareAccessor::Open() const
+	FileStream ShareAccessor::Open(char mode) const
 	{
 
 	}

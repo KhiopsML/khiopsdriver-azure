@@ -34,7 +34,7 @@ namespace az
 
 	}
 
-	FileStream BlobAccessor::Open() const
+	FileStream BlobAccessor::Open(char mode) const
 	{
 
 	}

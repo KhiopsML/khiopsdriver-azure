@@ -7,4 +7,7 @@ namespace az
 
 namespace az
 {
+	class FileSteam
+	{
+	};
 }
