@@ -21,14 +21,14 @@ namespace az
 	bool EndsWith(const std::string& str, const std::string& suffix)
 	{
 		size_t strLen = str.length();
-		size_t suffixLen = str.length();
+		size_t suffixLen = suffix.length();
 		return suffixLen <= strLen && !str.compare(strLen - suffixLen, suffixLen, suffix);
 	}
 
-	string&& ToLower(const string& str)
+	string ToLower(const string& str)
 	{
 		string lower(str.length(), '\0');
 		transform(str.begin(), str.end(), lower.begin(), tolower);
-		return move(lower);
+		return lower;
 	}
 }
