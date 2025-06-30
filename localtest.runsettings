@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+    <RunConfiguration>
+        <EnvironmentVariables>
+            <AZURE_EMULATED_STORAGE>true</AZURE_EMULATED_STORAGE>
+        </EnvironmentVariables>
+    </RunConfiguration>
+</RunSettings>
