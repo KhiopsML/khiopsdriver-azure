@@ -126,6 +126,7 @@ long long int driver_getSystemPreferredBufferSize()
 	return driver.GetPreferredBufferSize();
 }
 
+// TODO: Implement driver functions from this point.
 int driver_fileExists(const char* sUrl)
 {
 	spdlog::debug("Checking if file exists at URL {}", sUrl);
