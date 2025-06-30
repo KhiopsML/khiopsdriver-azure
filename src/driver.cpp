@@ -75,6 +75,12 @@ namespace az
 		}
 	}
 
+	FileStream Driver::RetrieveFileStream(void* handle) const
+	{
+		// TODO: Implement
+		return FileStream();
+	}
+
 	void Driver::CheckConnected() const
 	{
 		if (!IsConnected())
