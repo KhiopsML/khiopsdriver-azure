@@ -5,11 +5,13 @@
 #include "blobaccessor.hpp"
 #include "shareaccessor.hpp"
 #include "exception.hpp"
+#include "util/env.hpp"
 
 namespace az
 {
 	Driver::Driver():
-		bIsConnected(false)
+		bIsConnected(false),
+		bIsEmulatedStorage(ToLower(GetEnvironmentVariableOrDefault("AZURE_EMULATED_STORAGE", "false")) != "false")
 	{
 	}
 
@@ -49,7 +51,7 @@ namespace az
 		bIsConnected = false;
 	}
 
-	inline bool Driver::IsConnected() const
+	bool Driver::IsConnected() const
 	{
 		return bIsConnected;
 	}
@@ -69,6 +71,10 @@ namespace az
 		{
 			return move(ShareAccessor(url));
 		}
+		else if (IsEmulatedStorage())
+		{
+			return move(BlobAccessor(url));
+		}
 		else
 		{
 			throw InvalidDomainException();
@@ -79,6 +85,11 @@ namespace az
 	{
 		// TODO: Implement
 		return FileStream();
+	}
+
+	bool Driver::IsEmulatedStorage() const
+	{
+		return bIsEmulatedStorage;
 	}
 
 	void Driver::CheckConnected() const

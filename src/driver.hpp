@@ -39,14 +39,17 @@ namespace az
 
 		void Connect();
 		void Disconnect();
-		inline bool IsConnected() const;
+		bool IsConnected() const;
 
 		FileAccessor&& CreateFileAccessor(const string& url) const;
 		FileStream RetrieveFileStream(void* handle) const;
+
+		bool IsEmulatedStorage() const;
 
 	protected:
 		void CheckConnected() const;
 
 		bool bIsConnected;
+		bool bIsEmulatedStorage;
 	};
 }
