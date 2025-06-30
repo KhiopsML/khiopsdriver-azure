@@ -1469,7 +1469,7 @@ static int FileOrDirExists(const char* sUrl)
 {
 	if (!sUrl)
 	{
-		LogNullArgError(__func__, STRINGIFY(sUrl));
+		errorLogger.LogNullArgError(__func__, STRINGIFY(sUrl));
 		return nFalse;
 	}
 	try
