@@ -168,7 +168,7 @@ void* driver_fopen(const char* sUrl, char mode)
 	}
 	try
 	{
-		return driver.CreateFileAccessor(sUrl).Open(mode);
+		return driver.CreateFileAccessor(sUrl).Open(mode).GetHandle();
 	}
 	catch (const exception& exc)
 	{
@@ -573,7 +573,8 @@ int driver_fflush(void* handle)
 	}
 	try
 	{
-		return driver.RetrieveFileStream(handle).Flush();
+		driver.RetrieveFileStream(handle).Flush();
+		return nFlushSuccess;
 	}
 	catch (const exception& exc)
 	{

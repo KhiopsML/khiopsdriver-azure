@@ -13,6 +13,7 @@ namespace az
 	const int nSeekSuccess = 0;
 	const int nSeekFailure = -1;
 	const int nWriteFailure = -1;
+	const int nFlushSuccess = 0;
 	const int nFlushFailure = -1;
 	const int nFreeDiskSpaceFailure = -1;
 }
