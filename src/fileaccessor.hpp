@@ -8,6 +8,7 @@ namespace az
 #include <string>
 #include <azure/core.hpp>
 #include "filestream.hpp"
+#include "util/connstring.hpp"
 
 namespace az
 {
@@ -36,6 +37,7 @@ namespace az
 		FileAccessor(const Azure::Core::Url& url, bool bIsEmulatedStorage);
 		bool IsEmulatedStorage() const;
 		const string& GetConnectionString() const;
+		const Account FileAccessor::GetAccount() const;
 
 	private:
 		Azure::Core::Url url;

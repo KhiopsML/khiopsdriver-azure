@@ -81,7 +81,7 @@ namespace az
 	{
 		if (IsEmulatedStorage())
 		{
-			Account account = ParseConnectionString(GetConnectionString());
+			Account account = GetAccount();
 			return Azure::Storage::Blobs::BlobClient(
 				GetUrl().GetAbsoluteUrl(),
 				make_shared<Azure::Storage::StorageSharedKeyCredential>(account.name, account.key)

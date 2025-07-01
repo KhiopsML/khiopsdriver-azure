@@ -51,6 +51,11 @@ namespace az
 		return sConnectionString;
 	}
 
+	const Account FileAccessor::GetAccount() const
+	{
+		return ParseConnectionString(GetConnectionString());
+	}
+
 	shared_ptr<Azure::Core::Credentials::TokenCredential> FileAccessor::BuildCredential()
 	{
 		// Redefining DefaultAzureCredential chain which does not work.
