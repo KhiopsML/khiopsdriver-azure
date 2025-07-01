@@ -152,7 +152,7 @@ long long int driver_getFileSize(const char* sUrl)
 	}
 	try
 	{
-		return driver.CreateFileAccessor(sUrl).GetSize();
+		return driver.CreateFileAccessor(sUrl)->GetSize();
 	}
 	catch (const exception& exc)
 	{
@@ -171,7 +171,7 @@ void* driver_fopen(const char* sUrl, char mode)
 	}
 	try
 	{
-		return driver.CreateFileAccessor(sUrl).Open(mode).GetHandle();
+		return driver.CreateFileAccessor(sUrl)->Open(mode).GetHandle();
 	}
 	catch (const exception& exc)
 	{
@@ -610,7 +610,7 @@ int driver_remove(const char* sUrl)
 	}
 	try
 	{
-		driver.CreateFileAccessor(sUrl).Remove();
+		driver.CreateFileAccessor(sUrl)->Remove();
 		return nSuccess;
 	}
 	catch (const exception& exc)
@@ -668,7 +668,7 @@ int driver_mkdir(const char* sUrl)
 	}
 	try
 	{
-		driver.CreateFileAccessor(sUrl).MkDir();
+		driver.CreateFileAccessor(sUrl)->MkDir();
 		return nSuccess;
 	}
 	catch (const exception& exc)
@@ -696,7 +696,7 @@ int driver_rmdir(const char* sUrl)
 	}
 	try
 	{
-		driver.CreateFileAccessor(sUrl).RmDir();
+		driver.CreateFileAccessor(sUrl)->RmDir();
 		return nSuccess;
 	}
 	catch (const exception& exc)
@@ -725,7 +725,7 @@ long long int driver_diskFreeSpace(const char* sUrl)
 	}
 	try
 	{
-		return driver.CreateFileAccessor(sUrl).GetFreeDiskSpace();
+		return driver.CreateFileAccessor(sUrl)->GetFreeDiskSpace();
 	}
 	catch (const exception& exc)
 	{
@@ -758,7 +758,7 @@ int driver_copyToLocal(const char* sSourceUrl, const char* sDestUrl)
 	}
 	try
 	{
-		driver.CreateFileAccessor(sSourceUrl).CopyTo(Azure::Core::Url(sDestUrl));
+		driver.CreateFileAccessor(sSourceUrl)->CopyTo(Azure::Core::Url(sDestUrl));
 		return nSuccess;
 	}
 	catch (const exception& exc)
@@ -882,7 +882,7 @@ int driver_copyFromLocal(const char* sSourceUrl, const char* sDestUrl)
 	}
 	try
 	{
-		driver.CreateFileAccessor(sDestUrl).CopyFrom(Azure::Core::Url(sSourceUrl));
+		driver.CreateFileAccessor(sDestUrl)->CopyFrom(Azure::Core::Url(sSourceUrl));
 		return nSuccess;
 	}
 	catch (const exception& exc)
@@ -1474,7 +1474,7 @@ static int FileOrDirExists(const char* sUrl)
 	}
 	try
 	{
-		return driver.CreateFileAccessor(sUrl).Exists() ? nTrue : nFalse;
+		return driver.CreateFileAccessor(sUrl)->Exists() ? nTrue : nFalse;
 	}
 	catch (const exception& exc)
 	{

@@ -6,6 +6,7 @@ namespace az
 }
 
 #include <string>
+#include <memory>
 #include "fileaccessor.hpp"
 #include "filestream.hpp"
 #include "util/macro.hpp"
@@ -41,7 +42,7 @@ namespace az
 		void Disconnect();
 		bool IsConnected() const;
 
-		FileAccessor&& CreateFileAccessor(const string& url) const;
+		unique_ptr<FileAccessor> CreateFileAccessor(const string& url) const;
 		FileStream RetrieveFileStream(void* handle) const;
 
 		bool IsEmulatedStorage() const;

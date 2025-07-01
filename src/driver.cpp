@@ -56,7 +56,7 @@ namespace az
 		return bIsConnected;
 	}
 
-	FileAccessor&& Driver::CreateFileAccessor(const string& sUrl) const
+	unique_ptr<FileAccessor> Driver::CreateFileAccessor(const string& sUrl) const
 	{
 		CheckConnected();
 		const string sBlobDomain = ".blob.core.windows.net";
@@ -65,19 +65,19 @@ namespace az
 		const string& sHost = url.GetHost();
 		if (EndsWith(sHost, sBlobDomain))
 		{
-			return move(BlobAccessor(url));
+			return make_unique<BlobAccessor>(url, IsEmulatedStorage());
 		}
 		else if (EndsWith(sHost, sFileDomain))
 		{
-			return move(ShareAccessor(url));
+			return make_unique<ShareAccessor>(url, IsEmulatedStorage());
 		}
 		else if (IsEmulatedStorage())
 		{
-			return move(BlobAccessor(url));
+			return make_unique<BlobAccessor>(url, IsEmulatedStorage());
 		}
 		else
 		{
-			throw InvalidDomainException();
+			throw InvalidDomainError();
 		}
 	}
 
@@ -96,7 +96,7 @@ namespace az
 	{
 		if (!IsConnected())
 		{
-			throw NotConnectedException();
+			throw NotConnectedError();
 		}
 	}
 }
