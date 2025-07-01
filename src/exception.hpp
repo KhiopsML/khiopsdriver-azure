@@ -2,8 +2,9 @@
 
 namespace az
 {
-	class Exception;
-	class InvalidDomainException;
+	class Error;
+	class InvalidDomainError;
+	class NotConnectedError;
 }
 
 #include <exception>
@@ -12,15 +13,18 @@ namespace az
 {
 	using namespace std;
 
-	class Exception : public exception
+	class Error : public exception
+	{
+	public:
+		Error();
+		Error(const char* message);
+	};
+
+	class InvalidDomainError : public Error
 	{
 	};
 
-	class InvalidDomainException : public Exception
-	{
-	};
-
-	class NotConnectedException : public Exception
+	class NotConnectedError : public Error
 	{
 	};
 }
