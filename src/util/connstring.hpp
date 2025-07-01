@@ -19,7 +19,7 @@ namespace az
 		string key;
 	};
 
-	class ParsingError : Error
+	class ParsingError : public Error
 	{
 	public:
 		ParsingError(const char* message);
