@@ -56,4 +56,8 @@ namespace az
 	{
 		// TODO: Implement
 	}
+
+	ShareAccessor::~ShareAccessor()
+	{
+	}
 }

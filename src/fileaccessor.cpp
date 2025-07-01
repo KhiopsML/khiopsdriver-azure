@@ -5,6 +5,8 @@
 #include <azure/identity/azure_cli_credential.hpp>
 #include <azure/identity/managed_identity_credential.hpp>
 #include "util/string.hpp"
+#include "util/env.hpp"
+#include "exception.hpp"
 
 namespace az
 {
@@ -23,11 +25,30 @@ namespace az
 		return credential;
 	}
 
-	FileAccessor::FileAccessor(const Azure::Core::Url& url):
+	FileAccessor::~FileAccessor()
+	{
+	}
+
+	FileAccessor::FileAccessor(const Azure::Core::Url& url, bool bIsEmulatedStorage):
 		url(url),
 		bHasDirUrl(EndsWith(url.GetPath(), "/")),
+		bIsEmulatedStorage(bIsEmulatedStorage),
 		credential(BuildCredential())
 	{
+		if (IsEmulatedStorage())
+		{
+			sConnectionString = GetEnvironmentVariableOrThrow("AZURE_STORAGE_CONNECTION_STRING");
+		}
+	}
+
+	bool FileAccessor::IsEmulatedStorage() const
+	{
+		return bIsEmulatedStorage;
+	}
+
+	const string& FileAccessor::GetConnectionString() const
+	{
+		return sConnectionString;
 	}
 
 	shared_ptr<Azure::Core::Credentials::TokenCredential> FileAccessor::BuildCredential()

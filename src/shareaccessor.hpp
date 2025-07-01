@@ -26,5 +26,7 @@ namespace az
 		size_t GetFreeDiskSpace() const;
 		void CopyTo(const Azure::Core::Url& destUrl) const;
 		void CopyFrom(const Azure::Core::Url& sourceUrl) const;
+
+		~ShareAccessor();
 	};
 }

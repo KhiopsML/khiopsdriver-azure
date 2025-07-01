@@ -30,6 +30,8 @@ namespace az
 		virtual void CopyTo(const Azure::Core::Url& destUrl) const = 0;
 		virtual void CopyFrom(const Azure::Core::Url& sourceUrl) const = 0;
 
+		virtual ~FileAccessor();
+
 	protected:
 		FileAccessor(const Azure::Core::Url& url);
 

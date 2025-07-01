@@ -71,4 +71,24 @@ namespace az
 	{
 		// TODO: Implement
 	}
+
+	BlobAccessor::~BlobAccessor()
+	{
+	}
+
+	Azure::Storage::Blobs::BlobClient BlobAccessor::GetBlobClient() const
+	{
+		if (IsEmulatedStorage())
+		{
+			Account account = ParseConnectionString(GetConnectionString());
+			return Azure::Storage::Blobs::BlobClient(
+				GetUrl().GetAbsoluteUrl(),
+				make_shared<Azure::Storage::StorageSharedKeyCredential>(account.name, account.key)
+			);
+		}
+		else
+		{
+			return Azure::Storage::Blobs::BlobClient(GetUrl().GetAbsoluteUrl(), GetCredential());
+		}
+	}
 }

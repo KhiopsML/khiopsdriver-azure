@@ -26,5 +26,10 @@ namespace az
 		size_t GetFreeDiskSpace() const;
 		void CopyTo(const Azure::Core::Url& destUrl) const;
 		void CopyFrom(const Azure::Core::Url& sourceUrl) const;
+
+		~BlobAccessor();
+
+	protected:
+		Azure::Storage::Blobs::BlobClient GetBlobClient() const;
 	};
 }
