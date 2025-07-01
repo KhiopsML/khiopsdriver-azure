@@ -7,6 +7,7 @@ namespace az
 
 #include "fileaccessor.hpp"
 #include <azure/core.hpp>
+#include <azure/storage/blobs.hpp>
 
 namespace az
 {
@@ -15,7 +16,7 @@ namespace az
 	class BlobAccessor : public FileAccessor
 	{
 	public:
-		BlobAccessor(const Azure::Core::Url& url);
+		BlobAccessor(const Azure::Core::Url& url, bool bIsEmulatedStorage);
 
 		bool Exists() const;
 		size_t GetSize() const;

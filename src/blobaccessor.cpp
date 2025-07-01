@@ -1,11 +1,11 @@
 #include "blobaccessor.hpp"
-#include <azure/storage/blobs.hpp>
 #include "exception.hpp"
+#include "util/connstring.hpp"
 
 namespace az
 {
-	BlobAccessor::BlobAccessor(const Azure::Core::Url& url):
-		FileAccessor(url)
+	BlobAccessor::BlobAccessor(const Azure::Core::Url& url, bool bIsEmulatedStorage):
+		FileAccessor(url, bIsEmulatedStorage)
 	{
 	}
 
@@ -19,11 +19,12 @@ namespace az
 		{
 			try
 			{
-				Azure::Storage::Blobs::BlobClient(GetUrl().GetAbsoluteUrl(), GetCredential()).GetProperties();
+				//GetBlobClient()______ TODO
 				return true;
 			}
-			catch (const exception&)
+			catch (const exception& exc)
 			{
+				auto what = exc.what();
 				return false;
 			}
 		}

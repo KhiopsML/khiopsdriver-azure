@@ -15,7 +15,7 @@ namespace az
 	class ShareAccessor : public FileAccessor
 	{
 	public:
-		ShareAccessor(const Azure::Core::Url& url);
+		ShareAccessor(const Azure::Core::Url& url, bool bIsEmulatedStorage);
 
 		bool Exists() const;
 		size_t GetSize() const;

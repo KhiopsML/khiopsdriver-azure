@@ -33,12 +33,16 @@ namespace az
 		virtual ~FileAccessor();
 
 	protected:
-		FileAccessor(const Azure::Core::Url& url);
+		FileAccessor(const Azure::Core::Url& url, bool bIsEmulatedStorage);
+		bool IsEmulatedStorage() const;
+		const string& GetConnectionString() const;
 
 	private:
 		Azure::Core::Url url;
 		bool bHasDirUrl;
 		shared_ptr<Azure::Core::Credentials::TokenCredential> credential;
+		bool bIsEmulatedStorage;
+		string sConnectionString;
 
 		static shared_ptr<Azure::Core::Credentials::TokenCredential> BuildCredential();
 	};
