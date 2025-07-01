@@ -61,15 +61,16 @@ add_library(khiopsdriver_file_azure SHARED
     src/util/macro.hpp
     src/util/string.hpp src/util/string.cpp
     src/util/env.hpp src/util/env.cpp
-    src/exception.hpp
+    src/exception.hpp src/exception.cpp
     src/returnval.hpp
     src/logging.hpp src/logging.cpp
     src/errorlogger.hpp src/errorlogger.cpp
+    src/util/connstring.hpp src/util/connstring.cpp
     src/fileaccessor.hpp src/fileaccessor.cpp
     src/blobaccessor.hpp src/blobaccessor.cpp
     src/shareaccessor.hpp src/shareaccessor.cpp
     src/filestream.hpp src/filestream.cpp
-)
+ )
 
 target_include_directories(khiopsdriver_file_azure PRIVATE src/contrib)
 target_link_options(khiopsdriver_file_azure PRIVATE $<$<CONFIG:RELEASE>:-s>) # stripping
