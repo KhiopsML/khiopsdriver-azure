@@ -32,5 +32,9 @@ namespace az
 
 	protected:
 		Azure::Storage::Blobs::BlobClient GetBlobClient() const;
+		bool IsEmulatedStorage() const;
+
+	private:
+		bool bIsEmulatedStorage;
 	};
 }

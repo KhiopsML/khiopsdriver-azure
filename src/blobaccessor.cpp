@@ -1,11 +1,14 @@
 #include "blobaccessor.hpp"
 #include "exception.hpp"
 #include "util/connstring.hpp"
+#include "util/string.hpp"
+#include "util/env.hpp"
 
 namespace az
 {
 	BlobAccessor::BlobAccessor(const Azure::Core::Url& url, bool bIsEmulatedStorage):
-		FileAccessor(url, bIsEmulatedStorage)
+		FileAccessor(url),
+		bIsEmulatedStorage(ToLower(GetEnvironmentVariableOrDefault("AZURE_EMULATED_STORAGE", "false")) != "false")
 	{
 	}
 
@@ -19,12 +22,12 @@ namespace az
 		{
 			try
 			{
-				//GetBlobClient()______ TODO
+				GetBlobClient().GetProperties();
 				return true;
 			}
 			catch (const exception& exc)
 			{
-				auto what = exc.what();
+				auto what = exc.what();//Azure::Core::Http::TransportException
 				return false;
 			}
 		}
@@ -75,6 +78,11 @@ namespace az
 
 	BlobAccessor::~BlobAccessor()
 	{
+	}
+
+	bool BlobAccessor::IsEmulatedStorage() const
+	{
+		return bIsEmulatedStorage;
 	}
 
 	Azure::Storage::Blobs::BlobClient BlobAccessor::GetBlobClient() const

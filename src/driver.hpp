@@ -45,12 +45,9 @@ namespace az
 		unique_ptr<FileAccessor> CreateFileAccessor(const string& url) const;
 		FileStream RetrieveFileStream(void* handle) const;
 
-		bool IsEmulatedStorage() const;
-
 	protected:
 		void CheckConnected() const;
 
 		bool bIsConnected;
-		bool bIsEmulatedStorage;
 	};
 }

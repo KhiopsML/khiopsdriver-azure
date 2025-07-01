@@ -10,8 +10,7 @@
 namespace az
 {
 	Driver::Driver():
-		bIsConnected(false),
-		bIsEmulatedStorage(ToLower(GetEnvironmentVariableOrDefault("AZURE_EMULATED_STORAGE", "false")) != "false")
+		bIsConnected(false)
 	{
 	}
 
@@ -85,11 +84,6 @@ namespace az
 	{
 		// TODO: Implement
 		return FileStream();
-	}
-
-	bool Driver::IsEmulatedStorage() const
-	{
-		return bIsEmulatedStorage;
 	}
 
 	void Driver::CheckConnected() const

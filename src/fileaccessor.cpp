@@ -29,21 +29,15 @@ namespace az
 	{
 	}
 
-	FileAccessor::FileAccessor(const Azure::Core::Url& url, bool bIsEmulatedStorage):
+	FileAccessor::FileAccessor(const Azure::Core::Url& url):
 		url(url),
 		bHasDirUrl(EndsWith(url.GetPath(), "/")),
-		bIsEmulatedStorage(bIsEmulatedStorage),
 		credential(BuildCredential())
 	{
 		if (IsEmulatedStorage())
 		{
 			sConnectionString = GetEnvironmentVariableOrThrow("AZURE_STORAGE_CONNECTION_STRING");
 		}
-	}
-
-	bool FileAccessor::IsEmulatedStorage() const
-	{
-		return bIsEmulatedStorage;
 	}
 
 	const string& FileAccessor::GetConnectionString() const
