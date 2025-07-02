@@ -13,6 +13,10 @@ namespace az
 		return bHasDirUrl;
 	}
 
+	FileAccessor::~FileAccessor()
+	{
+	}
+
 	FileAccessor::FileAccessor(const Azure::Core::Url& url):
 		url(url),
 		bHasDirUrl(EndsWith(url.GetPath(), "/"))

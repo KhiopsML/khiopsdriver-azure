@@ -7,6 +7,10 @@
 
 namespace az
 {
+	CloudFileAccessor::~CloudFileAccessor()
+	{
+	}
+
 	CloudFileAccessor::CloudFileAccessor():
 		credential(BuildCredential())
 	{

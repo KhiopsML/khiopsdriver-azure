@@ -6,6 +6,10 @@
 
 namespace az
 {
+	BlobAccessor::~BlobAccessor()
+	{
+	}
+
 	bool BlobAccessor::Exists() const
 	{
 		if (HasDirUrl())

@@ -2,19 +2,28 @@
 
 namespace az
 {
-	EmulatedFileAccessor::EmulatedFileAccessor(const string& sConnectionString):
-		sConnectionString(sConnectionString)
+	EmulatedFileAccessor::~EmulatedFileAccessor()
 	{
 	}
 
-	const string& EmulatedFileAccessor::GetConnectionString() const
+	EmulatedFileAccessor::EmulatedFileAccessor():
+		connectionString(GetConnectionStringFromEnv())
 	{
-		return sConnectionString;
+	}
+
+	const ConnectionString& EmulatedFileAccessor::GetConnectionString() const
+	{
+		return connectionString;
 	}
 
 	bool EmulatedFileAccessor::IsConnectionStringCompatibleWithUrl(const Azure::Core::Url& url) const
 	{
 		// TODO Implement
 		return false;
+	}
+
+	ConnectionString EmulatedFileAccessor::GetConnectionStringFromEnv()
+	{
+		return ConnectionString();
 	}
 }

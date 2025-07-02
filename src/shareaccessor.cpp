@@ -3,8 +3,7 @@
 
 namespace az
 {
-	ShareAccessor::ShareAccessor(const Azure::Core::Url& url):
-		FileAccessor(url)
+	ShareAccessor::~ShareAccessor()
 	{
 	}
 
@@ -57,7 +56,8 @@ namespace az
 		// TODO: Implement
 	}
 
-	ShareAccessor::~ShareAccessor()
+	ShareAccessor::ShareAccessor(const Azure::Core::Url& url) :
+		FileAccessor(url)
 	{
 	}
 }
