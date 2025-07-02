@@ -45,4 +45,11 @@ namespace az
 			throw ParsingError("Connection string is missing one of 'AccountName', 'AccountKey' or 'BlobEndpoint'");
 		}
 	}
+
+	bool operator==(const ConnectionString& a, const ConnectionString& b)
+	{
+		return a.sAccountName == b.sAccountName
+			&& a.sAccountKey == b.sAccountKey
+			&& a.blobEndpoint.GetAbsoluteUrl() == b.blobEndpoint.GetAbsoluteUrl();
+	}
 }

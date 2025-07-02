@@ -28,4 +28,6 @@ namespace az
 	};
 
 	ConnectionString ParseConnectionString(const string& sConnectionString);
+
+	bool operator==(const ConnectionString& a, const ConnectionString& b);
 }
