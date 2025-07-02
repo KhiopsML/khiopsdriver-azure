@@ -7,6 +7,7 @@ namespace az
 
 #include "fileaccessor.hpp"
 #include <azure/core.hpp>
+#include <azure/storage/files/shares.hpp>
 
 namespace az
 {
@@ -15,7 +16,7 @@ namespace az
 	class ShareAccessor : public FileAccessor
 	{
 	public:
-		ShareAccessor(const Azure::Core::Url& url);
+		virtual ~ShareAccessor() = 0;
 
 		bool Exists() const;
 		size_t GetSize() const;
@@ -27,6 +28,9 @@ namespace az
 		void CopyTo(const Azure::Core::Url& destUrl) const;
 		void CopyFrom(const Azure::Core::Url& sourceUrl) const;
 
-		~ShareAccessor();
+	protected:
+		ShareAccessor(const Azure::Core::Url& url);
+
+		virtual Azure::Storage::Files::Shares::ShareFileClient GetShareFileClient() const = 0;
 	};
 }
