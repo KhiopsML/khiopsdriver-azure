@@ -50,6 +50,5 @@ namespace az
 		bool IsEmulatedStorage() const;
 
 		bool bIsConnected;
-		bool bIsEmulatedStorage;
 	};
 }

@@ -2,8 +2,8 @@
 #include <spdlog/spdlog.h>
 #include <azure/core.hpp>
 #include "util/string.hpp"
-#include "blobaccessor.hpp"
-#include "shareaccessor.hpp"
+#include "cloudblobaccessor.hpp"
+#include "cloudshareaccessor.hpp"
 #include "emulatedblobaccessor.hpp"
 #include "exception.hpp"
 #include "util/env.hpp"
@@ -11,8 +11,7 @@
 namespace az
 {
 	Driver::Driver():
-		bIsConnected(false),
-		bIsEmulatedStorage(ToLower(GetEnvironmentVariableOrDefault("AZURE_EMULATED_STORAGE", "false")) != "false")
+		bIsConnected(false)
 	{
 	}
 
@@ -72,11 +71,11 @@ namespace az
 		{
 			if (EndsWith(sHost, sBlobDomain))
 			{
-				return make_unique<BlobAccessor>(url);
+				return make_unique<CloudBlobAccessor>(url);
 			}
 			else if (EndsWith(sHost, sFileDomain))
 			{
-				return make_unique<ShareAccessor>(url);
+				return make_unique<CloudShareAccessor>(url);
 			}
 			else
 			{
@@ -101,6 +100,6 @@ namespace az
 
 	bool Driver::IsEmulatedStorage() const
 	{
-		return bIsEmulatedStorage;
+		return ToLower(GetEnvironmentVariableOrDefault("AZURE_EMULATED_STORAGE", "false")) != "false";
 	}
 }
