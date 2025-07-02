@@ -64,5 +64,5 @@ target_compile_options(
   PRIVATE $<$<CXX_COMPILER_ID:MSVC>:/W4;/wd4101;/wd4710;/wd4711>
   PRIVATE $<$<CXX_COMPILER_ID:AppleClang,Clang,GNU>:-Wall;-Wextra;-pedantic>
 )
-target_link_libraries(connstring_test PRIVATE khiopsdriver_file_azure GTest::gtest GTest::gmock_main ${CMAKE_DL_LIBS}) # Link to dl
+target_link_libraries(connstring_test PRIVATE khiopsdriver_file_azure Azure::azure-core GTest::gtest GTest::gmock_main ${CMAKE_DL_LIBS}) # Link to dl
 gtest_discover_tests(connstring_test WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
