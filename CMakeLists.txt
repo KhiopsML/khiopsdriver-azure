@@ -61,11 +61,11 @@ add_library(khiopsdriver_file_azure SHARED
     src/util/macro.hpp
     src/util/string.hpp src/util/string.cpp
     src/util/env.hpp src/util/env.cpp
+    src/util/connstring.hpp src/util/connstring.cpp
     src/exception.hpp src/exception.cpp
     src/returnval.hpp
     src/logging.hpp src/logging.cpp
     src/errorlogger.hpp src/errorlogger.cpp
-    src/util/connstring.hpp src/util/connstring.cpp
     src/fileaccessor.hpp src/fileaccessor.cpp
     src/cloudfileaccessor.hpp src/cloudfileaccessor.cpp
     src/emulatedfileaccessor.hpp src/emulatedfileaccessor.cpp
