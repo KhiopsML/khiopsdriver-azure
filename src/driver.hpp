@@ -47,7 +47,9 @@ namespace az
 
 	protected:
 		void CheckConnected() const;
+		bool IsEmulatedStorage() const;
 
 		bool bIsConnected;
+		bool bIsEmulatedStorage;
 	};
 }

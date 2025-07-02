@@ -5,10 +5,8 @@ namespace az
 	class FileAccessor;
 }
 
-#include <string>
-#include <azure/core.hpp>
+#include <azure/core/url.hpp>
 #include "filestream.hpp"
-#include "util/connstring.hpp"
 
 namespace az
 {
@@ -19,7 +17,6 @@ namespace az
 	public:
 		const Azure::Core::Url& GetUrl() const;
 		bool HasDirUrl() const;
-		shared_ptr<Azure::Core::Credentials::TokenCredential> GetCredential() const;
 
 		virtual bool Exists() const = 0;
 		virtual size_t GetSize() const = 0;
@@ -31,20 +28,13 @@ namespace az
 		virtual void CopyTo(const Azure::Core::Url& destUrl) const = 0;
 		virtual void CopyFrom(const Azure::Core::Url& sourceUrl) const = 0;
 
-		virtual ~FileAccessor();
+		virtual ~FileAccessor() = 0;
 
 	protected:
 		FileAccessor(const Azure::Core::Url& url);
-		bool IsEmulatedStorage() const;
-		const string& GetConnectionString() const;
-		const Account FileAccessor::GetAccount() const;
 
 	private:
 		Azure::Core::Url url;
 		bool bHasDirUrl;
-		shared_ptr<Azure::Core::Credentials::TokenCredential> credential;
-		string sConnectionString;
-
-		static shared_ptr<Azure::Core::Credentials::TokenCredential> BuildCredential();
 	};
 }

@@ -11,12 +11,10 @@ namespace az
 
 namespace az
 {
-	using namespace std;
-
 	class BlobAccessor : public FileAccessor
 	{
 	public:
-		BlobAccessor(const Azure::Core::Url& url, bool bIsEmulatedStorage);
+		virtual ~BlobAccessor() = 0;
 
 		bool Exists() const;
 		size_t GetSize() const;
@@ -28,13 +26,9 @@ namespace az
 		void CopyTo(const Azure::Core::Url& destUrl) const;
 		void CopyFrom(const Azure::Core::Url& sourceUrl) const;
 
-		~BlobAccessor();
-
 	protected:
-		Azure::Storage::Blobs::BlobClient GetBlobClient() const;
-		bool IsEmulatedStorage() const;
+		BlobAccessor(const Azure::Core::Url& url);
 
-	private:
-		bool bIsEmulatedStorage;
+		virtual Azure::Storage::Blobs::BlobClient GetBlobClient() const = 0;
 	};
 }

@@ -37,6 +37,7 @@ endif ()
 
 gtest_discover_tests(basic_test)
 
+
 add_executable(plugin_test plugin_test.cpp path_helper.cpp)
 target_compile_options(
   plugin_test
@@ -55,3 +56,13 @@ else ()
 endif ()
 
 gtest_discover_tests(plugin_test WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+
+add_executable(connstring_test connstring_test.cpp)
+target_compile_options(
+  connstring_test
+  PRIVATE $<$<CXX_COMPILER_ID:MSVC>:/W4;/wd4101;/wd4710;/wd4711>
+  PRIVATE $<$<CXX_COMPILER_ID:AppleClang,Clang,GNU>:-Wall;-Wextra;-pedantic>
+)
+target_link_libraries(connstring_test PRIVATE khiopsdriver_file_azure GTest::gtest GTest::gmock_main ${CMAKE_DL_LIBS}) # Link to dl
+gtest_discover_tests(connstring_test WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})

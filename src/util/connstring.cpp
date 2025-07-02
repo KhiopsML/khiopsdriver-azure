@@ -1,27 +1,47 @@
 #include "connstring.hpp"
 #include <regex>
+#include <unordered_map>
 
 namespace az
 {
-	ParsingError::ParsingError(const char* message) :
-		Error(message)
+	ParsingError::ParsingError(const char* sMessage) :
+		Error(sMessage)
 	{
 	}
 
-	Account ParseConnectionString(const string& connectionString)
+	// This is the default Azurite connection string, split in multiple lines for readability:
+	// AccountName=devstoreaccount1;
+	// AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;
+	// DefaultEndpointsProtocol=http;
+	// BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;
+	// QueueEndpoint=http://127.0.0.1:10001/devstoreaccount1;
+	// TableEndpoint=http://127.0.0.1:10002/devstoreaccount1;
+	ConnectionString ParseConnectionString(const string& sConnectionString)
 	{
-		smatch match;
-		Account account;
-		if (!regex_search(connectionString, match, regex("AccountName=([^;]+)")))
+		if (!regex_match(sConnectionString, smatch(), regex("(?:[^=]+=[^;]+;)+")))
 		{
-			throw ParsingError("Failed to parse connection string: account name not found");
+			throw ParsingError("Ill-formed connection string");
 		}
-		account.name = match[1];
-		if (!regex_search(connectionString, match, regex("AccountKey=([^;]+)")))
+		regex kvRegex("([^=]+)=([^;]+);");
+		sregex_iterator begin(sConnectionString.begin(), sConnectionString.end(), kvRegex);
+		sregex_iterator end;
+		unordered_map<string, string> kvPairs;
+		for (sregex_iterator it = begin; it != end; it++)
 		{
-			throw ParsingError("Failed to parse connection string: account key not found");
+			kvPairs[(*it)[1]] = (*it)[2];
 		}
-		account.key = match[1];
-		return account;
+		try
+		{
+			return ConnectionString
+			{
+				kvPairs.at("AccountName"),
+				kvPairs.at("AccountKey"),
+				Azure::Core::Url(kvPairs.at("BlobEndpoint"))
+			};
+		}
+		catch (const out_of_range&)
+		{
+			throw ParsingError("Connection string is missing one of 'AccountName', 'AccountKey' or 'BlobEndpoint'");
+		}
 	}
 }

@@ -6,12 +6,6 @@
 
 namespace az
 {
-	BlobAccessor::BlobAccessor(const Azure::Core::Url& url, bool bIsEmulatedStorage):
-		FileAccessor(url),
-		bIsEmulatedStorage(ToLower(GetEnvironmentVariableOrDefault("AZURE_EMULATED_STORAGE", "false")) != "false")
-	{
-	}
-
 	bool BlobAccessor::Exists() const
 	{
 		if (HasDirUrl())
@@ -76,28 +70,8 @@ namespace az
 		// TODO: Implement
 	}
 
-	BlobAccessor::~BlobAccessor()
+	BlobAccessor::BlobAccessor(const Azure::Core::Url& url):
+		FileAccessor(url)
 	{
-	}
-
-	bool BlobAccessor::IsEmulatedStorage() const
-	{
-		return bIsEmulatedStorage;
-	}
-
-	Azure::Storage::Blobs::BlobClient BlobAccessor::GetBlobClient() const
-	{
-		if (IsEmulatedStorage())
-		{
-			Account account = GetAccount();
-			return Azure::Storage::Blobs::BlobClient(
-				GetUrl().GetAbsoluteUrl(),
-				make_shared<Azure::Storage::StorageSharedKeyCredential>(account.name, account.key)
-			);
-		}
-		else
-		{
-			return Azure::Storage::Blobs::BlobClient(GetUrl().GetAbsoluteUrl(), GetCredential());
-		}
 	}
 }

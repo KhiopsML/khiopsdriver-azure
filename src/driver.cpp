@@ -4,13 +4,15 @@
 #include "util/string.hpp"
 #include "blobaccessor.hpp"
 #include "shareaccessor.hpp"
+#include "emulatedblobaccessor.hpp"
 #include "exception.hpp"
 #include "util/env.hpp"
 
 namespace az
 {
 	Driver::Driver():
-		bIsConnected(false)
+		bIsConnected(false),
+		bIsEmulatedStorage(ToLower(GetEnvironmentVariableOrDefault("AZURE_EMULATED_STORAGE", "false")) != "false")
 	{
 	}
 
@@ -62,21 +64,24 @@ namespace az
 		const string sFileDomain = ".file.core.windows.net";
 		const Azure::Core::Url url(sUrl);
 		const string& sHost = url.GetHost();
-		if (EndsWith(sHost, sBlobDomain))
+		if (IsEmulatedStorage())
 		{
-			return make_unique<BlobAccessor>(url, IsEmulatedStorage());
-		}
-		else if (EndsWith(sHost, sFileDomain))
-		{
-			return make_unique<ShareAccessor>(url, IsEmulatedStorage());
-		}
-		else if (IsEmulatedStorage())
-		{
-			return make_unique<BlobAccessor>(url, IsEmulatedStorage());
+			return make_unique<EmulatedBlobAccessor>(url);
 		}
 		else
 		{
-			throw InvalidDomainError();
+			if (EndsWith(sHost, sBlobDomain))
+			{
+				return make_unique<BlobAccessor>(url);
+			}
+			else if (EndsWith(sHost, sFileDomain))
+			{
+				return make_unique<ShareAccessor>(url);
+			}
+			else
+			{
+				throw InvalidDomainError();
+			}
 		}
 	}
 
@@ -92,5 +97,10 @@ namespace az
 		{
 			throw NotConnectedError();
 		}
+	}
+
+	bool Driver::IsEmulatedStorage() const
+	{
+		return bIsEmulatedStorage;
 	}
 }

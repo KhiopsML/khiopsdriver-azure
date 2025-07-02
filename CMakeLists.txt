@@ -67,10 +67,15 @@ add_library(khiopsdriver_file_azure SHARED
     src/errorlogger.hpp src/errorlogger.cpp
     src/util/connstring.hpp src/util/connstring.cpp
     src/fileaccessor.hpp src/fileaccessor.cpp
+    src/cloudfileaccessor.hpp src/cloudfileaccessor.cpp
+    src/emulatedfileaccessor.hpp src/emulatedfileaccessor.cpp
     src/blobaccessor.hpp src/blobaccessor.cpp
     src/shareaccessor.hpp src/shareaccessor.cpp
+    src/cloudblobaccessor.hpp src/cloudblobaccessor.cpp
+    src/emulatedblobaccessor.hpp src/emulatedblobaccessor.cpp
+    src/cloudshareaccessor.hpp src/cloudshareaccessor.cpp
     src/filestream.hpp src/filestream.cpp
- )
+)
 
 target_include_directories(khiopsdriver_file_azure PRIVATE src/contrib)
 target_link_options(khiopsdriver_file_azure PRIVATE $<$<CONFIG:RELEASE>:-s>) # stripping

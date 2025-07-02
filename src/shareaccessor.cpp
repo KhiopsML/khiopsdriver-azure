@@ -3,8 +3,8 @@
 
 namespace az
 {
-	ShareAccessor::ShareAccessor(const Azure::Core::Url& url, bool bIsEmulatedStorage):
-		FileAccessor(url, bIsEmulatedStorage)
+	ShareAccessor::ShareAccessor(const Azure::Core::Url& url):
+		FileAccessor(url)
 	{
 	}
 

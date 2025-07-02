@@ -2,28 +2,30 @@
 
 namespace az
 {
-	struct Account;
+	struct ConnectionString;
 	class ParsingError;
 }
 
 #include <string>
+#include <azure/core/url.hpp>
 #include "../exception.hpp"
 
 namespace az
 {
 	using namespace std;
 
-	struct Account
+	struct ConnectionString
 	{
-		string name;
-		string key;
+		string sAccountName;
+		string sAccountKey;
+		Azure::Core::Url blobEndpoint;
 	};
 
 	class ParsingError : public Error
 	{
 	public:
-		ParsingError(const char* message);
+		ParsingError(const char* sMessage);
 	};
 
-	Account ParseConnectionString(const string& connectionString);
+	ConnectionString ParseConnectionString(const string& sConnectionString);
 }
