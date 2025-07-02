@@ -18,7 +18,8 @@ namespace az
 	// TableEndpoint=http://127.0.0.1:10002/devstoreaccount1;
 	ConnectionString ParseConnectionString(const string& sConnectionString)
 	{
-		if (!regex_match(sConnectionString, smatch(), regex("(?:[^=]+=[^;]+;)+")))
+		smatch match;
+		if (!regex_match(sConnectionString, match, regex("(?:[^=]+=[^;]+;)+")))
 		{
 			throw ParsingError("Ill-formed connection string");
 		}
