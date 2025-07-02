@@ -16,7 +16,7 @@ namespace az
 	class EmulatedBlobAccessor : public BlobAccessor, public EmulatedFileAccessor
 	{
 	public:
-		EmulatedBlobAccessor(const Azure::Core::Url& url, const string& sConnectionString);
+		EmulatedBlobAccessor(const Azure::Core::Url& url);
 		~EmulatedBlobAccessor();
 
 	protected:

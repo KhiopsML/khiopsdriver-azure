@@ -2,9 +2,9 @@
 
 namespace az
 {
-	EmulatedBlobAccessor::EmulatedBlobAccessor(const Azure::Core::Url& url, const string& sConnectionString):
+	EmulatedBlobAccessor::EmulatedBlobAccessor(const Azure::Core::Url& url):
 		BlobAccessor(url),
-		EmulatedFileAccessor(sConnectionString)
+		EmulatedFileAccessor()
 	{
 	}
 
@@ -14,6 +14,7 @@ namespace az
 
 	Azure::Storage::Blobs::BlobClient EmulatedBlobAccessor::GetBlobClient() const
 	{
-		return Azure::Storage::Blobs::BlobClient(GetUrl().GetAbsoluteUrl(), make_shared<Azure::Storage::StorageSharedKeyCredential>(sAccountName, sAccountKey));
+		return (Azure::Storage::Blobs::BlobClient)nullptr;
+		//return Azure::Storage::Blobs::BlobClient(GetUrl().GetAbsoluteUrl(), make_shared<Azure::Storage::StorageSharedKeyCredential>(sAccountName, sAccountKey));
 	}
 }
