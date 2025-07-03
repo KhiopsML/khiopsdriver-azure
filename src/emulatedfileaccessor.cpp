@@ -1,4 +1,6 @@
 #include "emulatedfileaccessor.hpp"
+#include "util/connstring.hpp"
+#include "util/env.hpp"
 
 namespace az
 {
@@ -24,6 +26,6 @@ namespace az
 
 	ConnectionString EmulatedFileAccessor::GetConnectionStringFromEnv()
 	{
-		return ConnectionString();
+		return ParseConnectionString(GetEnvironmentVariableOrThrow("AZURE_STORAGE_CONNECTION_STRING"));
 	}
 }
