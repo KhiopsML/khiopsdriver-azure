@@ -9,7 +9,8 @@ namespace az
 
 	vector<string>&& Split(const string& str, char delim);
 
-	bool EndsWith(const std::string& str, const std::string& suffix);
+	bool StartsWith(const string& str, const string& prefix);
+	bool EndsWith(const string& str, const string& suffix);
 
 	string ToLower(const string& str);
 }

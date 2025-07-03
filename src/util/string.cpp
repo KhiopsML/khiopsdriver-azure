@@ -18,6 +18,13 @@ namespace az
 		return move(fragments);
 	}
 
+	bool StartsWith(const string& str, const string& prefix)
+	{
+		size_t strLen = str.length();
+		size_t prefixLen = prefix.length();
+		return prefixLen <= strLen && !str.compare(0, prefixLen, prefix);
+	}
+
 	bool EndsWith(const std::string& str, const std::string& suffix)
 	{
 		size_t strLen = str.length();
