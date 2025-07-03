@@ -79,7 +79,6 @@ set(SourceList
 list(TRANSFORM SourceList PREPEND src/)
 
 add_library(khiopsdriver_file_azure SHARED ${SourceList})
-
 target_include_directories(khiopsdriver_file_azure PRIVATE src/contrib)
 target_link_options(khiopsdriver_file_azure PRIVATE $<$<CONFIG:RELEASE>:-s>) # stripping
 if(WIN32)
@@ -89,10 +88,10 @@ else()
 endif()
 target_compile_options(khiopsdriver_file_azure
     PRIVATE $<$<CXX_COMPILER_ID:MSVC>:-Wall;/wd4582;/wd4583;/wd4625;/wd4626;/wd4710;/wd4711;/wd4820;/wd4868>
-    PRIVATE $<$<CXX_COMPILER_ID:AppleClang,Clang,GNU>:-Wall;-Wextra;-pedantic>)
+    PRIVATE $<$<CXX_COMPILER_ID:AppleClang,Clang,GNU>:-Wall;-Wextra;-pedantic>
+)
 
 option(BUILD_TESTS "Build test programs" OFF)
-
 if(BUILD_TESTS)
     add_executable(KhiopsPluginTest src/khiopsplugintest.cpp)
     target_link_libraries(KhiopsPluginTest PRIVATE fmt::fmt ${CMAKE_DL_LIBS})
