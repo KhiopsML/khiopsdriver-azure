@@ -14,7 +14,7 @@ namespace az
 	{
 		if (HasDirUrl())
 		{
-			return true;
+			return true; // there is no such concept as a directory when dealing with blob services
 		}
 		else
 		{
