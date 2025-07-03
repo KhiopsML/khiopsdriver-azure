@@ -1479,7 +1479,7 @@ static int FileOrDirExists(const char* sUrl)
 	catch (const exception& exc)
 	{
 		errorLogger.LogException(exc);
-		return nFalse;
+		return nFalse; // no specific value indicates failure; this is not an error code
 	}
 }
 
