@@ -67,20 +67,17 @@ namespace az
 		{
 			return make_unique<EmulatedBlobAccessor>(url);
 		}
+		else if (EndsWith(sHost, sBlobDomain))
+		{
+			return make_unique<CloudBlobAccessor>(url);
+		}
+		else if (EndsWith(sHost, sFileDomain))
+		{
+			return make_unique<CloudShareAccessor>(url);
+		}
 		else
 		{
-			if (EndsWith(sHost, sBlobDomain))
-			{
-				return make_unique<CloudBlobAccessor>(url);
-			}
-			else if (EndsWith(sHost, sFileDomain))
-			{
-				return make_unique<CloudShareAccessor>(url);
-			}
-			else
-			{
-				throw InvalidDomainError(sHost);
-			}
+			throw InvalidDomainError(sHost);
 		}
 	}
 
