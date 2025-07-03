@@ -5,8 +5,8 @@
 #include "cloudblobaccessor.hpp"
 #include "cloudshareaccessor.hpp"
 #include "emulatedblobaccessor.hpp"
-#include "exception.hpp"
 #include "util/env.hpp"
+#include "exception.hpp"
 
 namespace az
 {
@@ -79,7 +79,7 @@ namespace az
 			}
 			else
 			{
-				throw InvalidDomainError();
+				throw InvalidDomainError(sHost);
 			}
 		}
 	}

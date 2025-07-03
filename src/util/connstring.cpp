@@ -4,11 +4,6 @@
 
 namespace az
 {
-	ParsingError::ParsingError(const char* sMessage) :
-		Error(sMessage)
-	{
-	}
-
 	// This is the default Azurite connection string, split in multiple lines for readability:
 	// AccountName=devstoreaccount1;
 	// AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;
@@ -31,19 +26,27 @@ namespace az
 		{
 			kvPairs[(*it)[1]] = (*it)[2];
 		}
-		try
+		auto accountNameIt = kvPairs.find("AccountName");
+		if (accountNameIt == kvPairs.end())
 		{
-			return ConnectionString
-			{
-				kvPairs.at("AccountName"),
-				kvPairs.at("AccountKey"),
-				Azure::Core::Url(kvPairs.at("BlobEndpoint"))
-			};
+			throw ParsingError("connection string is missing AccountName");
 		}
-		catch (const out_of_range&)
+		auto accountKeyIt = kvPairs.find("AccountKey");
+		if (accountKeyIt == kvPairs.end())
 		{
-			throw ParsingError("Connection string is missing one of 'AccountName', 'AccountKey' or 'BlobEndpoint'");
+			throw ParsingError("connection string is missing AccountKey");
 		}
+		auto blobEndpointIt = kvPairs.find("BlobEndpoint");
+		if (blobEndpointIt == kvPairs.end())
+		{
+			throw ParsingError("connection string is missing BlobEndpoint");
+		}
+		return ConnectionString
+		{
+			accountNameIt->second,
+			accountKeyIt->second,
+			Azure::Core::Url(blobEndpointIt->second)
+		};
 	}
 
 	bool operator==(const ConnectionString& a, const ConnectionString& b)

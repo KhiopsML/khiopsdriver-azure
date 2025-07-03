@@ -5,17 +5,6 @@
 
 namespace az
 {
-	EnvironmentVariableNotFoundError::EnvironmentVariableNotFoundError(const string& sVarName):
-		Error("Environment variable not found"),
-		sVarName(sVarName)
-	{
-	}
-
-	const string& EnvironmentVariableNotFoundError::getVarName() const
-	{
-		return sVarName;
-	}
-
 	string GetEnvironmentVariableOrThrow(const string& sVarName)
 	{
 		char* sValue = getenv(sVarName.c_str());

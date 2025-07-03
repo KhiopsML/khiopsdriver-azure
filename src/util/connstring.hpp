@@ -24,7 +24,17 @@ namespace az
 	class ParsingError : public Error
 	{
 	public:
-		ParsingError(const char* sMessage);
+		inline ParsingError(const string& sMessage):
+			sMessage(sMessage)
+		{
+		}
+
+		inline const char* what() const override
+		{
+			return sMessage.c_str();
+		}
+
+		string sMessage;
 	};
 
 	ConnectionString ParseConnectionString(const string& sConnectionString);
