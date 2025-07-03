@@ -20,6 +20,6 @@ namespace az
 		~CloudBlobAccessor();
 
 	protected:
-		Azure::Storage::Blobs::BlobClient GetBlobClient() const;
+		Azure::Storage::Blobs::BlobClient GetBlobClient() const override;
 	};
 }

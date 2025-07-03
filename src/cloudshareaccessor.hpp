@@ -20,6 +20,6 @@ namespace az
 		~CloudShareAccessor();
 
 	protected:
-		Azure::Storage::Files::Shares::ShareFileClient GetShareFileClient() const;
+		Azure::Storage::Files::Shares::ShareFileClient GetShareFileClient() const override;
 	};
 }

@@ -18,15 +18,15 @@ namespace az
 	public:
 		virtual ~ShareAccessor() = 0;
 
-		bool Exists() const;
-		size_t GetSize() const;
-		FileStream Open(char mode) const;
-		void Remove() const;
-		void MkDir() const;
-		void RmDir() const;
-		size_t GetFreeDiskSpace() const;
-		void CopyTo(const Azure::Core::Url& destUrl) const;
-		void CopyFrom(const Azure::Core::Url& sourceUrl) const;
+		bool Exists() const override;
+		size_t GetSize() const override;
+		FileStream Open(char mode) const override;
+		void Remove() const override;
+		void MkDir() const override;
+		void RmDir() const override;
+		size_t GetFreeDiskSpace() const override;
+		void CopyTo(const Azure::Core::Url& destUrl) const override;
+		void CopyFrom(const Azure::Core::Url& sourceUrl) const override;
 
 	protected:
 		ShareAccessor(const Azure::Core::Url& url);
