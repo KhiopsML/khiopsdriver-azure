@@ -53,29 +53,32 @@ if((CMAKE_SYSTEM_NAME STREQUAL "Linux") AND NOT(CMAKE_BUILD_TYPE STREQUAL "Relea
     setup_target_for_coverage_cobertura(${PROJECT_NAME}_cobertura basic_test coverage --gtest_output=xml:coverage.junit.xml)
 endif()
 
-add_library(khiopsdriver_file_azure SHARED
-    src/azureplugin.hpp
-    src/azureplugin_internal.hpp
-    src/azureplugin.cpp
-    src/driver.hpp src/driver.cpp
-    src/util/macro.hpp
-    src/util/string.hpp src/util/string.cpp
-    src/util/env.hpp src/util/env.cpp
-    src/util/connstring.hpp src/util/connstring.cpp
-    src/exception.hpp src/exception.cpp
-    src/returnval.hpp
-    src/logging.hpp src/logging.cpp
-    src/errorlogger.hpp src/errorlogger.cpp
-    src/fileaccessor.hpp src/fileaccessor.cpp
-    src/cloudfileaccessor.hpp src/cloudfileaccessor.cpp
-    src/emulatedfileaccessor.hpp src/emulatedfileaccessor.cpp
-    src/blobaccessor.hpp src/blobaccessor.cpp
-    src/shareaccessor.hpp src/shareaccessor.cpp
-    src/cloudblobaccessor.hpp src/cloudblobaccessor.cpp
-    src/emulatedblobaccessor.hpp src/emulatedblobaccessor.cpp
-    src/cloudshareaccessor.hpp src/cloudshareaccessor.cpp
-    src/filestream.hpp src/filestream.cpp
+set(SourceList
+    azureplugin.hpp
+    azureplugin_internal.hpp
+    azureplugin.cpp
+    driver.hpp driver.cpp
+    util/macro.hpp
+    util/string.hpp util/string.cpp
+    util/env.hpp util/env.cpp
+    util/connstring.hpp util/connstring.cpp
+    exception.hpp exception.cpp
+    returnval.hpp
+    logging.hpp logging.cpp
+    errorlogger.hpp errorlogger.cpp
+    fileaccessor.hpp fileaccessor.cpp
+    cloudfileaccessor.hpp cloudfileaccessor.cpp
+    emulatedfileaccessor.hpp emulatedfileaccessor.cpp
+    blobaccessor.hpp blobaccessor.cpp
+    shareaccessor.hpp shareaccessor.cpp
+    cloudblobaccessor.hpp cloudblobaccessor.cpp
+    emulatedblobaccessor.hpp emulatedblobaccessor.cpp
+    cloudshareaccessor.hpp cloudshareaccessor.cpp
+    filestream.hpp filestream.cpp
 )
+list(TRANSFORM SourceList PREPEND src/)
+
+add_library(khiopsdriver_file_azure SHARED ${SourceList})
 
 target_include_directories(khiopsdriver_file_azure PRIVATE src/contrib)
 target_link_options(khiopsdriver_file_azure PRIVATE $<$<CONFIG:RELEASE>:-s>) # stripping
