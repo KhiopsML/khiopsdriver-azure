@@ -1,6 +1,7 @@
 #include "emulatedfileaccessor.hpp"
 #include "util/connstring.hpp"
 #include "util/env.hpp"
+#include "util/string.hpp"
 
 namespace az
 {
@@ -20,8 +21,7 @@ namespace az
 
 	bool EmulatedFileAccessor::IsConnectionStringCompatibleWithUrl(const Azure::Core::Url& url) const
 	{
-		// TODO Implement
-		return false;
+		return StartsWith(url.GetAbsoluteUrl(), GetConnectionString().blobEndpoint.GetAbsoluteUrl());
 	}
 
 	ConnectionString EmulatedFileAccessor::GetConnectionStringFromEnv()
