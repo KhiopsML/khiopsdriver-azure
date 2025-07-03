@@ -12,7 +12,7 @@ using namespace std;
 
 namespace az
 {
-	class EnvironmentVariableNotFoundError : Error
+	class EnvironmentVariableNotFoundError : public Error
 	{
 	public:
 		EnvironmentVariableNotFoundError(const string& sVarName);
