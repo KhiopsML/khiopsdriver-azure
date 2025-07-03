@@ -5,6 +5,7 @@ namespace az
 	class Error;
 	class InvalidDomainError;
 	class NotConnectedError;
+	class IncompatibleConnectionStringError;
 }
 
 #include <exception>
@@ -42,6 +43,15 @@ namespace az
 		inline const char* what() const override
 		{
 			return "not connected";
+		}
+	};
+
+	class IncompatibleConnectionStringError : public Error
+	{
+	public:
+		inline const char* what() const override
+		{
+			return "connection string is not valid for the provided URL";
 		}
 	};
 }
