@@ -10,7 +10,8 @@ namespace az
 	}
 
 	EmulatedFileAccessor::EmulatedFileAccessor():
-		connectionString(GetConnectionStringFromEnv())
+		connectionString(GetConnectionStringFromEnv()),
+		credential(BuildCredential())
 	{
 	}
 
@@ -24,8 +25,19 @@ namespace az
 		return StartsWith(url.GetAbsoluteUrl(), GetConnectionString().blobEndpoint.GetAbsoluteUrl());
 	}
 
+	shared_ptr<Azure::Storage::StorageSharedKeyCredential> EmulatedFileAccessor::GetCredential() const
+	{
+		return credential;
+	}
+
 	ConnectionString EmulatedFileAccessor::GetConnectionStringFromEnv()
 	{
 		return ParseConnectionString(GetEnvironmentVariableOrThrow("AZURE_STORAGE_CONNECTION_STRING"));
+	}
+
+	shared_ptr<Azure::Storage::StorageSharedKeyCredential> EmulatedFileAccessor::BuildCredential()
+	{
+		const ConnectionString& connStr = GetConnectionString();
+		return make_shared<Azure::Storage::StorageSharedKeyCredential>(connStr.sAccountName, connStr.sAccountKey);
 	}
 }
