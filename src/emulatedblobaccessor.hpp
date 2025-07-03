@@ -20,6 +20,9 @@ namespace az
 		~EmulatedBlobAccessor();
 
 	protected:
+		template<typename ClientT> ClientT GetClient() const;
+		Azure::Storage::Blobs::BlobServiceClient GetServiceClient() const override;
+		Azure::Storage::Blobs::BlobContainerClient GetContainerClient() const override;
 		Azure::Storage::Blobs::BlobClient GetBlobClient() const override;
 	};
 }

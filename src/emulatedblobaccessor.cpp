@@ -1,5 +1,4 @@
 #include "emulatedblobaccessor.hpp"
-#include "exception.hpp"
 #include "util/connstring.hpp"
 
 namespace az
@@ -18,12 +17,24 @@ namespace az
 	{
 	}
 
-	Azure::Storage::Blobs::BlobClient EmulatedBlobAccessor::GetBlobClient() const
+	template<typename ClientT> ClientT EmulatedBlobAccessor::GetClient() const
 	{
 		const ConnectionString& connStr = GetConnectionString();
-		return Azure::Storage::Blobs::BlobClient(
-			GetUrl().GetAbsoluteUrl(),
-			make_shared<Azure::Storage::StorageSharedKeyCredential>(connStr.sAccountName, connStr.sAccountKey)
-		);
+		return ClientT(GetUrl().GetAbsoluteUrl(), GetCredential());
+	}
+	
+	Azure::Storage::Blobs::BlobServiceClient EmulatedBlobAccessor::GetServiceClient() const
+	{
+		return GetClient<Azure::Storage::Blobs::BlobServiceClient>();
+	}
+
+	Azure::Storage::Blobs::BlobContainerClient EmulatedBlobAccessor::GetContainerClient() const
+	{
+		return GetClient<Azure::Storage::Blobs::BlobContainerClient>();
+	}
+
+	Azure::Storage::Blobs::BlobClient EmulatedBlobAccessor::GetBlobClient() const
+	{
+		return GetClient<Azure::Storage::Blobs::BlobClient>();
 	}
 }
