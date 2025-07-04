@@ -1,4 +1,6 @@
 #include "cloudshareaccessor.hpp"
+#include <regex>
+#include "exception.hpp"
 #include "util/string.hpp"
 
 namespace az
@@ -21,5 +23,25 @@ namespace az
 	vector<string> CloudShareAccessor::UrlPathParts() const
 	{
 		return Split(GetUrl().GetPath(), '/');
+	}
+
+	void CloudShareAccessor::CheckFileUrl() const
+	{
+		const string& path = GetUrl().GetPath();
+		smatch match;
+		if (!regex_match(path, regex("[^/]+(?:/[^/]+)+")))
+		{
+			throw InvalidFileUrlPathError(path);
+		}
+	}
+
+	void CloudShareAccessor::CheckDirUrl() const
+	{
+		const string& path = GetUrl().GetPath();
+		smatch match;
+		if (!regex_match(path, regex("(?:[^/]+/){2,}")))
+		{
+			throw InvalidDirUrlPathError(path);
+		}
 	}
 }

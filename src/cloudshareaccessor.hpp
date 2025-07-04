@@ -22,5 +22,7 @@ namespace az
 	protected:
 		Azure::Storage::Files::Shares::ShareFileClient GetShareFileClient() const override;
 		vector<string> UrlPathParts() const override;
+		void CheckFileUrl() const override;
+		void CheckDirUrl() const override;
 	};
 }

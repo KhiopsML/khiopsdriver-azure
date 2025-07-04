@@ -61,7 +61,15 @@ namespace az
 		CheckConnected();
 		const string sBlobDomain = ".blob.core.windows.net";
 		const string sFileDomain = ".file.core.windows.net";
-		const Azure::Core::Url url(sUrl);
+		Azure::Core::Url url;
+		try
+		{
+			url = Azure::Core::Url(sUrl);
+		}
+		catch (const exception& exc)
+		{
+			throw InvalidUrlError(sUrl);
+		}
 		const string& sHost = url.GetHost();
 		if (IsEmulatedStorage())
 		{

@@ -7,6 +7,9 @@ namespace az
 	class NotConnectedError;
 	class IncompatibleConnectionStringError;
 	class NetworkError;
+	class InvalidUrlError;
+	class InvalidFileUrlPathError;
+	class InvalidDirUrlPathError;
 }
 
 #include <exception>
@@ -63,5 +66,56 @@ namespace az
 		{
 			return "failed to communicate to the storage server";
 		}
+	};
+
+	class InvalidUrlError : public Error
+	{
+	public:
+		inline InvalidUrlError(const string& sUrl):
+			sMessage((ostringstream() << "invalid URL: " << sUrl).str())
+		{
+		}
+
+		inline const char* what() const override
+		{
+			return sMessage.c_str();
+		}
+
+	private:
+		string sMessage;
+	};
+
+	class InvalidFileUrlPathError : public Error
+	{
+	public:
+		inline InvalidFileUrlPathError(const string& sPath):
+			sMessage((ostringstream() << "invalid file URL path: " << sPath).str())
+		{
+		}
+
+		inline const char* what() const override
+		{
+			return sMessage.c_str();
+		}
+
+	private:
+		string sMessage;
+	};
+
+	class InvalidDirUrlPathError : public Error
+	{
+	public:
+		inline InvalidDirUrlPathError(const string& sPath):
+			sMessage((ostringstream() << "invalid directory URL path: " << sPath).str())
+		{
+		}
+
+		inline const char* what() const override
+		{
+			return sMessage.c_str();
+		}
+
+	private:
+		string sMessage;
 	};
 }

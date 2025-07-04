@@ -1,4 +1,6 @@
 #include "emulatedblobaccessor.hpp"
+#include <regex>
+#include "exception.hpp"
 #include "util/connstring.hpp"
 #include "util/string.hpp"
 
@@ -62,5 +64,25 @@ namespace az
 	vector<string> EmulatedBlobAccessor::UrlPathParts() const
 	{
 		return Split(GetUrl().GetPath(), '/', 2); // <account> / <container> / <object>
+	}
+
+	void EmulatedBlobAccessor::CheckFileUrl() const
+	{
+		const string& path = GetUrl().GetPath();
+		smatch match;
+		if (!regex_match(path, regex("[^/]+(?:/[^/]+){2,}")))
+		{
+			throw InvalidFileUrlPathError(path);
+		}
+	}
+
+	void EmulatedBlobAccessor::CheckDirUrl() const
+	{
+		const string& path = GetUrl().GetPath();
+		smatch match;
+		if (!regex_match(path, regex("(?:[^/]+/){3,}")))
+		{
+			throw InvalidDirUrlPathError(path);
+		}
 	}
 }

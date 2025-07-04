@@ -1,5 +1,7 @@
 #include "cloudblobaccessor.hpp"
 #include <sstream>
+#include <regex>
+#include "exception.hpp"
 #include "util/string.hpp"
 
 namespace az
@@ -53,5 +55,25 @@ namespace az
 	vector<string> CloudBlobAccessor::UrlPathParts() const
 	{
 		return Split(GetUrl().GetPath(), '/', 1); // <container> / <object>
+	}
+
+	void CloudBlobAccessor::CheckFileUrl() const
+	{
+		const string& path = GetUrl().GetPath();
+		smatch match;
+		if (!regex_match(path, regex("[^/]+(?:/[^/]+)+")))
+		{
+			throw InvalidFileUrlPathError(path);
+		}
+	}
+
+	void CloudBlobAccessor::CheckDirUrl() const
+	{
+		const string& path = GetUrl().GetPath();
+		smatch match;
+		if (!regex_match(path, regex("(?:[^/]+/){2,}")))
+		{
+			throw InvalidDirUrlPathError(path);
+		}
 	}
 }

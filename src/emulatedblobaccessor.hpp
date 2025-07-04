@@ -29,5 +29,7 @@ namespace az
 		Azure::Storage::Blobs::BlobContainerClient GetContainerClient() const override;
 		Azure::Storage::Blobs::BlobClient GetBlobClient() const override;
 		vector<string> UrlPathParts() const override;
+		void CheckFileUrl() const override;
+		void CheckDirUrl() const override;
 	};
 }

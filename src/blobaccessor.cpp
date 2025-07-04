@@ -16,10 +16,12 @@ namespace az
 	{
 		if (HasDirUrl())
 		{
+			CheckDirUrl();
 			return true; // there is no such concept as a directory when dealing with blob services
 		}
 		else
 		{
+			CheckFileUrl();
 			try
 			{
 				const vector<string>& pathParts = UrlPathParts();
