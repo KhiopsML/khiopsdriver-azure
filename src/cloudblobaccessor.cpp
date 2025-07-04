@@ -14,6 +14,16 @@ namespace az
 	{
 	}
 
+	string CloudBlobAccessor::GetContainerName() const
+	{
+		return UrlPathParts().at(0);
+	}
+
+	string CloudBlobAccessor::GetObjectName() const
+	{
+		return UrlPathParts().at(1);
+	}
+
 	string CloudBlobAccessor::GetServiceUrl() const
 	{
 		const auto& url = GetUrl();
@@ -22,7 +32,7 @@ namespace az
 
 	string CloudBlobAccessor::GetContainerUrl() const
 	{
-		return (ostringstream() << GetServiceUrl() << "/" << UrlPathParts().at(0)).str();
+		return (ostringstream() << GetServiceUrl() << "/" << GetContainerName()).str();
 	}
 
 	Azure::Storage::Blobs::BlobServiceClient CloudBlobAccessor::GetServiceClient() const
@@ -42,6 +52,6 @@ namespace az
 
 	vector<string> CloudBlobAccessor::UrlPathParts() const
 	{
-		return Split(GetUrl().GetPath(), '/', 1);
+		return Split(GetUrl().GetPath(), '/', 1); // <container> / <object>
 	}
 }

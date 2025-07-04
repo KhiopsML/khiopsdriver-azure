@@ -18,15 +18,30 @@ namespace az
 	{
 	}
 
+	string EmulatedBlobAccessor::GetAccountName() const
+	{
+		return UrlPathParts().at(0);
+	}
+
+	string EmulatedBlobAccessor::GetContainerName() const
+	{
+		return UrlPathParts().at(1);
+	}
+
+	string EmulatedBlobAccessor::GetObjectName() const
+	{
+		return UrlPathParts().at(2);
+	}
+
 	string EmulatedBlobAccessor::GetServiceUrl() const
 	{
 		const auto& url = GetUrl();
-		return (ostringstream() << url.GetScheme() << "://" << url.GetHost() << ":" << url.GetPort() << "/" << UrlPathParts().at(0)).str();
+		return (ostringstream() << url.GetScheme() << "://" << url.GetHost() << ":" << url.GetPort() << "/" << GetAccountName()).str();
 	}
 
 	string EmulatedBlobAccessor::GetContainerUrl() const
 	{
-		return (ostringstream() << GetServiceUrl() << "/" << UrlPathParts().at(1)).str();
+		return (ostringstream() << GetServiceUrl() << "/" << GetContainerName()).str();
 	}
 	
 	Azure::Storage::Blobs::BlobServiceClient EmulatedBlobAccessor::GetServiceClient() const
@@ -46,8 +61,6 @@ namespace az
 
 	vector<string> EmulatedBlobAccessor::UrlPathParts() const
 	{
-		vector<string> parts = Split(GetUrl().GetPath(), '/', 2);
-		parts.erase(parts.begin());
-		return parts;
+		return Split(GetUrl().GetPath(), '/', 2); // <account> / <container> / <object>
 	}
 }

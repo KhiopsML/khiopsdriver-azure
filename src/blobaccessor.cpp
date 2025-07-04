@@ -24,13 +24,13 @@ namespace az
 			{
 				const vector<string>& pathParts = UrlPathParts();
 				auto containers = GetServiceClient().ListBlobContainers().BlobContainers;
-				auto foundContainerIt = find_if(containers.begin(), containers.end(), [&pathParts](const auto& container) { return container.Name == pathParts.at(0); });
+				auto foundContainerIt = find_if(containers.begin(), containers.end(), [this](const auto& container) { return container.Name == GetContainerName(); });
 				if (foundContainerIt == containers.end())
 				{
 					return false;
 				}
 				auto blobs = GetContainerClient().ListBlobs().Blobs;
-				auto foundBlobIt = find_if(blobs.begin(), blobs.end(), [&pathParts](const auto& blob) { return blob.Name == pathParts.at(1); });
+				auto foundBlobIt = find_if(blobs.begin(), blobs.end(), [this](const auto& blob) { return blob.Name == GetObjectName(); });
 				return foundBlobIt != blobs.end();
 			}
 			catch (const Azure::Core::Http::TransportException& exc)
