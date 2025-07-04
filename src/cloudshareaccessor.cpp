@@ -1,4 +1,5 @@
 #include "cloudshareaccessor.hpp"
+#include "util/string.hpp"
 
 namespace az
 {
@@ -15,5 +16,10 @@ namespace az
 	Azure::Storage::Files::Shares::ShareFileClient CloudShareAccessor::GetShareFileClient() const
 	{
 		return Azure::Storage::Files::Shares::ShareFileClient(GetUrl().GetAbsoluteUrl(), GetCredential());
+	}
+
+	vector<string> CloudShareAccessor::UrlPathParts() const
+	{
+		return Split(GetUrl().GetPath(), '/');
 	}
 }

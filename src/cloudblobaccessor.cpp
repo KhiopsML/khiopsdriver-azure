@@ -1,4 +1,6 @@
 #include "cloudblobaccessor.hpp"
+#include <sstream>
+#include "util/string.hpp"
 
 namespace az
 {
@@ -12,24 +14,34 @@ namespace az
 	{
 	}
 
-	template<typename ClientT> ClientT CloudBlobAccessor::GetClient() const
+	string CloudBlobAccessor::GetServiceUrl() const
 	{
-		const ConnectionString& connStr = GetConnectionString();
-		return ClientT(GetUrl().GetAbsoluteUrl(), GetCredential());
+		const auto& url = GetUrl();
+		return (ostringstream() << url.GetScheme() << "://" << url.GetHost() << ":" << url.GetPort()).str();
+	}
+
+	string CloudBlobAccessor::GetContainerUrl() const
+	{
+		return (ostringstream() << GetServiceUrl() << "/" << UrlPathParts().at(0)).str();
 	}
 
 	Azure::Storage::Blobs::BlobServiceClient CloudBlobAccessor::GetServiceClient() const
 	{
-		return GetClient<Azure::Storage::Blobs::BlobServiceClient>();
+		return Azure::Storage::Blobs::BlobServiceClient(GetServiceUrl(), GetCredential());
 	}
 
 	Azure::Storage::Blobs::BlobContainerClient CloudBlobAccessor::GetContainerClient() const
 	{
-		return GetClient<Azure::Storage::Blobs::BlobContainerClient>();
+		return Azure::Storage::Blobs::BlobContainerClient(GetContainerUrl(), GetCredential());
 	}
 
 	Azure::Storage::Blobs::BlobClient CloudBlobAccessor::GetBlobClient() const
 	{
-		return GetClient<Azure::Storage::Blobs::BlobClient>();
+		return Azure::Storage::Blobs::BlobClient(GetUrl().GetAbsoluteUrl(), GetCredential());
+	}
+
+	vector<string> CloudBlobAccessor::UrlPathParts() const
+	{
+		return Split(GetUrl().GetPath(), '/', 1);
 	}
 }
