@@ -15,9 +15,6 @@ namespace az
 	class FileAccessor
 	{
 	public:
-		const Azure::Core::Url& GetUrl() const;
-		bool HasDirUrl() const;
-
 		virtual bool Exists() const = 0;
 		virtual size_t GetSize() const = 0;
 		virtual FileStream Open(char mode) const = 0;
@@ -32,6 +29,9 @@ namespace az
 
 	protected:
 		FileAccessor(const Azure::Core::Url& url);
+
+		const Azure::Core::Url& GetUrl() const;
+		bool HasDirUrl() const;
 
 	private:
 		Azure::Core::Url url;

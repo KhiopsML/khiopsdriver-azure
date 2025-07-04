@@ -3,16 +3,6 @@
 
 namespace az
 {
-	const Azure::Core::Url& FileAccessor::GetUrl() const
-	{
-		return url;
-	}
-
-	bool FileAccessor::HasDirUrl() const
-	{
-		return bHasDirUrl;
-	}
-
 	FileAccessor::~FileAccessor()
 	{
 	}
@@ -21,5 +11,15 @@ namespace az
 		url(url),
 		bHasDirUrl(EndsWith(url.GetPath(), "/"))
 	{
+	}
+
+	const Azure::Core::Url& FileAccessor::GetUrl() const
+	{
+		return url;
+	}
+
+	bool FileAccessor::HasDirUrl() const
+	{
+		return bHasDirUrl;
 	}
 }
