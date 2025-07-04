@@ -1,4 +1,6 @@
 #include "blobaccessor.hpp"
+#include <algorithm>
+#include <azure/core/http/transport.hpp>
 #include "exception.hpp"
 #include "util/connstring.hpp"
 #include "util/string.hpp"
@@ -20,13 +22,20 @@ namespace az
 		{
 			try
 			{
-				GetBlobClient().GetProperties();
-				return true;
+				const vector<string>& pathParts = UrlPathParts();
+				auto containers = GetServiceClient().ListBlobContainers().BlobContainers;
+				auto foundContainerIt = find_if(containers.begin(), containers.end(), [&pathParts](const auto& container) { return container.Name == pathParts.at(0); });
+				if (foundContainerIt == containers.end())
+				{
+					return false;
+				}
+				auto blobs = GetContainerClient().ListBlobs().Blobs;
+				auto foundBlobIt = find_if(blobs.begin(), blobs.end(), [&pathParts](const auto& blob) { return blob.Name == pathParts.at(1); });
+				return foundBlobIt != blobs.end();
 			}
-			catch (const exception& exc)
+			catch (const Azure::Core::Http::TransportException& exc)
 			{
-				auto what = exc.what();//Azure::Core::Http::TransportException
-				return false;
+				throw NetworkError();
 			}
 		}
 	}

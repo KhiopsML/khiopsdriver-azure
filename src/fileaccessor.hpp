@@ -5,6 +5,8 @@ namespace az
 	class FileAccessor;
 }
 
+#include <vector>
+#include <string>
 #include <azure/core/url.hpp>
 #include "filestream.hpp"
 
@@ -32,6 +34,7 @@ namespace az
 
 		const Azure::Core::Url& GetUrl() const;
 		bool HasDirUrl() const;
+		virtual vector<string> UrlPathParts() const = 0;
 
 	private:
 		Azure::Core::Url url;
