@@ -6,16 +6,23 @@ namespace az
 {
 	using namespace std;
 
-	vector<string>&& Split(const string& str, char delim)
+	vector<string> Split(const string& str, char delim, long long int nMaxSplits)
 	{
+		size_t nStrLen = str.length();
 		vector<string> fragments;
-		istringstream iss(str);
-		string fragment;
-		while (getline(iss, fragment, delim))
+		size_t nOffset = 0;
+		size_t nDelimPos;
+		for (size_t nSplits = 0; nMaxSplits == -1 || nSplits <= nMaxSplits; nSplits++)
 		{
-			fragments.push_back(move(fragment));
+			nDelimPos = nSplits == nMaxSplits ? string::npos : str.find(delim, nOffset);
+			fragments.push_back(move(nOffset == nStrLen ? "" : str.substr(nOffset, nDelimPos - nOffset)));
+			if (nDelimPos == string::npos)
+			{
+				break;
+			}
+			nOffset = nDelimPos + 1;
 		}
-		return move(fragments);
+		return fragments;
 	}
 
 	bool StartsWith(const string& str, const string& prefix)
