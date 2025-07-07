@@ -1676,35 +1676,7 @@ static int FileOrDirExists(const char* sUrl)
 	}
 }
 
-#if false
-{
-	KH_AZ_CONNECTION_ERROR(kFalse);
-
-	ERROR_ON_NULL_ARG(uri, kFalse);
-
-	spdlog::debug("fileExist {}", uri);
-
-	auto maybe_parsed_uri = ParseAzureUri(uri);
-	if (!maybe_parsed_uri) {
-		std::ostringstream oss;
-		oss << "Error while parsing Uri. " << maybe_parsed_uri.GetReasonPhrase();
-		LogError(oss.str());
-		return kFailure;
-	}
-
-	return FileExists(uri, maybe_parsed_uri.GetValue());
-}
-#endif
-
 /*
-static int FileExists(const char* uri, const Url& parsed_uri) {
-	if (parsed_uri.service == Service::BLOB) {
-		return blob_FileExists(uri, parsed_uri.blobUrl);
-	} else if (parsed_uri.service == Service::SHARE) {
-		return file_FileExists(uri, parsed_uri.fileUrl);
-	}
-}
-
 static int blob_FileExists(const char* uri, const BlobUrl&parsed_uri) {
 	const auto pattern_1st_sp_char_pos = FindPatternSpecialChar(parsed_uri.object);
 	if (!pattern_1st_sp_char_pos) { // Unifile
