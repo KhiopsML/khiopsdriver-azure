@@ -18,10 +18,24 @@ const char* sIllFormedConnString = // same as above but without the terminating 
 	"QueueEndpoint=http://127.0.0.1:10001/devstoreaccount1;"
 	"TableEndpoint=http://127.0.0.1:10002/devstoreaccount1";
 
-const char* sIncompleteConnString = // no AccountName
+const char* sConnStringMissingAccountName =
 	"AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;"
 	"DefaultEndpointsProtocol=http;"
 	"BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;"
+	"QueueEndpoint=http://127.0.0.1:10001/devstoreaccount1;"
+	"TableEndpoint=http://127.0.0.1:10002/devstoreaccount1;";
+
+const char* sConnStringMissingAccountKey =
+	"AccountName=devstoreaccount1;"
+	"DefaultEndpointsProtocol=http;"
+	"BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;"
+	"QueueEndpoint=http://127.0.0.1:10001/devstoreaccount1;"
+	"TableEndpoint=http://127.0.0.1:10002/devstoreaccount1;";
+
+const char* sConnStringMissingBlobEndpoint =
+	"AccountName=devstoreaccount1;"
+	"AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;"
+	"DefaultEndpointsProtocol=http;"
 	"QueueEndpoint=http://127.0.0.1:10001/devstoreaccount1;"
 	"TableEndpoint=http://127.0.0.1:10002/devstoreaccount1;";
 
@@ -47,7 +61,7 @@ TEST(ConnectionStringTest, ParseIllFormedConnString)
 			}
 			catch (const az::ParsingError& exc)
 			{
-				ASSERT_STREQ(exc.what(), "Ill-formed connection string");
+				ASSERT_STREQ(exc.what(), "ill-formed connection string");
 				throw;
 			}
 		},
@@ -55,17 +69,53 @@ TEST(ConnectionStringTest, ParseIllFormedConnString)
 	);
 }
 
-TEST(ConnectionStringTest, ParseIncompleteConnString)
+TEST(ConnectionStringTest, ParseConnStringMissingAccountName)
 {
 	ASSERT_THROW(
 		{
 			try
 			{
-				az::ParseConnectionString(sIncompleteConnString);
+				az::ParseConnectionString(sConnStringMissingAccountName);
 			}
 			catch (const az::ParsingError& exc)
 			{
-				ASSERT_STREQ(exc.what(), "Connection string is missing one of 'AccountName', 'AccountKey' or 'BlobEndpoint'");
+				ASSERT_STREQ(exc.what(), "connection string is missing AccountName");
+				throw;
+			}
+		},
+		az::ParsingError
+	);
+}
+
+TEST(ConnectionStringTest, ParseConnStringMissingAccountKey)
+{
+	ASSERT_THROW(
+		{
+			try
+			{
+				az::ParseConnectionString(sConnStringMissingAccountKey);
+			}
+			catch (const az::ParsingError& exc)
+			{
+				ASSERT_STREQ(exc.what(), "connection string is missing AccountKey");
+				throw;
+			}
+		},
+		az::ParsingError
+	);
+}
+
+TEST(ConnectionStringTest, ParseConnStringMissingBlobEndpoint)
+{
+	ASSERT_THROW(
+		{
+			try
+			{
+				az::ParseConnectionString(sConnStringMissingBlobEndpoint);
+			}
+			catch (const az::ParsingError& exc)
+			{
+				ASSERT_STREQ(exc.what(), "connection string is missing BlobEndpoint");
 				throw;
 			}
 		},
