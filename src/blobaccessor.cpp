@@ -25,33 +25,21 @@ namespace az
 			try
 			{
 				const vector<string>& pathParts = UrlPathParts();
-				auto pagedContainerList = GetServiceClient().ListBlobContainers();
-				while (true)
+				for (auto pagedContainerList = GetServiceClient().ListBlobContainers(); pagedContainerList.HasPage(); pagedContainerList.MoveToNextPage())
 				{
-					auto containers = pagedContainerList.BlobContainers;
+					const auto& containers = pagedContainerList.BlobContainers;
 					auto foundContainerIt = find_if(containers.begin(), containers.end(), [this](const auto& container) { return container.Name == GetContainerName(); });
 					if (foundContainerIt != containers.end())
 					{
-						auto pagedBlobList = GetContainerClient().ListBlobs();
-						while (true)
+						for (auto pagedBlobList = GetContainerClient().ListBlobs(); pagedBlobList.HasPage(); pagedBlobList.MoveToNextPage())
 						{
-							auto blobs = pagedBlobList.Blobs;
+							const auto& blobs = pagedBlobList.Blobs;
 							if (find_if(blobs.begin(), blobs.end(), [this](const auto& blob) { return blob.Name == GetObjectName(); }) != blobs.end())
 							{
 								return true;
 							}
-							if (!pagedBlobList.HasPage())
-							{
-								break;
-							}
-							pagedBlobList.MoveToNextPage();
 						}
 					}
-					if (!pagedContainerList.HasPage())
-					{
-						break;
-					}
-					pagedContainerList.MoveToNextPage();
 				}
 				return false;
 			}
