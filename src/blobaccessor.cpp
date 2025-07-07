@@ -25,15 +25,35 @@ namespace az
 			try
 			{
 				const vector<string>& pathParts = UrlPathParts();
-				auto containers = GetServiceClient().ListBlobContainers().BlobContainers;
-				auto foundContainerIt = find_if(containers.begin(), containers.end(), [this](const auto& container) { return container.Name == GetContainerName(); });
-				if (foundContainerIt == containers.end())
+				auto pagedContainerList = GetServiceClient().ListBlobContainers();
+				while (true)
 				{
-					return false;
+					auto containers = pagedContainerList.BlobContainers;
+					auto foundContainerIt = find_if(containers.begin(), containers.end(), [this](const auto& container) { return container.Name == GetContainerName(); });
+					if (foundContainerIt != containers.end())
+					{
+						auto pagedBlobList = GetContainerClient().ListBlobs();
+						while (true)
+						{
+							auto blobs = pagedBlobList.Blobs;
+							if (find_if(blobs.begin(), blobs.end(), [this](const auto& blob) { return blob.Name == GetObjectName(); }) != blobs.end())
+							{
+								return true;
+							}
+							if (!pagedBlobList.HasPage())
+							{
+								break;
+							}
+							pagedBlobList.MoveToNextPage();
+						}
+					}
+					if (!pagedContainerList.HasPage())
+					{
+						break;
+					}
+					pagedContainerList.MoveToNextPage();
 				}
-				auto blobs = GetContainerClient().ListBlobs().Blobs;
-				auto foundBlobIt = find_if(blobs.begin(), blobs.end(), [this](const auto& blob) { return blob.Name == GetObjectName(); });
-				return foundBlobIt != blobs.end();
+				return false;
 			}
 			catch (const Azure::Core::Http::TransportException& exc)
 			{
