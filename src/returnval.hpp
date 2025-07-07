@@ -16,4 +16,5 @@ namespace az
 	const int nFlushSuccess = 0;
 	const int nFlushFailure = -1;
 	const int nFreeDiskSpaceFailure = -1;
+	const int nGenericFailure = -1;
 }
