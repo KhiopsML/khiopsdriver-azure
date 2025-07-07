@@ -3,6 +3,7 @@
 #include <array>
 
 constexpr const char* test_dir_name = "http://127.0.0.1:10000/devstoreaccount1/data-test-khiops-driver-azure/khiops_data/bq_export/Adult/";
+constexpr const char* test_non_existent_dir = "http://127.0.0.1:10000/devstoreaccount1/data-test-khiops-driver-azure/khiops_data/bq_export/non_existent_dir/";
 
 constexpr const char* test_non_existent_file = "http://127.0.0.1:10000/devstoreaccount1/data-test-khiops-driver-azure/khiops_data/samples/non_existent_file.txt";
 // Actual Azure storage URI: https://myaccount.file.core.windows.net/myshare/myfolder/myfile.txt
