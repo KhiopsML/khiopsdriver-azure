@@ -16,7 +16,7 @@ namespace az
 		smatch match;
 		if (!regex_match(sConnectionString, match, regex("(?:[^=]+=[^;]+;)+")))
 		{
-			throw ParsingError("Ill-formed connection string");
+			throw ParsingError("ill-formed connection string");
 		}
 		regex kvRegex("([^=]+)=([^;]+);");
 		sregex_iterator begin(sConnectionString.begin(), sConnectionString.end(), kvRegex);
