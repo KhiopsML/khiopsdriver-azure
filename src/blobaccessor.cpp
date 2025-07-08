@@ -133,7 +133,7 @@ namespace az
 		{
 			blobMatchesUrl = [sObjectName](Azure::Storage::Blobs::Models::BlobItem blob)
 			{
-				return !blob.IsDeleted && globbing::gitignore_glob_match(blob.Name, sObjectName);
+				return !blob.IsDeleted && globbing::GitignoreGlobMatch(blob.Name, sObjectName);
 			};
 			listBlobsOptions.Prefix = sObjectName.substr(0, nGlobbingCharPos);
 		}

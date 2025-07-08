@@ -11,7 +11,7 @@ namespace az
 namespace globbing
 {
 // returns TRUE if text string matches gitignore-style glob pattern. match is case sensitive
-bool gitignore_glob_match(const std::string& text, const std::string& glob)
+bool GitignoreGlobMatch(const std::string& text, const std::string& glob)
 {
 	// enable dotglob: *. ?, and [] match a . (dotfile) at the begin or after each /
 	constexpr bool dotglob = true;
