@@ -1628,36 +1628,6 @@ DriverResult<BlobItems> FilterList(const std::string& bucket, const std::string&
 #define ERROR_ON_NAMES(names_result, err_val) RETURN_ON_ERROR((names_result), "Error parsing URL", (err_val))
 #endif
 
-/*
-static Azure::Nullable<size_t> FindPatternSpecialChar(const string& pattern)
-{
-	spdlog::debug("Parse multifile pattern {}", pattern);
-
-	constexpr auto sSpecialChars = "*?![^";
-
-	size_t offset = 0;
-	size_t foundAt = pattern.find_first_of(sSpecialChars, offset);
-	while (foundAt != string::npos)
-	{
-		const char found = pattern[foundAt];
-		spdlog::debug("Special char {} found at {}", found, foundAt);
-
-		if (foundAt > 0 && pattern[foundAt - 1] == '\\')
-		{
-			spdlog::debug("Special char escaped");
-			offset = foundAt + 1;
-			foundAt = pattern.find_first_of(sSpecialChars, offset);
-		}
-		else
-		{
-			spdlog::debug("not preceded by a \\, so really a special char");
-			break;
-		}
-	}
-	return foundAt != std::string::npos ? foundAt : Azure::Nullable<size_t>{};
-}
-*/
-
 static int FileOrDirExists(const char* sUrl)
 {
 	if (!sUrl)

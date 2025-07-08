@@ -62,6 +62,7 @@ set(SourceList
     util/string.hpp util/string.cpp
     util/env.hpp util/env.cpp
     util/connstring.hpp util/connstring.cpp
+    util/glob.hpp util/glob.cpp
     exception.hpp
     returnval.hpp
     logging.hpp logging.cpp
