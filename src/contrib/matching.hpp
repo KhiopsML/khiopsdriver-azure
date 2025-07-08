@@ -6,7 +6,9 @@
 
 #include <string>
 
-namespace utils
+namespace az
+{
+namespace globbing
 {
 // returns TRUE if text string matches gitignore-style glob pattern. match is case sensitive
 bool gitignore_glob_match(const std::string& text, const std::string& glob)
@@ -185,5 +187,5 @@ bool gitignore_glob_match(const std::string& text, const std::string& glob)
 	// at end of text means success if nothing else is left to match
 	return j >= m;
 }
-
-} // namespace utils
+}
+}
