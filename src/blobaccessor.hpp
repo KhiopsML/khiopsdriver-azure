@@ -6,6 +6,7 @@ namespace az
 }
 
 #include "fileaccessor.hpp"
+#include <vector>
 #include <azure/core.hpp>
 #include <azure/storage/blobs.hpp>
 
@@ -36,5 +37,7 @@ namespace az
 		virtual Azure::Storage::Blobs::BlobServiceClient GetServiceClient() const = 0;
 		virtual Azure::Storage::Blobs::BlobContainerClient GetContainerClient() const = 0;
 		virtual Azure::Storage::Blobs::BlobClient GetBlobClient() const = 0;
+
+		vector<Azure::Storage::Blobs::Models::BlobItem> ListBlobs() const;
 	};
 }
