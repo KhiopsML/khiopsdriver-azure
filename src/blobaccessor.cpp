@@ -109,7 +109,7 @@ namespace az
 		{
 			for (auto pagedContainerList = GetServiceClient().ListBlobContainers(listBlobContainersOptions); pagedContainerList.HasPage(); pagedContainerList.MoveToNextPage())
 			{
-				auto foundContainerIt = find_if(pagedContainerList.BlobContainers.begin(), pagedContainerList.BlobContainers.end(), [this](const auto& container)
+				auto foundContainerIt = find_if(pagedContainerList.BlobContainers.begin(), pagedContainerList.BlobContainers.end(), [sContainerName](const auto& container)
 					{
 						return !container.IsDeleted && container.Name == sContainerName;
 					}
