@@ -4,7 +4,7 @@
 
 #include "azureplugin.hpp"
 #include "azureplugin_internal.hpp"
-#include "contrib/matching.hpp"
+#include "contrib/globmatch.hpp"
 
 #include <algorithm>
 #include <assert.h>

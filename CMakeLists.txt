@@ -58,6 +58,7 @@ set(SourceList
     azureplugin_internal.hpp
     azureplugin.cpp
     driver.hpp driver.cpp
+    contrib/globmatch.hpp contrib/globmatch.cpp
     util/macro.hpp
     util/string.hpp util/string.cpp
     util/env.hpp util/env.cpp

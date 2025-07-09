@@ -8,7 +8,7 @@
 #include "util/string.hpp"
 #include "util/env.hpp"
 #include "util/glob.hpp"
-#include "contrib/matching.hpp"
+#include "contrib/globmatch.hpp"
 
 namespace az
 {
