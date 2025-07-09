@@ -26,39 +26,7 @@ namespace az
 		else
 		{
 			CheckFileUrl();
-			try
-			{
-				const vector<string>& pathParts = UrlPathParts();
-				for (auto pagedContainerList = GetServiceClient().ListBlobContainers(); pagedContainerList.HasPage(); pagedContainerList.MoveToNextPage())
-				{
-					const auto& containers = pagedContainerList.BlobContainers;
-					auto foundContainerIt = find_if(containers.begin(), containers.end(), [this](const auto& container)
-						{
-							return !container.IsDeleted && container.Name == GetContainerName();
-						}
-					);
-					if (foundContainerIt != containers.end())
-					{
-						for (auto pagedBlobList = GetContainerClient().ListBlobs(); pagedBlobList.HasPage(); pagedBlobList.MoveToNextPage())
-						{
-							const auto& blobs = pagedBlobList.Blobs;
-							if (find_if(blobs.begin(), blobs.end(), [this](const auto& blob)
-								{
-									return !blob.IsDeleted && blob.Name == GetObjectName();
-								}) != blobs.end()
-							)
-							{
-								return true;
-							}
-						}
-					}
-				}
-				return false;
-			}
-			catch (const Azure::Core::Http::TransportException& exc)
-			{
-				throw NetworkError();
-			}
+			return !ListBlobs().empty();
 		}
 	}
 
