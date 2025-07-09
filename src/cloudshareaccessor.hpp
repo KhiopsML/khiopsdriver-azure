@@ -20,7 +20,14 @@ namespace az
 		~CloudShareAccessor();
 
 	protected:
-		Azure::Storage::Files::Shares::ShareFileClient GetShareFileClient() const override;
+		string GetShareName() const override;
+		vector<string> GetPath() const override;
+		string GetServiceUrl() const override;
+		string GetShareUrl() const override;
+		Azure::Storage::Files::Shares::ShareServiceClient GetServiceClient() const override;
+		Azure::Storage::Files::Shares::ShareClient GetShareClient() const override;
+		Azure::Storage::Files::Shares::ShareDirectoryClient GetDirClient() const override;
+		Azure::Storage::Files::Shares::ShareFileClient GetFileClient() const override;
 		vector<string> UrlPathParts() const override;
 		void CheckFileUrl() const override;
 		void CheckDirUrl() const override;

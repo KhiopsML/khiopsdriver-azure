@@ -15,7 +15,43 @@ namespace az
 	{
 	}
 
-	Azure::Storage::Files::Shares::ShareFileClient CloudShareAccessor::GetShareFileClient() const
+	string CloudShareAccessor::GetShareName() const
+	{
+		return UrlPathParts().at(0);
+	}
+
+	vector<string> CloudShareAccessor::GetPath() const
+	{
+
+	}
+
+	string CloudShareAccessor::GetServiceUrl() const
+	{
+		const auto& url = GetUrl();
+		return (ostringstream() << url.GetScheme() << "://" << url.GetHost() << ":" << url.GetPort()).str();
+	}
+
+	string CloudShareAccessor::GetShareUrl() const
+	{
+		return (ostringstream() << GetServiceUrl() << "/" << GetShareName()).str();
+	}
+
+	Azure::Storage::Files::Shares::ShareServiceClient CloudShareAccessor::GetServiceClient() const
+	{
+		return Azure::Storage::Files::Shares::ShareServiceClient(GetServiceUrl(), GetCredential());
+	}
+
+	Azure::Storage::Files::Shares::ShareClient CloudShareAccessor::GetShareClient() const
+	{
+		return Azure::Storage::Files::Shares::ShareClient(GetShareUrl(), GetCredential());
+	}
+
+	Azure::Storage::Files::Shares::ShareDirectoryClient CloudShareAccessor::GetDirClient() const
+	{
+		return Azure::Storage::Files::Shares::ShareDirectoryClient(GetUrl().GetAbsoluteUrl(), GetCredential());
+	}
+
+	Azure::Storage::Files::Shares::ShareFileClient CloudShareAccessor::GetFileClient() const
 	{
 		return Azure::Storage::Files::Shares::ShareFileClient(GetUrl().GetAbsoluteUrl(), GetCredential());
 	}
