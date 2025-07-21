@@ -1,5 +1,4 @@
 #include "glob.hpp"
-#include <regex>
 
 namespace az
 {
@@ -9,6 +8,17 @@ namespace globbing
 	{
 		smatch match;
 		return regex_search(str, regex("[^\\][*?![^]")) ? match.position() : string::npos;
+	}
+
+	regex RegexFromGlobbingPattern(const string& sGlobbingPattern)
+	{
+		return regex(
+			regex_replace(
+				regex_replace(sGlobbingPattern, regex("?"), "."),
+				regex("*"),
+				".*"
+			)
+		);
 	}
 }
 }
