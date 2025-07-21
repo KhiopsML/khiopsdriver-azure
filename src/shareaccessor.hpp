@@ -31,6 +31,15 @@ namespace az
 	protected:
 		ShareAccessor(const Azure::Core::Url& url);
 
-		virtual Azure::Storage::Files::Shares::ShareFileClient GetShareFileClient() const = 0;
+		virtual string GetShareName() const = 0;
+		virtual vector<string> GetPath() const = 0;
+		virtual string GetServiceUrl() const = 0;
+		virtual string GetShareUrl() const = 0;
+		virtual Azure::Storage::Files::Shares::ShareServiceClient GetServiceClient() const = 0;
+		virtual Azure::Storage::Files::Shares::ShareClient GetShareClient() const = 0;
+		virtual Azure::Storage::Files::Shares::ShareDirectoryClient GetDirClient() const = 0;
+		virtual Azure::Storage::Files::Shares::ShareFileClient GetFileClient() const = 0;
+		
+		vector<string> ResolveUrl();
 	};
 }

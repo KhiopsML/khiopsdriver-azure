@@ -1,5 +1,8 @@
 #include "shareaccessor.hpp"
-#include "exception.hpp"
+#include <queue>
+#include <deque>
+#include <string>
+#include "util/urlresolve.hpp"
 
 namespace az
 {
@@ -9,8 +12,14 @@ namespace az
 
 	bool ShareAccessor::Exists() const
 	{
-		// TODO: Implement
-		return false;
+		if (HasDirUrl())
+		{
+			CheckDirUrl();
+		}
+		else
+		{
+			CheckFileUrl();
+		}
 	}
 
 	size_t ShareAccessor::GetSize() const
@@ -56,8 +65,18 @@ namespace az
 		// TODO: Implement
 	}
 
-	ShareAccessor::ShareAccessor(const Azure::Core::Url& url) :
+	ShareAccessor::ShareAccessor(const Azure::Core::Url& url):
 		FileAccessor(url)
 	{
 	}
-}
+
+	vector<string> ShareAccessor::ResolveUrl()
+	{
+		vector<string> path = GetPath();
+		return ResolveUrlRecursively(
+			GetDirClient(),
+			queue<string, deque<string>>(deque<string>(path.begin(), path.end())),
+			HasDirUrl(),
+			""
+		);
+	}
