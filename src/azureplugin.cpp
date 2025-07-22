@@ -218,7 +218,6 @@ long long int driver_getSystemPreferredBufferSize()
 	}
 }
 
-// TODO: Implement driver functions from this point.
 int driver_fileExists(const char* sUrl)
 {
 	try
@@ -257,6 +256,7 @@ int driver_dirExists(const char* sUrl)
 	}
 }
 
+// TODO: Implement driver functions from this point.
 long long int driver_getFileSize(const char* sUrl)
 {
 	try
