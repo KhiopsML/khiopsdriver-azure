@@ -85,14 +85,14 @@ namespace az
 		const string sContainerName = GetContainerName();
 		const string sObjectName = GetObjectName();
 		size_t nGlobbingCharPos = globbing::FindGlobbingChar(sObjectName);
-		function<bool(Azure::Storage::Blobs::Models::BlobItem)> blobMatchesUrl;
+		function<bool(const Azure::Storage::Blobs::Models::BlobItem&)> blobMatchesUrl;
 		Azure::Storage::Blobs::ListBlobContainersOptions listBlobContainersOptions;
 		listBlobContainersOptions.Prefix = sContainerName;
 		Azure::Storage::Blobs::ListBlobsOptions listBlobsOptions;
 		if (nGlobbingCharPos == string::npos)
 		{
 			// TODO: Is it relevant? Wouldn't globbing non-glob URLs lead to the same results? What would be the performance cost?
-			blobMatchesUrl = [sObjectName](Azure::Storage::Blobs::Models::BlobItem blob)
+			blobMatchesUrl = [sObjectName](const Azure::Storage::Blobs::Models::BlobItem& blob)
 			{
 				return !blob.IsDeleted && blob.Name == sObjectName;
 			};
@@ -100,7 +100,7 @@ namespace az
 		}
 		else
 		{
-			blobMatchesUrl = [sObjectName](Azure::Storage::Blobs::Models::BlobItem blob)
+			blobMatchesUrl = [sObjectName](const Azure::Storage::Blobs::Models::BlobItem& blob)
 			{
 				return !blob.IsDeleted && globbing::GitignoreGlobMatch(blob.Name, sObjectName);
 			};
