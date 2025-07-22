@@ -91,6 +91,7 @@ namespace az
 		Azure::Storage::Blobs::ListBlobsOptions listBlobsOptions;
 		if (nGlobbingCharPos == string::npos)
 		{
+			// TODO: Is it relevant? Wouldn't globbing non-glob URLs lead to the same results? What would be the performance cost?
 			blobMatchesUrl = [sObjectName](Azure::Storage::Blobs::Models::BlobItem blob)
 			{
 				return !blob.IsDeleted && blob.Name == sObjectName;
