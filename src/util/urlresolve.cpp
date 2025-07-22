@@ -1,6 +1,8 @@
 #include "urlresolve.hpp"
 #include <regex>
+// TODO: Remove following #include if regex-globbing happens to be removed
 #include "glob.hpp"
+#include "../contrib/globmatch.hpp"
 
 namespace az
 {
@@ -30,7 +32,7 @@ namespace az
         }
         else if (sUrlPathSegment.find_first_of("?[*") != string::npos)
         {
-            return ResolveRegex(dirClient, urlPathSegments, bLookingForDirs, sUrlPathSegment, sPath);
+            return ResolveGlobbing(dirClient, urlPathSegments, bLookingForDirs, sUrlPathSegment, sPath);
         }
         else
         {
@@ -79,6 +81,7 @@ namespace az
         return result;
     }
 
+    // TODO: Remove following function if regex-globbing happens to be removed
     static vector<string> ResolveRegex(
         const Azure::Storage::Files::Shares::ShareDirectoryClient& dirClient,
         queue<string> urlPathSegments,
@@ -107,6 +110,43 @@ namespace az
                 for (const auto& dirItem : pagedFileAndDirList.Directories)
                 {
                     if (regex_match(dirItem.Name, re))
+                    {
+                        subresult = ResolveUrlRecursively(dirClient.GetSubdirectoryClient(dirItem.Name), urlPathSegments, bLookingForDirs, sPath + "/" + dirItem.Name);
+                        result.insert(result.end(), subresult.begin(), subresult.end());
+                    }
+                }
+            }
+            return result;
+        }
+    }
+
+    static vector<string> ResolveGlobbing(
+        const Azure::Storage::Files::Shares::ShareDirectoryClient& dirClient,
+        queue<string> urlPathSegments,
+        bool bLookingForDirs,
+        const string& sGlobbingPattern,
+        const string& sPath
+    )
+    {
+        if (urlPathSegments.empty())
+        {
+            if (bLookingForDirs)
+            {
+                return FindDirsByGlob(dirClient, sPath, sGlobbingPattern);
+            }
+            else
+            {
+                return FindFilesByGlob(dirClient, sPath, sGlobbingPattern);
+            }
+        }
+        else
+        {
+            vector<string> result, subresult;
+            for (auto pagedFileAndDirList = dirClient.ListFilesAndDirectories(); pagedFileAndDirList.HasPage(); pagedFileAndDirList.MoveToNextPage())
+            {
+                for (const auto& dirItem : pagedFileAndDirList.Directories)
+                {
+                    if (globbing::GitignoreGlobMatch(dirItem.Name, sGlobbingPattern))
                     {
                         subresult = ResolveUrlRecursively(dirClient.GetSubdirectoryClient(dirItem.Name), urlPathSegments, bLookingForDirs, sPath + "/" + dirItem.Name);
                         result.insert(result.end(), subresult.begin(), subresult.end());
@@ -201,6 +241,7 @@ namespace az
         return FindDirs(dirClient, sPath, [sName](const Azure::Storage::Files::Shares::Models::DirectoryItem& dirItem) { return dirItem.Name == sName; });
     }
 
+    // TODO: Remove following function if regex-globbing happens to be removed
     static vector<string> FindDirsByRegex(
         const Azure::Storage::Files::Shares::ShareDirectoryClient& dirClient,
         const string& sPath, 
@@ -208,6 +249,15 @@ namespace az
     )
     {
         return FindDirs(dirClient, sPath, [re](const Azure::Storage::Files::Shares::Models::DirectoryItem& dirItem) { return regex_match(dirItem.Name, re); });
+    }
+
+    static vector<string> FindDirsByGlob(
+        const Azure::Storage::Files::Shares::ShareDirectoryClient& dirClient,
+        const string& sPath,
+        const string& sGlob
+    )
+    {
+        return FindDirs(dirClient, sPath, [sGlob](const Azure::Storage::Files::Shares::Models::DirectoryItem& dirItem) { return globbing::GitignoreGlobMatch(dirItem.Name, sGlob); });
     }
 
     static vector<string> FindFilesByName(
@@ -219,6 +269,7 @@ namespace az
         return FindFiles(dirClient, sPath, [sName](const Azure::Storage::Files::Shares::Models::FileItem& fileItem) { return fileItem.Name == sName; });
     }
 
+    // TODO: Remove following function if regex-globbing happens to be removed
     static vector<string> FindFilesByRegex(
         const Azure::Storage::Files::Shares::ShareDirectoryClient& dirClient,
         const string& sPath, 
@@ -226,5 +277,14 @@ namespace az
     )
     {
         return FindFiles(dirClient, sPath, [re](const Azure::Storage::Files::Shares::Models::FileItem& fileItem) { return regex_match(fileItem.Name, re); });
+    }
+
+    static vector<string> FindFilesByGlob(
+        const Azure::Storage::Files::Shares::ShareDirectoryClient& dirClient,
+        const string& sPath,
+        const string& sGlob
+    )
+    {
+        return FindFiles(dirClient, sPath, [sGlob](const Azure::Storage::Files::Shares::Models::FileItem& fileItem) { return globbing::GitignoreGlobMatch(fileItem.Name, sGlob); });
     }
 }
