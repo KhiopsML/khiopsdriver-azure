@@ -20,6 +20,7 @@ namespace az
 		{
 			CheckFileUrl();
 		}
+		return !ResolveUrl().empty();
 	}
 
 	size_t ShareAccessor::GetSize() const
@@ -70,7 +71,7 @@ namespace az
 	{
 	}
 
-	vector<string> ShareAccessor::ResolveUrl()
+	vector<string> ShareAccessor::ResolveUrl() const
 	{
 		vector<string> path = GetPath();
 		return ResolveUrlRecursively(
