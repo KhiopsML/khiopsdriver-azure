@@ -1,5 +1,6 @@
 #include "urlresolve.hpp"
 #include <regex>
+#include "../exception.hpp"
 // TODO: Remove following #include if regex-globbing happens to be removed
 #include "glob.hpp"
 #include "../contrib/globmatch.hpp"
@@ -13,30 +14,37 @@ namespace az
         const string& sPath
     )
     {
-        if (urlPathSegments.empty())
+        try
         {
-            return {};
-        }
-        const string sUrlPathSegment = urlPathSegments.front();
-        urlPathSegments.pop();
-        if (sUrlPathSegment == "**")
-        {
-            if (!bLookingForDirs && urlPathSegments.empty())
+            if (urlPathSegments.empty())
             {
-                return ResolveDoubleStarAsFiles(dirClient, sPath);
+                return {};
+            }
+            const string sUrlPathSegment = urlPathSegments.front();
+            urlPathSegments.pop();
+            if (sUrlPathSegment == "**")
+            {
+                if (!bLookingForDirs && urlPathSegments.empty())
+                {
+                    return ResolveDoubleStarAsFiles(dirClient, sPath);
+                }
+                else
+                {
+                    return ResolveDoubleStar(dirClient, urlPathSegments, bLookingForDirs, sPath);
+                }
+            }
+            else if (sUrlPathSegment.find_first_of("?[*") != string::npos)
+            {
+                return ResolveGlobbing(dirClient, urlPathSegments, bLookingForDirs, sUrlPathSegment, sPath);
             }
             else
             {
-                return ResolveDoubleStar(dirClient, urlPathSegments, bLookingForDirs, sPath);
+                return ResolveRaw(dirClient, urlPathSegments, bLookingForDirs, sUrlPathSegment, sPath);
             }
         }
-        else if (sUrlPathSegment.find_first_of("?[*") != string::npos)
+        catch (const Azure::Core::Http::TransportException& exc)
         {
-            return ResolveGlobbing(dirClient, urlPathSegments, bLookingForDirs, sUrlPathSegment, sPath);
-        }
-        else
-        {
-            return ResolveRaw(dirClient, urlPathSegments, bLookingForDirs, sUrlPathSegment, sPath);
+            throw NetworkError();
         }
     }
 
