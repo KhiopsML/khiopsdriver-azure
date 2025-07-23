@@ -9,10 +9,15 @@ namespace az
 {
     using namespace std;
 
-    vector<string> ResolveUrlRecursively(
+    vector<Azure::Storage::Files::Shares::Models::DirectoryItem> ListDirsRecursively(
         const Azure::Storage::Files::Shares::ShareDirectoryClient& dirClient,
         queue<string> urlPathSegments,
-        bool bLookingForDirs,
+        const string& sPath
+    );
+
+    vector<Azure::Storage::Files::Shares::Models::FileItem> ListFilesRecursively(
+        const Azure::Storage::Files::Shares::ShareDirectoryClient& dirClient,
+        queue<string> urlPathSegments,
         const string& sPath
     );
 }

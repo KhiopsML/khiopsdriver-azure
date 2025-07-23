@@ -1,7 +1,11 @@
 #include "urlresolve.hpp"
-#include <regex>
+#include <algorithm>
+#include <iterator>
+#include <functional>
+#include "glob.hpp"
 #include "../exception.hpp"
 #include "../contrib/globmatch.hpp"
+#include "string.hpp"
 
 namespace az
 {
@@ -136,11 +140,11 @@ namespace az
         {
             if (bLookingForDirs)
             {
-                return FindDirsByName(dirClient, sPath, sName);
+                return FindDirsByName(dirClient, sName);
             }
             else
             {
-                return FindFilesByName(dirClient, sPath, sName);
+                return FindFilesByName(dirClient, sName);
             }
         }
         else
@@ -159,79 +163,124 @@ namespace az
         }
     }
 
-    static vector<string> FindDirs(
+    static vector<Azure::Storage::Files::Shares::ShareDirectoryClient> ResolveDirsRaw(
         const Azure::Storage::Files::Shares::ShareDirectoryClient& dirClient,
-        const string& sPath,
-        const function<bool(const Azure::Storage::Files::Shares::Models::DirectoryItem&)>& predicate
+        queue<string> urlPathSegments,
+        const string& sName,
+        const string& sPath
     )
     {
-        vector<string> result;
-        for (auto pagedFileAndDirList = dirClient.ListFilesAndDirectories(); pagedFileAndDirList.HasPage(); pagedFileAndDirList.MoveToNextPage())
+        if (urlPathSegments.empty())
+        {
+            return FindDirsByName(dirClient, sName);
+        }
+        else
+        {
+            for (auto pagedFileAndDirList = dirClient.ListFilesAndDirectories(); pagedFileAndDirList.HasPage(); pagedFileAndDirList.MoveToNextPage())
+            {
+                for (const auto& dirItem : pagedFileAndDirList.Directories)
+                {
+                    if (dirItem.Name == sName)
+                    {
+                        return ResolveUrlRecursively(dirClient.GetSubdirectoryClient(dirItem.Name), urlPathSegments, bLookingForDirs, sPath + "/" + dirItem.Name);
+                    }
+                }
+            }
+            return {};
+        }
+    }
+
+    static vector<Azure::Storage::Files::Shares::ShareDirectoryClient> FindDirs(
+        const Azure::Storage::Files::Shares::ShareDirectoryClient& dirClient,
+        const function<bool(const Azure::Storage::Files::Shares::Models::DirectoryItem&)>& predicate,
+        const string& prefix
+    )
+    {
+        Azure::Storage::Files::Shares::ListFilesAndDirectoriesOptions opts;
+        opts.Prefix = prefix;
+        vector<Azure::Storage::Files::Shares::ShareDirectoryClient> result;
+        for (auto pagedFileAndDirList = dirClient.ListFilesAndDirectories(opts); pagedFileAndDirList.HasPage(); pagedFileAndDirList.MoveToNextPage())
         {
             for (const auto& dirItem : pagedFileAndDirList.Directories)
             {
                 if (predicate(dirItem))
                 {
-                    result.emplace_back(sPath + "/" + dirItem.Name);
+                    result.push_back(dirClient.GetSubdirectoryClient(dirItem.Name));
                 }
             }
         }
         return result;
     }
 
-    static vector<string> FindFiles(
+    static vector<Azure::Storage::Files::Shares::ShareFileClient> FindFiles(
         const Azure::Storage::Files::Shares::ShareDirectoryClient& dirClient,
-        const string& sPath,
-        const function<bool(const Azure::Storage::Files::Shares::Models::FileItem&)>& predicate
+        const function<bool(const Azure::Storage::Files::Shares::Models::FileItem&)>& predicate,
+        const string& prefix
     )
     {
-        vector<string> result;
-        for (auto pagedFileAndDirList = dirClient.ListFilesAndDirectories(); pagedFileAndDirList.HasPage(); pagedFileAndDirList.MoveToNextPage())
+        Azure::Storage::Files::Shares::ListFilesAndDirectoriesOptions opts;
+        opts.Prefix = prefix;
+        vector<Azure::Storage::Files::Shares::ShareFileClient> result;
+        for (auto pagedFileAndDirList = dirClient.ListFilesAndDirectories(opts); pagedFileAndDirList.HasPage(); pagedFileAndDirList.MoveToNextPage())
         {
             for (const auto& fileItem : pagedFileAndDirList.Files)
             {
                 if (predicate(fileItem))
                 {
-                    result.emplace_back(sPath + "/" + fileItem.Name);
+                    result.push_back(dirClient.GetFileClient(fileItem.Name));
                 }
             }
         }
         return result;
     }
 
-    static vector<string> FindDirsByName(
-        const Azure::Storage::Files::Shares::ShareDirectoryClient& dirClient,
-        const string& sPath,
-        const string& sName
-    )
+    template<typename ItemT>
+    static bool ItemHasName(const ItemT& item, const string& sName)
     {
-        return FindDirs(dirClient, sPath, [sName](const Azure::Storage::Files::Shares::Models::DirectoryItem& dirItem) { return dirItem.Name == sName; });
+        return item.Name == sName;
     }
 
-    static vector<string> FindDirsByGlob(
-        const Azure::Storage::Files::Shares::ShareDirectoryClient& dirClient,
-        const string& sPath,
-        const string& sGlob
-    )
+    template<typename ItemT>
+    static bool ItemNameMatches(const ItemT& item, const string& sGlob)
     {
-        return FindDirs(dirClient, sPath, [sGlob](const Azure::Storage::Files::Shares::Models::DirectoryItem& dirItem) { return globbing::GitignoreGlobMatch(dirItem.Name, sGlob); });
+        return globbing::GitignoreGlobMatch(item.Name, sGlob);
     }
 
-    static vector<string> FindFilesByName(
-        const Azure::Storage::Files::Shares::ShareDirectoryClient& dirClient,
-        const string& sPath, 
-        const string& sName
-    )
+    static string PrefixFromName(const string& sName)
     {
-        return FindFiles(dirClient, sPath, [sName](const Azure::Storage::Files::Shares::Models::FileItem& fileItem) { return fileItem.Name == sName; });
+        return sName;
     }
 
-    static vector<string> FindFilesByGlob(
-        const Azure::Storage::Files::Shares::ShareDirectoryClient& dirClient,
-        const string& sPath,
-        const string& sGlob
+    static string PrefixFromGlob(const string& sGlob)
+    {
+        return sGlob.substr(0, globbing::FindGlobbingChar(sGlob));
+    }
+
+    static vector<Azure::Storage::Files::Shares::ShareDirectoryClient> FindDirsByName(
+        const Azure::Storage::Files::Shares::ShareDirectoryClient& dirClient, const string& sName
     )
     {
-        return FindFiles(dirClient, sPath, [sGlob](const Azure::Storage::Files::Shares::Models::FileItem& fileItem) { return globbing::GitignoreGlobMatch(fileItem.Name, sGlob); });
+        return FindDirs(dirClient, [sName](const Azure::Storage::Files::Shares::Models::DirectoryItem& item) { return ItemHasName(item, sName); }, PrefixFromName(sName));
+    }
+
+    static vector<Azure::Storage::Files::Shares::ShareDirectoryClient> FindDirsByGlob(
+        const Azure::Storage::Files::Shares::ShareDirectoryClient& dirClient, const string& sGlob
+    )
+    {
+        return FindDirs(dirClient, [sGlob](const Azure::Storage::Files::Shares::Models::DirectoryItem& item) { return ItemNameMatches(item, sGlob); }, PrefixFromGlob(sGlob));
+    }
+
+    static vector<Azure::Storage::Files::Shares::ShareFileClient> FindFilesByName(
+        const Azure::Storage::Files::Shares::ShareDirectoryClient& dirClient, const string& sName
+    )
+    {
+        return FindFiles(dirClient, [sName](const Azure::Storage::Files::Shares::Models::FileItem& item) { return ItemHasName(item, sName); }, PrefixFromName(sName));
+    }
+
+    static vector<Azure::Storage::Files::Shares::ShareFileClient> FindFilesByGlob(
+        const Azure::Storage::Files::Shares::ShareDirectoryClient& dirClient, const string& sGlob
+    )
+    {
+        return FindFiles(dirClient, [sGlob](const Azure::Storage::Files::Shares::Models::FileItem& item) { return ItemNameMatches(item, sGlob); }, PrefixFromGlob(sGlob));
     }
 }
