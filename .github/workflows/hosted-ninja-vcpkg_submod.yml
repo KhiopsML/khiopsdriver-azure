@@ -77,6 +77,9 @@ jobs:
           inlineScript: |
             az account show
             # You can write your Azure CLI inline scripts here.
+            az storage container list --account-name khiopsdriverazure
+            az storage file list --account-name khiopsdriverazure -s data-test-khiops-driver-azure
+
 
       - name: Install coverage tools
         if: matrix.os == 'ubuntu-latest'
