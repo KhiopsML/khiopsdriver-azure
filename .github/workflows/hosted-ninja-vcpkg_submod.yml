@@ -81,6 +81,8 @@ jobs:
             az resource list
             echo az storage account list
             az storage account list
+            echo az login --identity
+            az login --identity
             echo az storage container list --account-name khiopsdriverazure
             az storage container list --account-name khiopsdriverazure
             echo az storage file list --account-name khiopsdriverazure -s data-test-khiops-driver-azure
