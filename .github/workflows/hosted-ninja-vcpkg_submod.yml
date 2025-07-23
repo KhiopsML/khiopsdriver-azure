@@ -77,7 +77,13 @@ jobs:
           inlineScript: |
             az account show
             # You can write your Azure CLI inline scripts here.
+            echo az resource list
+            az resource list
+            echo az storage account list
+            az storage account list
+            echo az storage container list --account-name khiopsdriverazure
             az storage container list --account-name khiopsdriverazure
+            echo az storage file list --account-name khiopsdriverazure -s data-test-khiops-driver-azure
             az storage file list --account-name khiopsdriverazure -s data-test-khiops-driver-azure
 
 
