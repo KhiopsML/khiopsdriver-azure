@@ -15,19 +15,36 @@ namespace az
 		if (HasDirUrl())
 		{
 			CheckDirUrl();
+			return !ListDirs().empty();
 		}
 		else
 		{
 			CheckFileUrl();
+			return !ListFiles().empty();
 		}
-		return !ResolveUrl().empty();
 	}
 
 	size_t ShareAccessor::GetSize() const
 	{
-		// TODO: Implement
-		return 0;
+		return 0; // TODO: Implement.
 	}
+	//size_t ShareAccessor::GetSize() const
+	//{
+	//	if (HasDirUrl())
+	//	{
+	//		// TODO: What should it do?
+	//	}
+	//	else
+	//	{
+	//		vector<Azure::Storage::Files::Shares::Models::FileItem> files = ResolveUrl();
+	//		return accumulate(files.begin(), files.end(), 0,
+	//			[](size_t acc, const Azure::Storage::Files::Shares::Models::FileItem& elem)
+	//			{
+	//				return acc + elem.BlobSize;
+	//			}
+	//		);
+	//	}
+	//}
 
 	FileStream ShareAccessor::Open(char mode) const
 	{
@@ -71,14 +88,26 @@ namespace az
 	{
 	}
 
-	vector<string> ShareAccessor::ResolveUrl() const
+	//vector<string> ShareAccessor::ResolveUrl() const
+	//{
+	//	vector<string> path = GetPath();
+	//	return ResolveUrlRecursively(
+	//		GetDirClient(),
+	//		queue<string, deque<string>>(deque<string>(path.begin(), path.end())),
+	//		HasDirUrl(),
+	//		""
+	//	);
+	//}
+
+	vector<Azure::Storage::Files::Shares::Models::DirectoryItem> ShareAccessor::ListDirs() const
 	{
-		vector<string> path = GetPath();
-		return ResolveUrlRecursively(
-			GetDirClient(),
-			queue<string, deque<string>>(deque<string>(path.begin(), path.end())),
-			HasDirUrl(),
-			""
-		);
+		// TODO: Implement
+		return {};
+	}
+
+	vector<Azure::Storage::Files::Shares::Models::FileItem> ShareAccessor::ListFiles() const
+	{
+		// TODO: Implement
+		return {};
 	}
 }

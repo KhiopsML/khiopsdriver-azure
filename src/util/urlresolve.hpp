@@ -4,6 +4,7 @@
 #include <queue>
 #include <string>
 #include <azure/storage/files/shares/share_directory_client.hpp>
+#include <azure/storage/files/shares/share_file_client.hpp>
 
 namespace az
 {

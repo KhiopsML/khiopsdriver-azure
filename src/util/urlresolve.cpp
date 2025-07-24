@@ -1,20 +1,92 @@
 #include "urlresolve.hpp"
-#include <algorithm>
-#include <iterator>
 #include <functional>
 #include "glob.hpp"
 #include "../exception.hpp"
 #include "../contrib/globmatch.hpp"
-#include "string.hpp"
 
 namespace az
 {
-    vector<string> ResolveUrlRecursively(
-        const Azure::Storage::Files::Shares::ShareDirectoryClient& dirClient,
-        queue<string> urlPathSegments,
-        bool bLookingForDirs,
-        const string& sPath
-    )
+    using ShareDirectoryClient = Azure::Storage::Files::Shares::ShareDirectoryClient;
+    using ShareFileClient = Azure::Storage::Files::Shares::ShareFileClient;
+    using DirectoryItem = Azure::Storage::Files::Shares::Models::DirectoryItem;
+    using FileItem = Azure::Storage::Files::Shares::Models::FileItem;
+    using ListFilesAndDirectoriesPagedResponse = Azure::Storage::Files::Shares::ListFilesAndDirectoriesPagedResponse;
+    using ListFilesAndDirectoriesOptions = Azure::Storage::Files::Shares::ListFilesAndDirectoriesOptions;
+
+    static vector<ShareDirectoryClient> ResolveDirsUrlRecursively(const ShareDirectoryClient& dirClient, queue<string> urlPathSegments);
+
+    static vector<ShareFileClient> ResolveFilesUrlRecursively(const ShareDirectoryClient& dirClient, queue<string> urlPathSegments);
+
+    template<
+        typename ClientT,
+        vector<ClientT>(*ResolveUrlRecursively)(const ShareDirectoryClient&, queue<string>)
+    >
+    static vector<ClientT> ResolveDoubleStar(const ShareDirectoryClient& dirClient, queue<string> urlPathSegments);
+
+    static vector<ShareFileClient> ResolveFilesDoubleStar(const ShareDirectoryClient& dirClient);
+
+    static vector<ShareDirectoryClient> ResolveDirsGlobbing( const ShareDirectoryClient& dirClient, queue<string> urlPathSegments, const string& sGlobbingPattern);
+
+    static vector<ShareFileClient> ResolveFilesGlobbing(const ShareDirectoryClient& dirClient, queue<string> urlPathSegments, const string& sGlobbingPattern);
+    
+    template<
+        typename ClientT,
+        vector<ClientT>(*ResolveUrlRecursively)(const ShareDirectoryClient&, queue<string>),
+        vector<ClientT>(*FindByGlob)(const ShareDirectoryClient&, const string&)
+    >
+    static vector<ClientT> ResolveGlobbing(const ShareDirectoryClient& dirClient, queue<string> urlPathSegments, const string& sGlobbingPattern);
+    
+    static vector<ShareDirectoryClient> ResolveDirsRaw(const ShareDirectoryClient& dirClient, queue<string> urlPathSegments, const string& sName);
+    
+    static vector<ShareFileClient> ResolveFilesRaw(const ShareDirectoryClient& dirClient, queue<string> urlPathSegments, const string& sName);
+    
+    template<
+        typename ClientT,
+        vector<ClientT>(*ResolveUrlRecursively)(const ShareDirectoryClient&, queue<string>),
+        vector<ClientT>(*FindByName)(const ShareDirectoryClient&, const string&)
+    >
+    static vector<ClientT> ResolveRaw(const ShareDirectoryClient& dirClient, queue<string> urlPathSegments, const string& sName);
+    
+    static vector<ShareDirectoryClient> FindDirsByName(const ShareDirectoryClient& dirClient, const string& sName);
+    
+    static vector<ShareDirectoryClient> FindDirsByGlob(const ShareDirectoryClient& dirClient, const string& sGlob);
+
+    
+    static vector<ShareFileClient> FindFilesByName(const ShareDirectoryClient& dirClient, const string& sName);
+
+    static vector<ShareFileClient> FindFilesByGlob(const ShareDirectoryClient& dirClient, const string& sGlob);
+    
+    static vector<ShareDirectoryClient> FindDirs(const ShareDirectoryClient& dirClient, function<bool(const DirectoryItem&)> Predicate, const string& sPrefix);
+    
+    static vector<ShareFileClient> FindFiles(const ShareDirectoryClient& dirClient, function<bool(const FileItem&)> Predicate, const string& sPrefix);
+    
+    template<
+        typename ItemT,
+        typename ClientT,
+        vector<ItemT>(*GetItemsOfPage)(const ListFilesAndDirectoriesPagedResponse&),
+        ClientT(*GetClientForItem)(const ShareDirectoryClient&, const ItemT&)
+    >
+    static vector<ClientT> Find(const ShareDirectoryClient& dirClient, function<bool(const ItemT&)> Predicate, const string& sPrefix);
+    
+    static vector<DirectoryItem> GetDirsOfPage(const ListFilesAndDirectoriesPagedResponse& pagedResponse);
+    
+    static vector<FileItem> GetFilesOfPage(const ListFilesAndDirectoriesPagedResponse& pagedResponse);
+    
+    static ShareDirectoryClient GetDirClient(const ShareDirectoryClient& dirClient, const DirectoryItem& item);
+    
+    static ShareFileClient GetFileClient(const ShareDirectoryClient& dirClient, const FileItem& item);
+    
+    template<typename ItemT>
+    static bool ItemHasName(const ItemT& item, const string& sName);
+    
+    template<typename ItemT>
+    static bool ItemNameMatches(const ItemT& item, const string& sGlob);
+    
+    static string PrefixFromName(const string& sName);
+    
+    static string PrefixFromGlob(const string& sGlob);
+
+    static vector<ShareDirectoryClient> ResolveDirsUrlRecursively(const ShareDirectoryClient& dirClient, queue<string> urlPathSegments)
     {
         try
         {
@@ -22,27 +94,20 @@ namespace az
             {
                 return {};
             }
+
             const string sUrlPathSegment = urlPathSegments.front();
             urlPathSegments.pop();
             if (sUrlPathSegment == "**")
             {
-                if (!bLookingForDirs && urlPathSegments.empty())
-                {
-                    return ResolveDoubleStarAsFiles(dirClient, sPath);
-                }
-                else
-                {
-                    return ResolveDoubleStar(dirClient, urlPathSegments, bLookingForDirs, sPath);
-                }
+                return ResolveDoubleStar<ShareDirectoryClient, ResolveDirsUrlRecursively>(dirClient, urlPathSegments);
             }
-            else if (sUrlPathSegment.find_first_of("?[*") != string::npos)
+
+            if (sUrlPathSegment.find_first_of("?[*") != string::npos)
             {
-                return ResolveGlobbing(dirClient, urlPathSegments, bLookingForDirs, sUrlPathSegment, sPath);
+                return ResolveDirsGlobbing(dirClient, urlPathSegments, sUrlPathSegment);
             }
-            else
-            {
-                return ResolveRaw(dirClient, urlPathSegments, bLookingForDirs, sUrlPathSegment, sPath);
-            }
+            
+            return ResolveDirsRaw(dirClient, urlPathSegments, sUrlPathSegment);
         }
         catch (const Azure::Core::Http::TransportException& exc)
         {
@@ -50,188 +115,207 @@ namespace az
         }
     }
 
-    static vector<string> ResolveDoubleStar(
-        const Azure::Storage::Files::Shares::ShareDirectoryClient& dirClient,
-        queue<string> urlPathSegments,
-        bool bLookingForDirs,
-        const string& sPath
-    )
+    static vector<ShareFileClient> ResolveFilesUrlRecursively(const ShareDirectoryClient& dirClient, queue<string> urlPathSegments)
     {
-        vector<string> result = ResolveUrlRecursively(dirClient, urlPathSegments, bLookingForDirs, sPath);
-        vector<string> subresult;
+        try
+        {
+            if (urlPathSegments.empty())
+            {
+                return {};
+            }
+
+            const string sUrlPathSegment = urlPathSegments.front();
+            urlPathSegments.pop();
+            if (sUrlPathSegment == "**")
+            {
+                if (urlPathSegments.empty())
+                {
+                    return ResolveFilesDoubleStar(dirClient);
+                }
+                
+                return ResolveDoubleStar<ShareFileClient, ResolveFilesUrlRecursively>(dirClient, urlPathSegments);
+            }
+            
+            if (sUrlPathSegment.find_first_of("?[*") != string::npos)
+            {
+                return ResolveFilesGlobbing(dirClient, urlPathSegments, sUrlPathSegment);
+            }
+            
+            return ResolveFilesRaw(dirClient, urlPathSegments, sUrlPathSegment);
+        }
+        catch (const Azure::Core::Http::TransportException& exc)
+        {
+            throw NetworkError();
+        }
+    }
+
+    template<
+        typename ClientT,
+        vector<ClientT> (*ResolveUrlRecursively)(const ShareDirectoryClient&, queue<string>)
+    >
+    static vector<ClientT> ResolveDoubleStar(const ShareDirectoryClient& dirClient, queue<string> urlPathSegments)
+    {
+        vector<ClientT> result = ResolveUrlRecursively(dirClient, urlPathSegments);
+        vector<ClientT> subresult;
         for (auto pagedFileAndDirList = dirClient.ListFilesAndDirectories(); pagedFileAndDirList.HasPage(); pagedFileAndDirList.MoveToNextPage())
         {
             for (const auto& dirItem : pagedFileAndDirList.Directories)
             {
-                subresult = ResolveDoubleStar(dirClient.GetSubdirectoryClient(dirItem.Name), urlPathSegments, bLookingForDirs, sPath + "/" + dirItem.Name);
+                subresult = ResolveDoubleStar<ClientT, ResolveUrlRecursively>(dirClient.GetSubdirectoryClient(dirItem.Name), urlPathSegments);
                 result.insert(result.end(), subresult.begin(), subresult.end());
             }
         }
         return result;
     }
 
-    static vector<string> ResolveDoubleStarAsFiles(
-        const Azure::Storage::Files::Shares::ShareDirectoryClient& dirClient,
-        const string& sPath
-    )
+    static vector<ShareFileClient> ResolveFilesDoubleStar(const ShareDirectoryClient& dirClient)
     {
-        vector<string> result, subresult;
+        vector<ShareFileClient> result, subresult;
         for (auto pagedFileAndDirList = dirClient.ListFilesAndDirectories(); pagedFileAndDirList.HasPage(); pagedFileAndDirList.MoveToNextPage())
         {
             for (const auto& fileItem : pagedFileAndDirList.Files)
             {
-                result.emplace_back(sPath + "/" + fileItem.Name);
+                result.push_back(dirClient.GetFileClient(fileItem.Name));
             }
             for (const auto& dirItem : pagedFileAndDirList.Directories)
             {
-                subresult = ResolveDoubleStarAsFiles(dirClient.GetSubdirectoryClient(dirItem.Name), sPath + "/" + dirItem.Name);
+                subresult = ResolveFilesDoubleStar(dirClient.GetSubdirectoryClient(dirItem.Name));
                 result.insert(result.end(), subresult.begin(), subresult.end());
             }
         }
         return result;
     }
 
-    static vector<string> ResolveGlobbing(
-        const Azure::Storage::Files::Shares::ShareDirectoryClient& dirClient,
-        queue<string> urlPathSegments,
-        bool bLookingForDirs,
-        const string& sGlobbingPattern,
-        const string& sPath
-    )
+    static vector<ShareDirectoryClient> ResolveDirsGlobbing(const ShareDirectoryClient& dirClient, queue<string> urlPathSegments, const string& sGlobbingPattern)
+    {
+        return ResolveGlobbing<ShareDirectoryClient, ResolveDirsUrlRecursively, FindDirsByGlob>(dirClient, urlPathSegments, sGlobbingPattern);
+    }
+
+    static vector<ShareFileClient> ResolveFilesGlobbing(const ShareDirectoryClient& dirClient, queue<string> urlPathSegments, const string& sGlobbingPattern)
+    {
+        return ResolveGlobbing<ShareFileClient, ResolveFilesUrlRecursively, FindFilesByGlob>(dirClient, urlPathSegments, sGlobbingPattern);
+    }
+
+    template<
+        typename ClientT,
+        vector<ClientT>(*ResolveUrlRecursively)(const ShareDirectoryClient&, queue<string>),
+        vector<ClientT> (*FindByGlob)(const ShareDirectoryClient&, const string&)
+    >
+    static vector<ClientT> ResolveGlobbing(const ShareDirectoryClient& dirClient, queue<string> urlPathSegments, const string& sGlobbingPattern)
     {
         if (urlPathSegments.empty())
         {
-            if (bLookingForDirs)
-            {
-                return FindDirsByGlob(dirClient, sPath, sGlobbingPattern);
-            }
-            else
-            {
-                return FindFilesByGlob(dirClient, sPath, sGlobbingPattern);
-            }
+            return FindByGlob(dirClient, sGlobbingPattern);
         }
-        else
+
+        vector<ClientT> result, subresult;
+        for (const ShareDirectoryClient& subdirClient : FindDirsByGlob(dirClient, sGlobbingPattern))
         {
-            vector<string> result, subresult;
-            for (auto pagedFileAndDirList = dirClient.ListFilesAndDirectories(); pagedFileAndDirList.HasPage(); pagedFileAndDirList.MoveToNextPage())
-            {
-                for (const auto& dirItem : pagedFileAndDirList.Directories)
-                {
-                    if (globbing::GitignoreGlobMatch(dirItem.Name, sGlobbingPattern))
-                    {
-                        subresult = ResolveUrlRecursively(dirClient.GetSubdirectoryClient(dirItem.Name), urlPathSegments, bLookingForDirs, sPath + "/" + dirItem.Name);
-                        result.insert(result.end(), subresult.begin(), subresult.end());
-                    }
-                }
-            }
-            return result;
+            subresult = ResolveUrlRecursively(subdirClient, urlPathSegments);
+            result.insert(result.end(), subresult.begin(), subresult.end());
         }
+        return result;
     }
 
-    static vector<string> ResolveRaw(
-        const Azure::Storage::Files::Shares::ShareDirectoryClient& dirClient,
-        queue<string> urlPathSegments,
-        bool bLookingForDirs,
-        const string& sName,
-        const string& sPath
-    )
+    static vector<ShareDirectoryClient> ResolveDirsRaw(const ShareDirectoryClient& dirClient, queue<string> urlPathSegments, const string& sName)
+    {
+        return ResolveRaw<ShareDirectoryClient, ResolveDirsUrlRecursively, FindDirsByName>(dirClient, urlPathSegments, sName);
+    }
+
+    static vector<ShareFileClient> ResolveFilesRaw(const ShareDirectoryClient& dirClient, queue<string> urlPathSegments, const string& sName)
+    {
+        return ResolveRaw<ShareFileClient, ResolveFilesUrlRecursively, FindFilesByName>(dirClient, urlPathSegments, sName);
+    }
+
+    template<
+        typename ClientT,
+        vector<ClientT>(*ResolveUrlRecursively)(const ShareDirectoryClient&, queue<string>),
+        vector<ClientT> (*FindByName)(const ShareDirectoryClient&, const string&)
+    >
+    static vector<ClientT> ResolveRaw(const ShareDirectoryClient& dirClient, queue<string> urlPathSegments, const string& sName)
     {
         if (urlPathSegments.empty())
         {
-            if (bLookingForDirs)
-            {
-                return FindDirsByName(dirClient, sName);
-            }
-            else
-            {
-                return FindFilesByName(dirClient, sName);
-            }
+            return FindByName(dirClient, sName);
         }
-        else
-        {
-            for (auto pagedFileAndDirList = dirClient.ListFilesAndDirectories(); pagedFileAndDirList.HasPage(); pagedFileAndDirList.MoveToNextPage())
-            {
-                for (const auto& dirItem : pagedFileAndDirList.Directories)
-                {
-                    if (dirItem.Name == sName)
-                    {
-                        return ResolveUrlRecursively(dirClient.GetSubdirectoryClient(dirItem.Name), urlPathSegments, bLookingForDirs, sPath + "/" + dirItem.Name);
-                    }
-                }
-            }
-            return {};
-        }
+
+        vector<ShareDirectoryClient> foundDirs = FindDirsByName(dirClient, sName);
+        return foundDirs.empty() ? vector<ClientT>() : ResolveUrlRecursively(foundDirs.front(), urlPathSegments);
     }
 
-    static vector<Azure::Storage::Files::Shares::ShareDirectoryClient> ResolveDirsRaw(
-        const Azure::Storage::Files::Shares::ShareDirectoryClient& dirClient,
-        queue<string> urlPathSegments,
-        const string& sName,
-        const string& sPath
-    )
+    static vector<ShareDirectoryClient> FindDirsByName(const ShareDirectoryClient& dirClient, const string& sName)
     {
-        if (urlPathSegments.empty())
-        {
-            return FindDirsByName(dirClient, sName);
-        }
-        else
-        {
-            for (auto pagedFileAndDirList = dirClient.ListFilesAndDirectories(); pagedFileAndDirList.HasPage(); pagedFileAndDirList.MoveToNextPage())
-            {
-                for (const auto& dirItem : pagedFileAndDirList.Directories)
-                {
-                    if (dirItem.Name == sName)
-                    {
-                        return ResolveUrlRecursively(dirClient.GetSubdirectoryClient(dirItem.Name), urlPathSegments, bLookingForDirs, sPath + "/" + dirItem.Name);
-                    }
-                }
-            }
-            return {};
-        }
+        return FindDirs(dirClient, [sName](const DirectoryItem& item) { return ItemHasName(item, sName); }, PrefixFromName(sName));
     }
 
-    static vector<Azure::Storage::Files::Shares::ShareDirectoryClient> FindDirs(
-        const Azure::Storage::Files::Shares::ShareDirectoryClient& dirClient,
-        const function<bool(const Azure::Storage::Files::Shares::Models::DirectoryItem&)>& predicate,
-        const string& prefix
-    )
+    static vector<ShareDirectoryClient> FindDirsByGlob(const ShareDirectoryClient& dirClient, const string& sGlob)
     {
-        Azure::Storage::Files::Shares::ListFilesAndDirectoriesOptions opts;
-        opts.Prefix = prefix;
-        vector<Azure::Storage::Files::Shares::ShareDirectoryClient> result;
+        return FindDirs(dirClient, [sGlob](const DirectoryItem& item) { return ItemNameMatches(item, sGlob); }, PrefixFromGlob(sGlob));
+    }
+
+    static vector<ShareFileClient> FindFilesByName(const ShareDirectoryClient& dirClient, const string& sName)
+    {
+        return FindFiles(dirClient, [sName](const FileItem& item) { return ItemHasName(item, sName); }, PrefixFromName(sName));
+    }
+
+    static vector<ShareFileClient> FindFilesByGlob(const ShareDirectoryClient& dirClient, const string& sGlob)
+    {
+        return FindFiles(dirClient, [sGlob](const FileItem& item) { return ItemNameMatches(item, sGlob); }, PrefixFromGlob(sGlob));
+    }
+
+    static vector<ShareDirectoryClient> FindDirs(const ShareDirectoryClient& dirClient, function<bool(const DirectoryItem&)> Predicate, const string& sPrefix)
+    {
+        return Find<DirectoryItem, ShareDirectoryClient, GetDirsOfPage, GetDirClient>(dirClient, Predicate, sPrefix);
+    }
+
+    static vector<ShareFileClient> FindFiles(const ShareDirectoryClient& dirClient, function<bool(const FileItem&)> Predicate, const string& sPrefix)
+    {
+        return Find<FileItem, ShareFileClient, GetFilesOfPage, GetFileClient>(dirClient, Predicate, sPrefix);
+    }
+
+    template<
+        typename ItemT,
+        typename ClientT,
+        vector<ItemT> (*GetItemsOfPage)(const ListFilesAndDirectoriesPagedResponse&),
+        ClientT (*GetClientForItem)(const ShareDirectoryClient&, const ItemT&)
+    >
+    static vector<ClientT> Find(const ShareDirectoryClient& dirClient, function<bool(const ItemT&)> Predicate, const string& sPrefix)
+    {
+        ListFilesAndDirectoriesOptions opts;
+        opts.Prefix = sPrefix;
+
+        vector<ClientT> result;
         for (auto pagedFileAndDirList = dirClient.ListFilesAndDirectories(opts); pagedFileAndDirList.HasPage(); pagedFileAndDirList.MoveToNextPage())
         {
-            for (const auto& dirItem : pagedFileAndDirList.Directories)
+            for (const auto& item : GetItemsOfPage(pagedFileAndDirList))
             {
-                if (predicate(dirItem))
+                if (Predicate(item))
                 {
-                    result.push_back(dirClient.GetSubdirectoryClient(dirItem.Name));
+                    result.push_back(GetClientForItem(dirClient, item));
                 }
             }
         }
         return result;
     }
 
-    static vector<Azure::Storage::Files::Shares::ShareFileClient> FindFiles(
-        const Azure::Storage::Files::Shares::ShareDirectoryClient& dirClient,
-        const function<bool(const Azure::Storage::Files::Shares::Models::FileItem&)>& predicate,
-        const string& prefix
-    )
+    static vector<DirectoryItem> GetDirsOfPage(const ListFilesAndDirectoriesPagedResponse& pagedResponse)
     {
-        Azure::Storage::Files::Shares::ListFilesAndDirectoriesOptions opts;
-        opts.Prefix = prefix;
-        vector<Azure::Storage::Files::Shares::ShareFileClient> result;
-        for (auto pagedFileAndDirList = dirClient.ListFilesAndDirectories(opts); pagedFileAndDirList.HasPage(); pagedFileAndDirList.MoveToNextPage())
-        {
-            for (const auto& fileItem : pagedFileAndDirList.Files)
-            {
-                if (predicate(fileItem))
-                {
-                    result.push_back(dirClient.GetFileClient(fileItem.Name));
-                }
-            }
-        }
-        return result;
+        return pagedResponse.Directories;
+    }
+
+    static vector<FileItem> GetFilesOfPage(const ListFilesAndDirectoriesPagedResponse& pagedResponse)
+    {
+        return pagedResponse.Files;
+    }
+
+    static ShareDirectoryClient GetDirClient(const ShareDirectoryClient& dirClient, const DirectoryItem& item)
+    {
+        return dirClient.GetSubdirectoryClient(item.Name);
+    }
+
+    static ShareFileClient GetFileClient(const ShareDirectoryClient& dirClient, const FileItem& item)
+    {
+        return dirClient.GetFileClient(item.Name);
     }
 
     template<typename ItemT>
@@ -254,33 +338,5 @@ namespace az
     static string PrefixFromGlob(const string& sGlob)
     {
         return sGlob.substr(0, globbing::FindGlobbingChar(sGlob));
-    }
-
-    static vector<Azure::Storage::Files::Shares::ShareDirectoryClient> FindDirsByName(
-        const Azure::Storage::Files::Shares::ShareDirectoryClient& dirClient, const string& sName
-    )
-    {
-        return FindDirs(dirClient, [sName](const Azure::Storage::Files::Shares::Models::DirectoryItem& item) { return ItemHasName(item, sName); }, PrefixFromName(sName));
-    }
-
-    static vector<Azure::Storage::Files::Shares::ShareDirectoryClient> FindDirsByGlob(
-        const Azure::Storage::Files::Shares::ShareDirectoryClient& dirClient, const string& sGlob
-    )
-    {
-        return FindDirs(dirClient, [sGlob](const Azure::Storage::Files::Shares::Models::DirectoryItem& item) { return ItemNameMatches(item, sGlob); }, PrefixFromGlob(sGlob));
-    }
-
-    static vector<Azure::Storage::Files::Shares::ShareFileClient> FindFilesByName(
-        const Azure::Storage::Files::Shares::ShareDirectoryClient& dirClient, const string& sName
-    )
-    {
-        return FindFiles(dirClient, [sName](const Azure::Storage::Files::Shares::Models::FileItem& item) { return ItemHasName(item, sName); }, PrefixFromName(sName));
-    }
-
-    static vector<Azure::Storage::Files::Shares::ShareFileClient> FindFilesByGlob(
-        const Azure::Storage::Files::Shares::ShareDirectoryClient& dirClient, const string& sGlob
-    )
-    {
-        return FindFiles(dirClient, [sGlob](const Azure::Storage::Files::Shares::Models::FileItem& item) { return ItemNameMatches(item, sGlob); }, PrefixFromGlob(sGlob));
     }
 }

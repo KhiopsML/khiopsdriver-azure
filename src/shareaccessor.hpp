@@ -40,6 +40,7 @@ namespace az
 		virtual Azure::Storage::Files::Shares::ShareDirectoryClient GetDirClient() const = 0;
 		virtual Azure::Storage::Files::Shares::ShareFileClient GetFileClient() const = 0;
 		
-		vector<string> ResolveUrl() const;
+		vector<Azure::Storage::Files::Shares::Models::DirectoryItem> ListDirs() const;
+		vector<Azure::Storage::Files::Shares::Models::FileItem> ListFiles() const;
 	};
 }
