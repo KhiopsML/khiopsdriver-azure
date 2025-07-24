@@ -22,7 +22,8 @@ namespace az
 
 	vector<string> CloudShareAccessor::GetPath() const
 	{
-
+		vector<string> urlPathParts = UrlPathParts();
+		return vector<string>(urlPathParts.begin() + 1, urlPathParts.end());
 	}
 
 	string CloudShareAccessor::GetServiceUrl() const
