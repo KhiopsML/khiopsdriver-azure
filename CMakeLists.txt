@@ -77,6 +77,7 @@ set(SourceList
     emulatedblobaccessor.hpp emulatedblobaccessor.cpp
     cloudshareaccessor.hpp cloudshareaccessor.cpp
     filestream.hpp filestream.cpp
+    blobpathresolve.hpp blobpathresolve.cpp
     sharepathresolve.hpp sharepathresolve.cpp
 )
 list(TRANSFORM SourceList PREPEND src/)
