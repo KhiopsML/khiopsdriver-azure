@@ -80,7 +80,7 @@ namespace az
     
     static string PrefixFromGlob(const string& sGlob);
 
-    static vector<ShareDirectoryClient> ResolveDirsPathRecursively(const ShareDirectoryClient& dirClient, queue<string> pathSegments)
+    vector<ShareDirectoryClient> ResolveDirsPathRecursively(const ShareDirectoryClient& dirClient, queue<string> pathSegments)
     {
         if (pathSegments.empty())
         {
@@ -102,7 +102,7 @@ namespace az
         return ResolveDirsRaw(dirClient, pathSegments, sUrlPathSegment);
     }
 
-    static vector<ShareFileClient> ResolveFilesPathRecursively(const ShareDirectoryClient& dirClient, queue<string> pathSegments)
+    vector<ShareFileClient> ResolveFilesPathRecursively(const ShareDirectoryClient& dirClient, queue<string> pathSegments)
     {
         if (pathSegments.empty())
         {
