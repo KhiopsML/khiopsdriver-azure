@@ -64,7 +64,6 @@ set(SourceList
     util/env.hpp util/env.cpp
     util/connstring.hpp util/connstring.cpp
     util/glob.hpp util/glob.cpp
-    util/urlresolve.hpp util/urlresolve.cpp
     exception.hpp
     returnval.hpp
     logging.hpp logging.cpp
@@ -78,6 +77,7 @@ set(SourceList
     emulatedblobaccessor.hpp emulatedblobaccessor.cpp
     cloudshareaccessor.hpp cloudshareaccessor.cpp
     filestream.hpp filestream.cpp
+    sharepathresolve.hpp sharepathresolve.cpp
 )
 list(TRANSFORM SourceList PREPEND src/)
 

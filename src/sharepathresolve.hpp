@@ -8,13 +8,13 @@
 
 namespace az
 {
-    std::vector<Azure::Storage::Files::Shares::ShareDirectoryClient> ResolveDirsUrlRecursively(
+    std::vector<Azure::Storage::Files::Shares::ShareDirectoryClient> ResolveDirsPathRecursively(
         const Azure::Storage::Files::Shares::ShareDirectoryClient& dirClient,
-        std::queue<std::string> urlPathSegments
+        std::queue<std::string> pathSegments
     );
 
-    std::vector<Azure::Storage::Files::Shares::ShareFileClient> ResolveFilesUrlRecursively(
+    std::vector<Azure::Storage::Files::Shares::ShareFileClient> ResolveFilesPathRecursively(
         const Azure::Storage::Files::Shares::ShareDirectoryClient& dirClient,
-        std::queue<std::string> urlPathSegments
+        std::queue<std::string> pathSegments
     );
 }

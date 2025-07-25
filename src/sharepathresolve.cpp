@@ -1,8 +1,8 @@
-#include "urlresolve.hpp"
+#include "sharepathresolve.hpp"
 #include <functional>
-#include "glob.hpp"
-#include "../exception.hpp"
-#include "../contrib/globmatch.hpp"
+#include "util/glob.hpp"
+#include "exception.hpp"
+#include "contrib/globmatch.hpp"
 
 namespace az
 {
@@ -13,39 +13,39 @@ namespace az
     using ListFilesAndDirectoriesPagedResponse = Azure::Storage::Files::Shares::ListFilesAndDirectoriesPagedResponse;
     using ListFilesAndDirectoriesOptions = Azure::Storage::Files::Shares::ListFilesAndDirectoriesOptions;
 
-    vector<ShareDirectoryClient> ResolveDirsUrlRecursively(const ShareDirectoryClient& dirClient, queue<string> urlPathSegments);
+    vector<ShareDirectoryClient> ResolveDirsPathRecursively(const ShareDirectoryClient& dirClient, queue<string> pathSegments);
 
-    vector<ShareFileClient> ResolveFilesUrlRecursively(const ShareDirectoryClient& dirClient, queue<string> urlPathSegments);
+    vector<ShareFileClient> ResolveFilesPathRecursively(const ShareDirectoryClient& dirClient, queue<string> pathSegments);
 
     template<
         typename ClientT,
-        vector<ClientT>(*ResolveUrlRecursively)(const ShareDirectoryClient&, queue<string>)
+        vector<ClientT>(*ResolvePathRecursively)(const ShareDirectoryClient&, queue<string>)
     >
-    static vector<ClientT> ResolveDoubleStar(const ShareDirectoryClient& dirClient, queue<string> urlPathSegments);
+    static vector<ClientT> ResolveDoubleStar(const ShareDirectoryClient& dirClient, queue<string> pathSegments);
 
     static vector<ShareFileClient> ResolveFilesDoubleStar(const ShareDirectoryClient& dirClient);
 
-    static vector<ShareDirectoryClient> ResolveDirsGlobbing(const ShareDirectoryClient& dirClient, queue<string> urlPathSegments, const string& sGlobbingPattern);
+    static vector<ShareDirectoryClient> ResolveDirsGlobbing(const ShareDirectoryClient& dirClient, queue<string> pathSegments, const string& sGlobbingPattern);
 
-    static vector<ShareFileClient> ResolveFilesGlobbing(const ShareDirectoryClient& dirClient, queue<string> urlPathSegments, const string& sGlobbingPattern);
+    static vector<ShareFileClient> ResolveFilesGlobbing(const ShareDirectoryClient& dirClient, queue<string> pathSegments, const string& sGlobbingPattern);
     
     template<
         typename ClientT,
-        vector<ClientT>(*ResolveUrlRecursively)(const ShareDirectoryClient&, queue<string>),
+        vector<ClientT>(*ResolvePathRecursively)(const ShareDirectoryClient&, queue<string>),
         vector<ClientT>(*FindByGlob)(const ShareDirectoryClient&, const string&)
     >
-    static vector<ClientT> ResolveGlobbing(const ShareDirectoryClient& dirClient, queue<string> urlPathSegments, const string& sGlobbingPattern);
+    static vector<ClientT> ResolveGlobbing(const ShareDirectoryClient& dirClient, queue<string> pathSegments, const string& sGlobbingPattern);
     
-    static vector<ShareDirectoryClient> ResolveDirsRaw(const ShareDirectoryClient& dirClient, queue<string> urlPathSegments, const string& sName);
+    static vector<ShareDirectoryClient> ResolveDirsRaw(const ShareDirectoryClient& dirClient, queue<string> pathSegments, const string& sName);
     
-    static vector<ShareFileClient> ResolveFilesRaw(const ShareDirectoryClient& dirClient, queue<string> urlPathSegments, const string& sName);
+    static vector<ShareFileClient> ResolveFilesRaw(const ShareDirectoryClient& dirClient, queue<string> pathSegments, const string& sName);
     
     template<
         typename ClientT,
-        vector<ClientT>(*ResolveUrlRecursively)(const ShareDirectoryClient&, queue<string>),
+        vector<ClientT>(*ResolvePathRecursively)(const ShareDirectoryClient&, queue<string>),
         vector<ClientT>(*FindByName)(const ShareDirectoryClient&, const string&)
     >
-    static vector<ClientT> ResolveRaw(const ShareDirectoryClient& dirClient, queue<string> urlPathSegments, const string& sName);
+    static vector<ClientT> ResolveRaw(const ShareDirectoryClient& dirClient, queue<string> pathSegments, const string& sName);
     
     static vector<ShareDirectoryClient> FindDirsByName(const ShareDirectoryClient& dirClient, const string& sName);
     
@@ -86,28 +86,28 @@ namespace az
     
     static string PrefixFromGlob(const string& sGlob);
 
-    static vector<ShareDirectoryClient> ResolveDirsUrlRecursively(const ShareDirectoryClient& dirClient, queue<string> urlPathSegments)
+    static vector<ShareDirectoryClient> ResolveDirsPathRecursively(const ShareDirectoryClient& dirClient, queue<string> pathSegments)
     {
         try
         {
-            if (urlPathSegments.empty())
+            if (pathSegments.empty())
             {
                 return {};
             }
 
-            const string sUrlPathSegment = urlPathSegments.front();
-            urlPathSegments.pop();
+            const string sUrlPathSegment = pathSegments.front();
+            pathSegments.pop();
             if (sUrlPathSegment == "**")
             {
-                return ResolveDoubleStar<ShareDirectoryClient, ResolveDirsUrlRecursively>(dirClient, urlPathSegments);
+                return ResolveDoubleStar<ShareDirectoryClient, ResolveDirsPathRecursively>(dirClient, pathSegments);
             }
 
             if (sUrlPathSegment.find_first_of("?[*") != string::npos)
             {
-                return ResolveDirsGlobbing(dirClient, urlPathSegments, sUrlPathSegment);
+                return ResolveDirsGlobbing(dirClient, pathSegments, sUrlPathSegment);
             }
             
-            return ResolveDirsRaw(dirClient, urlPathSegments, sUrlPathSegment);
+            return ResolveDirsRaw(dirClient, pathSegments, sUrlPathSegment);
         }
         catch (const Azure::Core::Http::TransportException& exc)
         {
@@ -115,33 +115,33 @@ namespace az
         }
     }
 
-    static vector<ShareFileClient> ResolveFilesUrlRecursively(const ShareDirectoryClient& dirClient, queue<string> urlPathSegments)
+    static vector<ShareFileClient> ResolveFilesPathRecursively(const ShareDirectoryClient& dirClient, queue<string> pathSegments)
     {
         try
         {
-            if (urlPathSegments.empty())
+            if (pathSegments.empty())
             {
                 return {};
             }
 
-            const string sUrlPathSegment = urlPathSegments.front();
-            urlPathSegments.pop();
+            const string sUrlPathSegment = pathSegments.front();
+            pathSegments.pop();
             if (sUrlPathSegment == "**")
             {
-                if (urlPathSegments.empty())
+                if (pathSegments.empty())
                 {
                     return ResolveFilesDoubleStar(dirClient);
                 }
                 
-                return ResolveDoubleStar<ShareFileClient, ResolveFilesUrlRecursively>(dirClient, urlPathSegments);
+                return ResolveDoubleStar<ShareFileClient, ResolveFilesPathRecursively>(dirClient, pathSegments);
             }
             
             if (sUrlPathSegment.find_first_of("?[*") != string::npos)
             {
-                return ResolveFilesGlobbing(dirClient, urlPathSegments, sUrlPathSegment);
+                return ResolveFilesGlobbing(dirClient, pathSegments, sUrlPathSegment);
             }
             
-            return ResolveFilesRaw(dirClient, urlPathSegments, sUrlPathSegment);
+            return ResolveFilesRaw(dirClient, pathSegments, sUrlPathSegment);
         }
         catch (const Azure::Core::Http::TransportException& exc)
         {
@@ -151,17 +151,17 @@ namespace az
 
     template<
         typename ClientT,
-        vector<ClientT> (*ResolveUrlRecursively)(const ShareDirectoryClient&, queue<string>)
+        vector<ClientT> (*ResolvePathRecursively)(const ShareDirectoryClient&, queue<string>)
     >
-    static vector<ClientT> ResolveDoubleStar(const ShareDirectoryClient& dirClient, queue<string> urlPathSegments)
+    static vector<ClientT> ResolveDoubleStar(const ShareDirectoryClient& dirClient, queue<string> pathSegments)
     {
-        vector<ClientT> result = ResolveUrlRecursively(dirClient, urlPathSegments);
+        vector<ClientT> result = ResolvePathRecursively(dirClient, pathSegments);
         vector<ClientT> subresult;
         for (auto pagedFileAndDirList = dirClient.ListFilesAndDirectories(); pagedFileAndDirList.HasPage(); pagedFileAndDirList.MoveToNextPage())
         {
             for (const auto& dirItem : pagedFileAndDirList.Directories)
             {
-                subresult = ResolveDoubleStar<ClientT, ResolveUrlRecursively>(dirClient.GetSubdirectoryClient(dirItem.Name), urlPathSegments);
+                subresult = ResolveDoubleStar<ClientT, ResolvePathRecursively>(dirClient.GetSubdirectoryClient(dirItem.Name), pathSegments);
                 result.insert(result.end(), subresult.begin(), subresult.end());
             }
         }
@@ -186,24 +186,24 @@ namespace az
         return result;
     }
 
-    static vector<ShareDirectoryClient> ResolveDirsGlobbing(const ShareDirectoryClient& dirClient, queue<string> urlPathSegments, const string& sGlobbingPattern)
+    static vector<ShareDirectoryClient> ResolveDirsGlobbing(const ShareDirectoryClient& dirClient, queue<string> pathSegments, const string& sGlobbingPattern)
     {
-        return ResolveGlobbing<ShareDirectoryClient, ResolveDirsUrlRecursively, FindDirsByGlob>(dirClient, urlPathSegments, sGlobbingPattern);
+        return ResolveGlobbing<ShareDirectoryClient, ResolveDirsPathRecursively, FindDirsByGlob>(dirClient, pathSegments, sGlobbingPattern);
     }
 
-    static vector<ShareFileClient> ResolveFilesGlobbing(const ShareDirectoryClient& dirClient, queue<string> urlPathSegments, const string& sGlobbingPattern)
+    static vector<ShareFileClient> ResolveFilesGlobbing(const ShareDirectoryClient& dirClient, queue<string> pathSegments, const string& sGlobbingPattern)
     {
-        return ResolveGlobbing<ShareFileClient, ResolveFilesUrlRecursively, FindFilesByGlob>(dirClient, urlPathSegments, sGlobbingPattern);
+        return ResolveGlobbing<ShareFileClient, ResolveFilesPathRecursively, FindFilesByGlob>(dirClient, pathSegments, sGlobbingPattern);
     }
 
     template<
         typename ClientT,
-        vector<ClientT>(*ResolveUrlRecursively)(const ShareDirectoryClient&, queue<string>),
+        vector<ClientT>(*ResolvePathRecursively)(const ShareDirectoryClient&, queue<string>),
         vector<ClientT> (*FindByGlob)(const ShareDirectoryClient&, const string&)
     >
-    static vector<ClientT> ResolveGlobbing(const ShareDirectoryClient& dirClient, queue<string> urlPathSegments, const string& sGlobbingPattern)
+    static vector<ClientT> ResolveGlobbing(const ShareDirectoryClient& dirClient, queue<string> pathSegments, const string& sGlobbingPattern)
     {
-        if (urlPathSegments.empty())
+        if (pathSegments.empty())
         {
             return FindByGlob(dirClient, sGlobbingPattern);
         }
@@ -211,36 +211,36 @@ namespace az
         vector<ClientT> result, subresult;
         for (const ShareDirectoryClient& subdirClient : FindDirsByGlob(dirClient, sGlobbingPattern))
         {
-            subresult = ResolveUrlRecursively(subdirClient, urlPathSegments);
+            subresult = ResolvePathRecursively(subdirClient, pathSegments);
             result.insert(result.end(), subresult.begin(), subresult.end());
         }
         return result;
     }
 
-    static vector<ShareDirectoryClient> ResolveDirsRaw(const ShareDirectoryClient& dirClient, queue<string> urlPathSegments, const string& sName)
+    static vector<ShareDirectoryClient> ResolveDirsRaw(const ShareDirectoryClient& dirClient, queue<string> pathSegments, const string& sName)
     {
-        return ResolveRaw<ShareDirectoryClient, ResolveDirsUrlRecursively, FindDirsByName>(dirClient, urlPathSegments, sName);
+        return ResolveRaw<ShareDirectoryClient, ResolveDirsPathRecursively, FindDirsByName>(dirClient, pathSegments, sName);
     }
 
-    static vector<ShareFileClient> ResolveFilesRaw(const ShareDirectoryClient& dirClient, queue<string> urlPathSegments, const string& sName)
+    static vector<ShareFileClient> ResolveFilesRaw(const ShareDirectoryClient& dirClient, queue<string> pathSegments, const string& sName)
     {
-        return ResolveRaw<ShareFileClient, ResolveFilesUrlRecursively, FindFilesByName>(dirClient, urlPathSegments, sName);
+        return ResolveRaw<ShareFileClient, ResolveFilesPathRecursively, FindFilesByName>(dirClient, pathSegments, sName);
     }
 
     template<
         typename ClientT,
-        vector<ClientT>(*ResolveUrlRecursively)(const ShareDirectoryClient&, queue<string>),
+        vector<ClientT>(*ResolvePathRecursively)(const ShareDirectoryClient&, queue<string>),
         vector<ClientT> (*FindByName)(const ShareDirectoryClient&, const string&)
     >
-    static vector<ClientT> ResolveRaw(const ShareDirectoryClient& dirClient, queue<string> urlPathSegments, const string& sName)
+    static vector<ClientT> ResolveRaw(const ShareDirectoryClient& dirClient, queue<string> pathSegments, const string& sName)
     {
-        if (urlPathSegments.empty())
+        if (pathSegments.empty())
         {
             return FindByName(dirClient, sName);
         }
 
         vector<ShareDirectoryClient> foundDirs = FindDirsByName(dirClient, sName);
-        return foundDirs.empty() ? vector<ClientT>() : ResolveUrlRecursively(foundDirs.front(), urlPathSegments);
+        return foundDirs.empty() ? vector<ClientT>() : ResolvePathRecursively(foundDirs.front(), pathSegments);
     }
 
     static vector<ShareDirectoryClient> FindDirsByName(const ShareDirectoryClient& dirClient, const string& sName)
