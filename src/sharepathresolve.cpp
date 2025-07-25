@@ -51,9 +51,9 @@ namespace az
 
     static vector<ShareFileClient> FindFilesByGlob(const ShareDirectoryClient& dirClient, const string& sGlob);
     
-    static vector<ShareDirectoryClient> FindDirs(const ShareDirectoryClient& dirClient, function<bool(const DirectoryItem&)> Predicate, const string& sPrefix);
+    static vector<ShareDirectoryClient> FindDirs(const ShareDirectoryClient& dirClient, const function<bool(const DirectoryItem&)>& Predicate, const string& sPrefix);
     
-    static vector<ShareFileClient> FindFiles(const ShareDirectoryClient& dirClient, function<bool(const FileItem&)> Predicate, const string& sPrefix);
+    static vector<ShareFileClient> FindFiles(const ShareDirectoryClient& dirClient, const function<bool(const FileItem&)>& Predicate, const string& sPrefix);
     
     template<
         typename ItemT,
@@ -61,7 +61,7 @@ namespace az
         vector<ItemT>(*GetItemsOfPage)(const ListFilesAndDirectoriesPagedResponse&),
         ClientT(*GetClientForItem)(const ShareDirectoryClient&, const ItemT&)
     >
-    static vector<ClientT> Find(const ShareDirectoryClient& dirClient, function<bool(const ItemT&)> Predicate, const string& sPrefix);
+    static vector<ClientT> Find(const ShareDirectoryClient& dirClient, const function<bool(const ItemT&)>& Predicate, const string& sPrefix);
     
     static vector<DirectoryItem> GetDirsOfPage(const ListFilesAndDirectoriesPagedResponse& pagedResponse);
     
@@ -258,12 +258,12 @@ namespace az
         return FindFiles(dirClient, [sGlob](const FileItem& item) { return ItemNameMatches(item, sGlob); }, PrefixFromGlob(sGlob));
     }
 
-    static vector<ShareDirectoryClient> FindDirs(const ShareDirectoryClient& dirClient, function<bool(const DirectoryItem&)> Predicate, const string& sPrefix)
+    static vector<ShareDirectoryClient> FindDirs(const ShareDirectoryClient& dirClient, const function<bool(const DirectoryItem&)>& Predicate, const string& sPrefix)
     {
         return Find<DirectoryItem, ShareDirectoryClient, GetDirsOfPage, GetDirClient>(dirClient, Predicate, sPrefix);
     }
 
-    static vector<ShareFileClient> FindFiles(const ShareDirectoryClient& dirClient, function<bool(const FileItem&)> Predicate, const string& sPrefix)
+    static vector<ShareFileClient> FindFiles(const ShareDirectoryClient& dirClient, const function<bool(const FileItem&)>& Predicate, const string& sPrefix)
     {
         return Find<FileItem, ShareFileClient, GetFilesOfPage, GetFileClient>(dirClient, Predicate, sPrefix);
     }
@@ -274,7 +274,7 @@ namespace az
         vector<ItemT> (*GetItemsOfPage)(const ListFilesAndDirectoriesPagedResponse&),
         ClientT (*GetClientForItem)(const ShareDirectoryClient&, const ItemT&)
     >
-    static vector<ClientT> Find(const ShareDirectoryClient& dirClient, function<bool(const ItemT&)> Predicate, const string& sPrefix)
+    static vector<ClientT> Find(const ShareDirectoryClient& dirClient, const function<bool(const ItemT&)>& Predicate, const string& sPrefix)
     {
         ListFilesAndDirectoriesOptions opts;
         opts.Prefix = sPrefix;
