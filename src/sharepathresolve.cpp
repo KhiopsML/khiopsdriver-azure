@@ -13,10 +13,6 @@ namespace az
     using ListFilesAndDirectoriesPagedResponse = Azure::Storage::Files::Shares::ListFilesAndDirectoriesPagedResponse;
     using ListFilesAndDirectoriesOptions = Azure::Storage::Files::Shares::ListFilesAndDirectoriesOptions;
 
-    vector<ShareDirectoryClient> ResolveDirsPathRecursively(const ShareDirectoryClient& dirClient, queue<string> pathSegments);
-
-    vector<ShareFileClient> ResolveFilesPathRecursively(const ShareDirectoryClient& dirClient, queue<string> pathSegments);
-
     template<
         typename ClientT,
         vector<ClientT>(*ResolvePathRecursively)(const ShareDirectoryClient&, queue<string>)
