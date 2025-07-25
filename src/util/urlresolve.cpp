@@ -25,7 +25,7 @@ namespace az
 
     static vector<ShareFileClient> ResolveFilesDoubleStar(const ShareDirectoryClient& dirClient);
 
-    static vector<ShareDirectoryClient> ResolveDirsGlobbing( const ShareDirectoryClient& dirClient, queue<string> urlPathSegments, const string& sGlobbingPattern);
+    static vector<ShareDirectoryClient> ResolveDirsGlobbing(const ShareDirectoryClient& dirClient, queue<string> urlPathSegments, const string& sGlobbingPattern);
 
     static vector<ShareFileClient> ResolveFilesGlobbing(const ShareDirectoryClient& dirClient, queue<string> urlPathSegments, const string& sGlobbingPattern);
     
