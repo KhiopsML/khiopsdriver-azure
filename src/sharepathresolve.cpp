@@ -102,7 +102,7 @@ namespace az
                 return ResolveDoubleStar<ShareDirectoryClient, ResolveDirsPathRecursively>(dirClient, pathSegments);
             }
 
-            if (sUrlPathSegment.find_first_of("?[*") != string::npos)
+            if (globbing::FindGlobbingChar(sUrlPathSegment) != string::npos)
             {
                 return ResolveDirsGlobbing(dirClient, pathSegments, sUrlPathSegment);
             }
