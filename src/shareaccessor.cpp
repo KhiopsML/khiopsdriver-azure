@@ -99,15 +99,31 @@ namespace az
 	//	);
 	//}
 
-	vector<Azure::Storage::Files::Shares::Models::DirectoryItem> ShareAccessor::ListDirs() const
+	vector<Azure::Storage::Files::Shares::ShareDirectoryClient> ShareAccessor::ListDirs() const
 	{
-		// TODO: Implement
-		return {};
+		vector<string> path = GetPath();
+
+		try
+		{
+			return ResolveDirsPathRecursively(GetDirClient(), queue<string, deque<string>>(deque<string>(path.begin(), path.end())));
+		}
+		catch (const Azure::Core::Http::TransportException& exc)
+		{
+			throw NetworkError();
+		}
 	}
 
-	vector<Azure::Storage::Files::Shares::Models::FileItem> ShareAccessor::ListFiles() const
+	vector<Azure::Storage::Files::Shares::ShareFileClient> ShareAccessor::ListFiles() const
 	{
-		// TODO: Implement
-		return {};
+		vector<string> path = GetPath();
+
+		try
+		{
+			return ResolveFilesPathRecursively(GetDirClient(), queue<string, deque<string>>(deque<string>(path.begin(), path.end())));
+		}
+		catch (const Azure::Core::Http::TransportException& exc)
+		{
+			throw NetworkError();
+		}
 	}
 }
