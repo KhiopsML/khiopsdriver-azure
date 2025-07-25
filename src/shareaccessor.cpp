@@ -1,8 +1,8 @@
 #include "shareaccessor.hpp"
 #include <queue>
 #include <deque>
-#include <string>
-#include "util/urlresolve.hpp"
+#include "exception.hpp"
+#include "sharepathresolve.hpp"
 
 namespace az
 {
