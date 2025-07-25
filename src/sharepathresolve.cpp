@@ -1,7 +1,6 @@
 #include "sharepathresolve.hpp"
 #include <functional>
 #include "util/glob.hpp"
-#include "exception.hpp"
 #include "contrib/globmatch.hpp"
 
 namespace az
@@ -83,65 +82,51 @@ namespace az
 
     static vector<ShareDirectoryClient> ResolveDirsPathRecursively(const ShareDirectoryClient& dirClient, queue<string> pathSegments)
     {
-        try
+        if (pathSegments.empty())
         {
-            if (pathSegments.empty())
-            {
-                return {};
-            }
+            return {};
+        }
 
-            const string sUrlPathSegment = pathSegments.front();
-            pathSegments.pop();
-            if (sUrlPathSegment == "**")
-            {
-                return ResolveDoubleStar<ShareDirectoryClient, ResolveDirsPathRecursively>(dirClient, pathSegments);
-            }
+        const string sUrlPathSegment = pathSegments.front();
+        pathSegments.pop();
+        if (sUrlPathSegment == "**")
+        {
+            return ResolveDoubleStar<ShareDirectoryClient, ResolveDirsPathRecursively>(dirClient, pathSegments);
+        }
 
-            if (globbing::FindGlobbingChar(sUrlPathSegment) != string::npos)
-            {
-                return ResolveDirsGlobbing(dirClient, pathSegments, sUrlPathSegment);
-            }
+        if (globbing::FindGlobbingChar(sUrlPathSegment) != string::npos)
+        {
+            return ResolveDirsGlobbing(dirClient, pathSegments, sUrlPathSegment);
+        }
             
-            return ResolveDirsRaw(dirClient, pathSegments, sUrlPathSegment);
-        }
-        catch (const Azure::Core::Http::TransportException& exc)
-        {
-            throw NetworkError();
-        }
+        return ResolveDirsRaw(dirClient, pathSegments, sUrlPathSegment);
     }
 
     static vector<ShareFileClient> ResolveFilesPathRecursively(const ShareDirectoryClient& dirClient, queue<string> pathSegments)
     {
-        try
+        if (pathSegments.empty())
+        {
+            return {};
+        }
+
+        const string sUrlPathSegment = pathSegments.front();
+        pathSegments.pop();
+        if (sUrlPathSegment == "**")
         {
             if (pathSegments.empty())
             {
-                return {};
+                return ResolveFilesDoubleStar(dirClient);
             }
-
-            const string sUrlPathSegment = pathSegments.front();
-            pathSegments.pop();
-            if (sUrlPathSegment == "**")
-            {
-                if (pathSegments.empty())
-                {
-                    return ResolveFilesDoubleStar(dirClient);
-                }
                 
-                return ResolveDoubleStar<ShareFileClient, ResolveFilesPathRecursively>(dirClient, pathSegments);
-            }
-            
-            if (sUrlPathSegment.find_first_of("?[*") != string::npos)
-            {
-                return ResolveFilesGlobbing(dirClient, pathSegments, sUrlPathSegment);
-            }
-            
-            return ResolveFilesRaw(dirClient, pathSegments, sUrlPathSegment);
+            return ResolveDoubleStar<ShareFileClient, ResolveFilesPathRecursively>(dirClient, pathSegments);
         }
-        catch (const Azure::Core::Http::TransportException& exc)
+            
+        if (sUrlPathSegment.find_first_of("?[*") != string::npos)
         {
-            throw NetworkError();
+            return ResolveFilesGlobbing(dirClient, pathSegments, sUrlPathSegment);
         }
+            
+        return ResolveFilesRaw(dirClient, pathSegments, sUrlPathSegment);
     }
 
     template<
