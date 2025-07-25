@@ -46,7 +46,6 @@ namespace az
     static vector<ShareDirectoryClient> FindDirsByName(const ShareDirectoryClient& dirClient, const string& sName);
     
     static vector<ShareDirectoryClient> FindDirsByGlob(const ShareDirectoryClient& dirClient, const string& sGlob);
-
     
     static vector<ShareFileClient> FindFilesByName(const ShareDirectoryClient& dirClient, const string& sName);
 
