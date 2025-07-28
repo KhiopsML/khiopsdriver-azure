@@ -16,8 +16,7 @@ namespace az
 
 		const std::string& GetLastError() const;
 		void LogError(const std::string& error);
-		void LogNullArgError(const std::string& funcname, const std::string& argname);
-		void LogException(const exception& exc);
+		void LogException(const std::exception& exc);
 
 	protected:
 		std::string sLastError;
