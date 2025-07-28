@@ -89,6 +89,7 @@ namespace az
 
         const string sUrlPathSegment = pathSegments.front();
         pathSegments.pop();
+
         if (sUrlPathSegment == "**")
         {
             return ResolveDoubleStar<ShareDirectoryClient, ResolveDirsPathRecursively>(dirClient, pathSegments);
@@ -111,6 +112,7 @@ namespace az
 
         const string sUrlPathSegment = pathSegments.front();
         pathSegments.pop();
+
         if (sUrlPathSegment == "**")
         {
             if (pathSegments.empty())
@@ -121,7 +123,7 @@ namespace az
             return ResolveDoubleStar<ShareFileClient, ResolveFilesPathRecursively>(dirClient, pathSegments);
         }
             
-        if (sUrlPathSegment.find_first_of("?[*") != string::npos)
+        if (globbing::FindGlobbingChar(sUrlPathSegment) != string::npos)
         {
             return ResolveFilesGlobbing(dirClient, pathSegments, sUrlPathSegment);
         }
