@@ -36,6 +36,7 @@
 #include "returnval.hpp"
 #include "errorlogger.hpp"
 #include "logging.hpp"
+#include "exception.hpp"
 
 using namespace std;
 using namespace az;
@@ -46,7 +47,7 @@ constexpr char* emulated_storage_connection_string =
 	"AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;"
 	"BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;";
 
-const char sCaughtNonExceptionValue[] = "caught a value that is not a descendant of std::exception";
+const char sCaughtNonExceptionValue[] = "unknown error (caught a value that is not a descendant of std::exception)";
 
 Driver driver;
 ErrorLogger errorLogger;
@@ -223,6 +224,10 @@ int driver_fileExists(const char* sUrl)
 	try
 	{
 		spdlog::debug("Checking if file exists at URL {}", sUrl);
+		if (!sUrl)
+		{
+			throw NullArgError(__func__, STRINGIFY(sUrl));
+		}
 		return FileOrDirExists(sUrl);
 	}
 	catch (const exception& exc)
@@ -242,6 +247,10 @@ int driver_dirExists(const char* sUrl)
 	try
 	{
 		spdlog::debug("Checking if directory exists at URL {}", sUrl);
+		if (!sUrl)
+		{
+			throw NullArgError(__func__, STRINGIFY(sUrl));
+		}
 		return FileOrDirExists(sUrl);
 	}
 	catch (const exception& exc)
@@ -264,8 +273,7 @@ long long int driver_getFileSize(const char* sUrl)
 		spdlog::debug("Retrieving size of file at URL {}", sUrl);
 		if (!sUrl)
 		{
-			errorLogger.LogNullArgError(__func__, STRINGIFY(sUrl));
-			return nSizeFailure;
+			throw NullArgError(__func__, STRINGIFY(sUrl));
 		}
 		return driver.CreateFileAccessor(sUrl)->GetSize();
 	}
@@ -288,8 +296,7 @@ void* driver_fopen(const char* sUrl, char mode)
 		spdlog::debug("Opening file at URL {} in mode {}", sUrl, mode);
 		if (!sUrl)
 		{
-			errorLogger.LogNullArgError(__func__, STRINGIFY(sUrl));
-			return nullptr;
+			throw NullArgError(__func__, STRINGIFY(sUrl));
 		}
 		return driver.CreateFileAccessor(sUrl)->Open(mode).GetHandle();
 	}
@@ -381,8 +388,7 @@ int driver_fclose(void* handle)
 		spdlog::debug("Closing file with handle {}", handle);
 		if (!handle)
 		{
-			errorLogger.LogNullArgError(__func__, STRINGIFY(handle));
-			return nCloseFailure;
+			throw NullArgError(__func__, STRINGIFY(handle));
 		}
 		driver.RetrieveFileStream(handle).Close();
 		return nCloseSuccess;
@@ -430,13 +436,11 @@ long long int driver_fread(void* dest, size_t size, size_t count, void* handle)
 		spdlog::debug("Reading {}*{} bytes from file with handle {} to {}", size, count, handle, dest);
 		if (!dest)
 		{
-			errorLogger.LogNullArgError(__func__, STRINGIFY(dest));
-			return nReadFailure;
+			throw NullArgError(__func__, STRINGIFY(dest));
 		}
 		if (!handle)
 		{
-			errorLogger.LogNullArgError(__func__, STRINGIFY(handle));
-			return nReadFailure;
+			throw NullArgError(__func__, STRINGIFY(handle));
 		}
 		return driver.RetrieveFileStream(handle).Read(dest, size, count);
 	}
@@ -533,8 +537,7 @@ int driver_fseek(void* handle, long long int offset, int whence)
 		spdlog::debug("Seeking offset {} from {} in file with handle {}", offset, whence, handle);
 		if (!handle)
 		{
-			errorLogger.LogNullArgError(__func__, STRINGIFY(handle));
-			return nSeekFailure;
+			throw NullArgError(__func__, STRINGIFY(handle));
 		}
 		driver.RetrieveFileStream(handle).Seek(offset, whence);
 		return nSeekSuccess;
@@ -647,13 +650,11 @@ long long int driver_fwrite(const void* source, size_t size, size_t count, void*
 		spdlog::debug("Writing {}*{} bytes from {} to file with handle {}", size, count, source, handle);
 		if (!source)
 		{
-			errorLogger.LogNullArgError(__func__, STRINGIFY(source));
-			return nWriteFailure;
+			throw NullArgError(__func__, STRINGIFY(source));
 		}
 		if (!handle)
 		{
-			errorLogger.LogNullArgError(__func__, STRINGIFY(handle));
-			return nWriteFailure;
+			throw NullArgError(__func__, STRINGIFY(handle));
 		}
 		return driver.RetrieveFileStream(handle).Write(source, size, count);
 	}
@@ -731,8 +732,7 @@ int driver_fflush(void* handle)
 		spdlog::debug("Flushing file with handle {}", handle);
 		if (!handle)
 		{
-			errorLogger.LogNullArgError(__func__, STRINGIFY(handle));
-			return nFlushFailure;
+			throw NullArgError(__func__, STRINGIFY(handle));
 		}
 		driver.RetrieveFileStream(handle).Flush();
 		return nFlushSuccess;
@@ -770,8 +770,7 @@ int driver_remove(const char* sUrl)
 		spdlog::debug("Removing file at URL {}", sUrl);
 		if (!sUrl)
 		{
-			errorLogger.LogNullArgError(__func__, STRINGIFY(sUrl));
-			return nFailure;
+			throw NullArgError(__func__, STRINGIFY(sUrl));
 		}
 		driver.CreateFileAccessor(sUrl)->Remove();
 		return nSuccess;
@@ -833,8 +832,7 @@ int driver_mkdir(const char* sUrl)
 		spdlog::debug("Creating directory at URL {}", sUrl);
 		if (!sUrl)
 		{
-			errorLogger.LogNullArgError(__func__, STRINGIFY(sUrl));
-			return nFailure;
+			throw NullArgError(__func__, STRINGIFY(sUrl));
 		}
 		driver.CreateFileAccessor(sUrl)->MkDir();
 		return nSuccess;
@@ -866,8 +864,7 @@ int driver_rmdir(const char* sUrl)
 		spdlog::debug("Removing directory at URL {}", sUrl);
 		if (!sUrl)
 		{
-			errorLogger.LogNullArgError(__func__, STRINGIFY(sUrl));
-			return nFailure;
+			throw NullArgError(__func__, STRINGIFY(sUrl));
 		}
 		driver.CreateFileAccessor(sUrl)->RmDir();
 		return nSuccess;
@@ -900,8 +897,7 @@ long long int driver_diskFreeSpace(const char* sUrl)
 		spdlog::debug("Retrieving free disk space at URL {}", sUrl);
 		if (!sUrl)
 		{
-			errorLogger.LogNullArgError(__func__, STRINGIFY(sUrl));
-			return nFreeDiskSpaceFailure;
+			throw NullArgError(__func__, STRINGIFY(sUrl));
 		}
 		return driver.CreateFileAccessor(sUrl)->GetFreeDiskSpace();
 	}
@@ -933,13 +929,11 @@ int driver_copyToLocal(const char* sSourceUrl, const char* sDestUrl)
 		spdlog::debug("Copying file at URL {} to URL {}", sSourceUrl, sDestUrl);
 		if (!sSourceUrl)
 		{
-			errorLogger.LogNullArgError(__func__, STRINGIFY(sSourceUrl));
-			return nFailure;
+			throw NullArgError(__func__, STRINGIFY(sSourceUrl));
 		}
 		if (!sDestUrl)
 		{
-			errorLogger.LogNullArgError(__func__, STRINGIFY(sDestUrl));
-			return nFailure;
+			throw NullArgError(__func__, STRINGIFY(sDestUrl));
 		}
 		driver.CreateFileAccessor(sSourceUrl)->CopyTo(Azure::Core::Url(sDestUrl));
 		return nSuccess;
@@ -1062,13 +1056,11 @@ int driver_copyFromLocal(const char* sSourceUrl, const char* sDestUrl)
 		spdlog::debug("Copying file at URL {} to URL {}", sSourceUrl, sDestUrl);
 		if (!sSourceUrl)
 		{
-			errorLogger.LogNullArgError(__func__, STRINGIFY(sSourceUrl));
-			return nFailure;
+			throw NullArgError(__func__, STRINGIFY(sSourceUrl));
 		}
 		if (!sDestUrl)
 		{
-			errorLogger.LogNullArgError(__func__, STRINGIFY(sDestUrl));
-			return nFailure;
+			throw NullArgError(__func__, STRINGIFY(sDestUrl));
 		}
 		driver.CreateFileAccessor(sDestUrl)->CopyFrom(Azure::Core::Url(sSourceUrl));
 		return nSuccess;
@@ -1630,20 +1622,7 @@ DriverResult<BlobItems> FilterList(const std::string& bucket, const std::string&
 
 static int FileOrDirExists(const char* sUrl)
 {
-	if (!sUrl)
-	{
-		errorLogger.LogNullArgError(__func__, STRINGIFY(sUrl));
-		return nFalse;
-	}
-	try
-	{
-		return driver.CreateFileAccessor(sUrl)->Exists() ? nTrue : nFalse;
-	}
-	catch (const exception& exc)
-	{
-		errorLogger.LogException(exc);
-		return nFalse; // no specific value indicates failure; this is not an error code
-	}
+	return driver.CreateFileAccessor(sUrl)->Exists() ? nTrue : nFalse;
 }
 
 /*

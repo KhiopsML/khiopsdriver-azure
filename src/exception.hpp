@@ -23,6 +23,23 @@ namespace az
 	{
 	};
 
+	class NullArgError : public Error
+	{
+	public:
+		inline NullArgError(const char* sFuncname, const char* sArgname):
+			sMessage((std::ostringstream() << "error passing null pointer as '" << sArgname << "' argument to function '" << sFuncname << "'").str())
+		{
+		}
+
+		inline const char* what() const override
+		{
+			return sMessage.c_str();
+		}
+
+	private:
+		std::string sMessage;
+	};
+
 	class InvalidDomainError : public Error
 	{
 	public:
