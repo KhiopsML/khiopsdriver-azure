@@ -34,6 +34,10 @@ namespace az
 		else
 		{
 			vector<Azure::Storage::Files::Shares::ShareFileClient> files = ListFiles();
+			if (files.empty())
+			{
+				throw NoFileError(GetUrl().GetAbsoluteUrl());
+			}
 			return accumulate(files.begin(), files.end(), 0,
 				[](size_t total, const Azure::Storage::Files::Shares::ShareFileClient& file)
 				{

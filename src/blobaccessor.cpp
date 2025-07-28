@@ -35,6 +35,10 @@ namespace az
 		else
 		{
 			vector<Azure::Storage::Blobs::BlobClient> blobs = ListBlobs();
+			if (blobs.empty())
+			{
+				throw NoFileError(GetUrl().GetAbsoluteUrl());
+			}
 			return accumulate(blobs.begin(), blobs.end(), 0,
 				[](size_t total, const Azure::Storage::Blobs::BlobClient& blob)
 				{

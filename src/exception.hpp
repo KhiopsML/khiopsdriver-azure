@@ -143,4 +143,21 @@ namespace az
 			return "trying to get size of directory (invalid operation)";
 		}
 	};
+
+	class NoFileError : public Error
+	{
+	public:
+		inline NoFileError(const std::string& sUrl) :
+			sMessage((std::ostringstream() << "no file exists at URL " << sUrl).str())
+		{
+		}
+
+		inline const char* what() const override
+		{
+			return sMessage.c_str();
+		}
+
+	private:
+		std::string sMessage;
+	};
 }
