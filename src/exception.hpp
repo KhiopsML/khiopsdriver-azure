@@ -10,6 +10,7 @@ namespace az
 	class InvalidUrlError;
 	class InvalidFileUrlPathError;
 	class InvalidDirUrlPathError;
+	class GettingSizeOfDirError;
 }
 
 #include <exception>
@@ -117,5 +118,14 @@ namespace az
 
 	private:
 		string sMessage;
+	};
+
+	class GettingSizeOfDirError : public Error
+	{
+	public:
+		inline const char* what() const override
+		{
+			return "trying to get size of directory (invalid operation)";
+		}
 	};
 }

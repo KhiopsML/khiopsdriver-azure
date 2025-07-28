@@ -25,25 +25,21 @@ namespace az
 
 	size_t BlobAccessor::GetSize() const
 	{
-		return 0; // TODO: Implement.
+		if (HasDirUrl())
+		{
+			throw GettingSizeOfDirError();
+		}
+		else
+		{
+			vector<Azure::Storage::Blobs::BlobClient> blobs = ListBlobs();
+			return accumulate(blobs.begin(), blobs.end(), 0,
+				[](size_t total, const Azure::Storage::Blobs::BlobClient& blob)
+				{
+					return total + blob.GetProperties().Value.BlobSize;
+				}
+			);
+		}
 	}
-	//size_t BlobAccessor::GetSize() const
-	//{
-	//	if (HasDirUrl())
-	//	{
-	//		
-	//	}
-	//	else
-	//	{
-	//		vector<Azure::Storage::Blobs::Models::BlobItem> blobs = ListBlobs();
-	//		return accumulate(blobs.begin(), blobs.end(), 0,
-	//			[](size_t acc, const Azure::Storage::Blobs::Models::BlobItem& elem)
-	//			{
-	//				return acc + elem.BlobSize;
-	//			}
-	//		);
-	//	}
-	//}
 
 	FileStream BlobAccessor::Open(char mode) const
 	{
