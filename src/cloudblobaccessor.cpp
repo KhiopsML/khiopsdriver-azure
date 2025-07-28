@@ -12,6 +12,7 @@ namespace az
 		BlobAccessor(url),
 		CloudFileAccessor()
 	{
+		CheckUrl();
 	}
 
 	CloudBlobAccessor::~CloudBlobAccessor()

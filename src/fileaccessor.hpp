@@ -32,6 +32,7 @@ namespace az
 
 		const Azure::Core::Url& GetUrl() const;
 		bool HasDirUrl() const;
+		void CheckUrl() const;
 		virtual std::vector<std::string> UrlPathParts() const = 0;
 		virtual void CheckFileUrl() const = 0;
 		virtual void CheckDirUrl() const = 0;

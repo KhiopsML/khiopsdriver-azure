@@ -12,6 +12,7 @@ namespace az
 		BlobAccessor(url),
 		EmulatedFileAccessor()
 	{
+		CheckUrl();
 		if (!IsConnectionStringCompatibleWithUrl(url))
 		{
 			throw IncompatibleConnectionStringError();

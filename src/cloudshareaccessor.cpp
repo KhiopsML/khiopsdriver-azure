@@ -11,6 +11,7 @@ namespace az
 		ShareAccessor(url),
 		CloudFileAccessor()
 	{
+		CheckUrl();
 	}
 
 	CloudShareAccessor::~CloudShareAccessor()
