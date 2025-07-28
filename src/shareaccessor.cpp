@@ -1,6 +1,7 @@
 #include "shareaccessor.hpp"
 #include <queue>
 #include <deque>
+#include <numeric>
 #include "exception.hpp"
 #include "sharepathresolve.hpp"
 
@@ -24,25 +25,21 @@ namespace az
 
 	size_t ShareAccessor::GetSize() const
 	{
-		return 0; // TODO: Implement.
+		if (HasDirUrl())
+		{
+			throw GettingSizeOfDirError();
+		}
+		else
+		{
+			vector<Azure::Storage::Files::Shares::ShareFileClient> files = ListFiles();
+			return accumulate(files.begin(), files.end(), 0,
+				[](size_t total, const Azure::Storage::Files::Shares::ShareFileClient& file)
+				{
+					return total + file.GetProperties().Value.FileSize;
+				}
+			);
+		}
 	}
-	//size_t ShareAccessor::GetSize() const
-	//{
-	//	if (HasDirUrl())
-	//	{
-	//		// TODO: What should it do?
-	//	}
-	//	else
-	//	{
-	//		vector<Azure::Storage::Files::Shares::Models::FileItem> files = ResolveUrl();
-	//		return accumulate(files.begin(), files.end(), 0,
-	//			[](size_t acc, const Azure::Storage::Files::Shares::Models::FileItem& elem)
-	//			{
-	//				return acc + elem.BlobSize;
-	//			}
-	//		);
-	//	}
-	//}
 
 	FileStream ShareAccessor::Open(char mode) const
 	{

@@ -1,4 +1,5 @@
 #include "blobaccessor.hpp"
+#include <numeric>
 #include <azure/core/http/transport.hpp>
 #include "util/connstring.hpp"
 #include "util/string.hpp"
