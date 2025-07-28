@@ -14,12 +14,10 @@ namespace az
 	{
 		if (HasDirUrl())
 		{
-			CheckDirUrl();
 			return !ListDirs().empty();
 		}
 		else
 		{
-			CheckFileUrl();
 			return !ListFiles().empty();
 		}
 	}

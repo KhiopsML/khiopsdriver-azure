@@ -15,12 +15,10 @@ namespace az
 	{
 		if (HasDirUrl())
 		{
-			CheckDirUrl();
 			return true; // there is no such concept as a directory when dealing with blob services
 		}
 		else
 		{
-			CheckFileUrl();
 			return !ListBlobs().empty();
 		}
 	}
@@ -33,7 +31,7 @@ namespace az
 	//{
 	//	if (HasDirUrl())
 	//	{
-	//		// TODO: What should it do?
+	//		
 	//	}
 	//	else
 	//	{

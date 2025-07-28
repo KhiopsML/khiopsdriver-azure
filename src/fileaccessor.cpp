@@ -11,6 +11,14 @@ namespace az
 		url(url),
 		bHasDirUrl(EndsWith(url.GetPath(), "/"))
 	{
+		if (HasDirUrl())
+		{
+			CheckDirUrl();
+		}
+		else
+		{
+			CheckFileUrl();
+		}
 	}
 
 	const Azure::Core::Url& FileAccessor::GetUrl() const
