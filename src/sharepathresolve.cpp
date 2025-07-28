@@ -263,11 +263,11 @@ namespace az
     >
     static vector<ClientT> Find(const ShareDirectoryClient& dirClient, const function<bool(const ItemT&)>& Predicate, const string& sPrefix)
     {
-        ListFilesAndDirectoriesOptions opts;
-        opts.Prefix = sPrefix;
+        ListFilesAndDirectoriesOptions listBlobsOptions;
+        listBlobsOptions.Prefix = sPrefix;
 
         vector<ClientT> result;
-        for (auto pagedFileAndDirList = dirClient.ListFilesAndDirectories(opts); pagedFileAndDirList.HasPage(); pagedFileAndDirList.MoveToNextPage())
+        for (auto pagedFileAndDirList = dirClient.ListFilesAndDirectories(listBlobsOptions); pagedFileAndDirList.HasPage(); pagedFileAndDirList.MoveToNextPage())
         {
             for (const auto& item : GetItemsOfPage(pagedFileAndDirList))
             {
