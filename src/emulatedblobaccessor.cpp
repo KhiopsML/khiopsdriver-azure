@@ -72,7 +72,6 @@ namespace az
 	void EmulatedBlobAccessor::CheckFileUrl() const
 	{
 		const string& path = GetUrl().GetPath();
-		smatch match;
 		if (!regex_match(path, regex("[^/]+(?:/[^/]+){2,}")))
 		{
 			throw InvalidFileUrlPathError(path);
@@ -82,7 +81,6 @@ namespace az
 	void EmulatedBlobAccessor::CheckDirUrl() const
 	{
 		const string& path = GetUrl().GetPath();
-		smatch match;
 		if (!regex_match(path, regex("(?:[^/]+/){3,}")))
 		{
 			throw InvalidDirUrlPathError(path);

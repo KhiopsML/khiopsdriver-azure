@@ -68,7 +68,6 @@ namespace az
 	void CloudShareAccessor::CheckFileUrl() const
 	{
 		const string& path = GetUrl().GetPath();
-		smatch match;
 		if (!regex_match(path, regex("[^/]+(?:/[^/]+)+")))
 		{
 			throw InvalidFileUrlPathError(path);
@@ -78,7 +77,6 @@ namespace az
 	void CloudShareAccessor::CheckDirUrl() const
 	{
 		const string& path = GetUrl().GetPath();
-		smatch match;
 		if (!regex_match(path, regex("(?:[^/]+/){2,}")))
 		{
 			throw InvalidDirUrlPathError(path);
