@@ -12,8 +12,6 @@ namespace az
 
 namespace az
 {
-	using namespace std;
-
 	class FileAccessor
 	{
 	public:
@@ -34,7 +32,7 @@ namespace az
 
 		const Azure::Core::Url& GetUrl() const;
 		bool HasDirUrl() const;
-		virtual vector<string> UrlPathParts() const = 0;
+		virtual std::vector<std::string> UrlPathParts() const = 0;
 		virtual void CheckFileUrl() const = 0;
 		virtual void CheckDirUrl() const = 0;
 

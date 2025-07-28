@@ -3,6 +3,8 @@
 #include <spdlog/spdlog.h>
 #include "string.hpp"
 
+using namespace std;
+
 namespace az
 {
 	string GetEnvironmentVariableOrThrow(const string& sVarName)

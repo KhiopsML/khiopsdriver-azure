@@ -20,15 +20,15 @@ namespace az
 		~EmulatedBlobAccessor();
 
 	protected:
-		string GetAccountName() const;
-		string GetContainerName() const override;
-		string GetObjectName() const override;
-		string GetServiceUrl() const override;
-		string GetContainerUrl() const override;
+		std::string GetAccountName() const;
+		std::string GetContainerName() const override;
+		std::string GetObjectName() const override;
+		std::string GetServiceUrl() const override;
+		std::string GetContainerUrl() const override;
 		Azure::Storage::Blobs::BlobServiceClient GetServiceClient() const override;
 		Azure::Storage::Blobs::BlobContainerClient GetContainerClient() const override;
 		Azure::Storage::Blobs::BlobClient GetBlobClient() const override;
-		vector<string> UrlPathParts() const override;
+		std::vector<std::string> UrlPathParts() const override;
 		void CheckFileUrl() const override;
 		void CheckDirUrl() const override;
 	};

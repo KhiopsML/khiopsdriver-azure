@@ -4,6 +4,8 @@
 #include "exception.hpp"
 #include "util/string.hpp"
 
+using namespace std;
+
 namespace az
 {
 	CloudBlobAccessor::CloudBlobAccessor(const Azure::Core::Url& url):

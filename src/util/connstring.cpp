@@ -2,6 +2,8 @@
 #include <regex>
 #include <unordered_map>
 
+using namespace std;
+
 namespace az
 {
 	// This is the default Azurite connection string, split in multiple lines for readability:

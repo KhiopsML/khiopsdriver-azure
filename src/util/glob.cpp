@@ -1,5 +1,7 @@
 #include "glob.hpp"
 
+using namespace std;
+
 namespace az
 {
 namespace globbing

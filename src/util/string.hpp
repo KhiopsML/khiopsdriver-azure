@@ -5,12 +5,10 @@
 
 namespace az
 {
-	using namespace std;
+	std::vector<std::string> Split(const std::string& str, char delim, long long int nMaxSplits = -1);
 
-	vector<string> Split(const string& str, char delim, long long int nMaxSplits = -1);
+	bool StartsWith(const std::string& str, const std::string& prefix);
+	bool EndsWith(const std::string& str, const std::string& suffix);
 
-	bool StartsWith(const string& str, const string& prefix);
-	bool EndsWith(const string& str, const string& suffix);
-
-	string ToLower(const string& str);
+	std::string ToLower(const std::string& str);
 }

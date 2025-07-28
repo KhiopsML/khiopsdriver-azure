@@ -3,6 +3,8 @@
 #include "util/env.hpp"
 #include "util/string.hpp"
 
+using namespace std;
+
 namespace az
 {
 	EmulatedFileAccessor::~EmulatedFileAccessor()

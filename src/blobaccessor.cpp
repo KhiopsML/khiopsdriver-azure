@@ -6,6 +6,8 @@
 #include "util/env.hpp"
 #include "blobpathresolve.hpp"
 
+using namespace std;
+
 namespace az
 {
 	BlobAccessor::~BlobAccessor()

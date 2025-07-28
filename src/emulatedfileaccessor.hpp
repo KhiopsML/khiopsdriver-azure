@@ -12,8 +12,6 @@ namespace az
 
 namespace az
 {
-	using namespace std;
-
 	class EmulatedFileAccessor
 	{
 	public:
@@ -24,13 +22,13 @@ namespace az
 
 		const ConnectionString& GetConnectionString() const;
 		bool IsConnectionStringCompatibleWithUrl(const Azure::Core::Url& url) const;
-		shared_ptr<Azure::Storage::StorageSharedKeyCredential> GetCredential() const;
+		std::shared_ptr<Azure::Storage::StorageSharedKeyCredential> GetCredential() const;
 
 	private:
 		ConnectionString connectionString;
-		shared_ptr<Azure::Storage::StorageSharedKeyCredential> credential;
+		std::shared_ptr<Azure::Storage::StorageSharedKeyCredential> credential;
 
 		static ConnectionString GetConnectionStringFromEnv();
-		shared_ptr<Azure::Storage::StorageSharedKeyCredential> BuildCredential();
+		std::shared_ptr<Azure::Storage::StorageSharedKeyCredential> BuildCredential();
 	};
 }

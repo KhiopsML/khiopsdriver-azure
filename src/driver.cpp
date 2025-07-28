@@ -8,6 +8,8 @@
 #include "util/env.hpp"
 #include "exception.hpp"
 
+using namespace std;
+
 namespace az
 {
 	Driver::Driver():

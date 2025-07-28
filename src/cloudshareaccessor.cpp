@@ -3,6 +3,8 @@
 #include "exception.hpp"
 #include "util/string.hpp"
 
+using namespace std;
+
 namespace az
 {
 	CloudShareAccessor::CloudShareAccessor(const Azure::Core::Url& url):

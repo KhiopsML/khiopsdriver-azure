@@ -5,6 +5,8 @@
 #include <azure/identity/azure_cli_credential.hpp>
 #include <azure/identity/managed_identity_credential.hpp>
 
+using namespace std;
+
 namespace az
 {
 	CloudFileAccessor::~CloudFileAccessor()

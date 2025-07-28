@@ -3,9 +3,10 @@
 #include "util/glob.hpp"
 #include "contrib/globmatch.hpp"
 
+using namespace std;
+
 namespace az
 {
-	using namespace std;
 	using BlobClient = Azure::Storage::Blobs::BlobClient;
 	using BlobContainerClient = Azure::Storage::Blobs::BlobContainerClient;
 	using ListBlobsOptions = Azure::Storage::Blobs::ListBlobsOptions;

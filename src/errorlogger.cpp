@@ -2,6 +2,8 @@
 #include <sstream>
 #include "spdlog/spdlog.h"
 
+using namespace std;
+
 namespace az
 {
 	ErrorLogger::ErrorLogger() :

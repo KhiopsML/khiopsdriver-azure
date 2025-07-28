@@ -2,10 +2,10 @@
 #include <sstream>
 #include <algorithm>
 
+using namespace std;
+
 namespace az
 {
-	using namespace std;
-
 	vector<string> Split(const string& str, char delim, long long int nMaxSplits)
 	{
 		size_t nStrLen = str.length();

@@ -5,6 +5,8 @@
 #include "exception.hpp"
 #include "sharepathresolve.hpp"
 
+using namespace std;
+
 namespace az
 {
 	ShareAccessor::~ShareAccessor()

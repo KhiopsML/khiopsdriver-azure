@@ -3,6 +3,8 @@
 #include "util/glob.hpp"
 #include "contrib/globmatch.hpp"
 
+using namespace std;
+
 namespace az
 {
     using ShareDirectoryClient = Azure::Storage::Files::Shares::ShareDirectoryClient;

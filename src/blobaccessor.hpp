@@ -31,14 +31,14 @@ namespace az
 	protected:
 		BlobAccessor(const Azure::Core::Url& url);
 
-		virtual string GetContainerName() const = 0;
-		virtual string GetObjectName() const = 0;
-		virtual string GetServiceUrl() const = 0;
-		virtual string GetContainerUrl() const = 0;
+		virtual std::string GetContainerName() const = 0;
+		virtual std::string GetObjectName() const = 0;
+		virtual std::string GetServiceUrl() const = 0;
+		virtual std::string GetContainerUrl() const = 0;
 		virtual Azure::Storage::Blobs::BlobServiceClient GetServiceClient() const = 0;
 		virtual Azure::Storage::Blobs::BlobContainerClient GetContainerClient() const = 0;
 		virtual Azure::Storage::Blobs::BlobClient GetBlobClient() const = 0;
 
-		vector<Azure::Storage::Blobs::BlobClient> ListBlobs() const;
+		std::vector<Azure::Storage::Blobs::BlobClient> ListBlobs() const;
 	};
 }

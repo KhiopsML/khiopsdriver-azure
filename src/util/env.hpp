@@ -9,15 +9,13 @@ namespace az
 #include <sstream>
 #include "../exception.hpp"
 
-using namespace std;
-
 namespace az
 {
 	class EnvironmentVariableNotFoundError : public Error
 	{
 	public:
-		inline EnvironmentVariableNotFoundError(const string& sVarName):
-			sMessage((ostringstream() << "environment variable '" << sVarName << "' not found").str())
+		inline EnvironmentVariableNotFoundError(const std::string& sVarName):
+			sMessage((std::ostringstream() << "environment variable '" << sVarName << "' not found").str())
 		{
 		}
 
@@ -27,9 +25,9 @@ namespace az
 		}
 
 	private:
-		string sMessage;
+		std::string sMessage;
 	};
 
-	string GetEnvironmentVariableOrThrow(const string& sVarName);
-	string GetEnvironmentVariableOrDefault(const string& sVarName, const string& sDefaultValue);
+	std::string GetEnvironmentVariableOrThrow(const std::string& sVarName);
+	std::string GetEnvironmentVariableOrDefault(const std::string& sVarName, const std::string& sDefaultValue);
 }

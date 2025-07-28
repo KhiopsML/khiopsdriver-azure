@@ -4,6 +4,8 @@
 #include "util/connstring.hpp"
 #include "util/string.hpp"
 
+using namespace std;
+
 namespace az
 {
 	EmulatedBlobAccessor::EmulatedBlobAccessor(const Azure::Core::Url& url):

@@ -11,8 +11,6 @@ namespace az
 
 namespace az
 {
-	using namespace std;
-
 	class CloudFileAccessor
 	{
 	public:
@@ -21,11 +19,11 @@ namespace az
 	protected:
 		CloudFileAccessor();
 
-		shared_ptr<Azure::Core::Credentials::TokenCredential> GetCredential() const;
+		std::shared_ptr<Azure::Core::Credentials::TokenCredential> GetCredential() const;
 
 	private:
-		shared_ptr<Azure::Core::Credentials::TokenCredential> credential;
+		std::shared_ptr<Azure::Core::Credentials::TokenCredential> credential;
 
-		static shared_ptr<Azure::Core::Credentials::TokenCredential> BuildCredential();
+		static std::shared_ptr<Azure::Core::Credentials::TokenCredential> BuildCredential();
 	};
 }

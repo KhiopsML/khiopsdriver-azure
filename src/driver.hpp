@@ -20,11 +20,9 @@ namespace az
 
 namespace az
 {
-	using namespace std;
-
-	static const string sName = "Azure driver";
-	static const string sVersion = DRIVER_VERSION;
-	static const string sScheme = "https";
+	static const std::string sName = "Azure driver";
+	static const std::string sVersion = DRIVER_VERSION;
+	static const std::string sScheme = "https";
 	static const size_t sPreferredBufferSize = 4 * 1024 * 1024;
 
 	class Driver
@@ -32,9 +30,9 @@ namespace az
 	public:
 		Driver();
 
-		const string& GetName() const;
-		const string& GetVersion() const;
-		const string& GetScheme() const;
+		const std::string& GetName() const;
+		const std::string& GetVersion() const;
+		const std::string& GetScheme() const;
 		bool IsReadOnly() const;
 		size_t GetPreferredBufferSize() const;
 
@@ -42,7 +40,7 @@ namespace az
 		void Disconnect();
 		bool IsConnected() const;
 
-		unique_ptr<FileAccessor> CreateFileAccessor(const string& url) const;
+		std::unique_ptr<FileAccessor> CreateFileAccessor(const std::string& url) const;
 		FileStream RetrieveFileStream(void* handle) const;
 
 	protected:

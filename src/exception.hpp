@@ -19,17 +19,15 @@ namespace az
 
 namespace az
 {
-	using namespace std;
-
-	class Error: public exception
+	class Error: public std::exception
 	{
 	};
 
 	class InvalidDomainError : public Error
 	{
 	public:
-		inline InvalidDomainError(const string& sDomain):
-			sMessage((ostringstream() << "invalid domain: " << sDomain).str())
+		inline InvalidDomainError(const std::string& sDomain):
+			sMessage((std::ostringstream() << "invalid domain: " << sDomain).str())
 		{
 		}
 
@@ -39,7 +37,7 @@ namespace az
 		}
 
 	private:
-		string sMessage;
+		std::string sMessage;
 	};
 
 	class NotConnectedError : public Error
@@ -72,8 +70,8 @@ namespace az
 	class InvalidUrlError : public Error
 	{
 	public:
-		inline InvalidUrlError(const string& sUrl):
-			sMessage((ostringstream() << "invalid URL: " << sUrl).str())
+		inline InvalidUrlError(const std::string& sUrl):
+			sMessage((std::ostringstream() << "invalid URL: " << sUrl).str())
 		{
 		}
 
@@ -83,14 +81,14 @@ namespace az
 		}
 
 	private:
-		string sMessage;
+		std::string sMessage;
 	};
 
 	class InvalidFileUrlPathError : public Error
 	{
 	public:
-		inline InvalidFileUrlPathError(const string& sPath):
-			sMessage((ostringstream() << "invalid file URL path: " << sPath).str())
+		inline InvalidFileUrlPathError(const std::string& sPath):
+			sMessage((std::ostringstream() << "invalid file URL path: " << sPath).str())
 		{
 		}
 
@@ -100,14 +98,14 @@ namespace az
 		}
 
 	private:
-		string sMessage;
+		std::string sMessage;
 	};
 
 	class InvalidDirUrlPathError : public Error
 	{
 	public:
-		inline InvalidDirUrlPathError(const string& sPath):
-			sMessage((ostringstream() << "invalid directory URL path: " << sPath).str())
+		inline InvalidDirUrlPathError(const std::string& sPath):
+			sMessage((std::ostringstream() << "invalid directory URL path: " << sPath).str())
 		{
 		}
 
@@ -117,7 +115,7 @@ namespace az
 		}
 
 	private:
-		string sMessage;
+		std::string sMessage;
 	};
 
 	class GettingSizeOfDirError : public Error

@@ -11,8 +11,6 @@ namespace az
 
 namespace az
 {
-	using namespace std;
-
 	class ShareAccessor : public FileAccessor
 	{
 	public:
@@ -31,16 +29,16 @@ namespace az
 	protected:
 		ShareAccessor(const Azure::Core::Url& url);
 
-		virtual string GetShareName() const = 0;
-		virtual vector<string> GetPath() const = 0;
-		virtual string GetServiceUrl() const = 0;
-		virtual string GetShareUrl() const = 0;
+		virtual std::string GetShareName() const = 0;
+		virtual std::vector<std::string> GetPath() const = 0;
+		virtual std::string GetServiceUrl() const = 0;
+		virtual std::string GetShareUrl() const = 0;
 		virtual Azure::Storage::Files::Shares::ShareServiceClient GetServiceClient() const = 0;
 		virtual Azure::Storage::Files::Shares::ShareClient GetShareClient() const = 0;
 		virtual Azure::Storage::Files::Shares::ShareDirectoryClient GetDirClient() const = 0;
 		virtual Azure::Storage::Files::Shares::ShareFileClient GetFileClient() const = 0;
 		
-		vector<Azure::Storage::Files::Shares::ShareDirectoryClient> ListDirs() const;
-		vector<Azure::Storage::Files::Shares::ShareFileClient> ListFiles() const;
+		std::vector<Azure::Storage::Files::Shares::ShareDirectoryClient> ListDirs() const;
+		std::vector<Azure::Storage::Files::Shares::ShareFileClient> ListFiles() const;
 	};
 }

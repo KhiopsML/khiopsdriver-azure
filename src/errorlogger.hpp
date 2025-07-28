@@ -7,8 +7,6 @@ namespace az
 
 #include <string>
 
-using namespace std;
-
 namespace az
 {
 	class ErrorLogger
@@ -16,12 +14,12 @@ namespace az
 	public:
 		ErrorLogger();
 
-		const string& GetLastError() const;
-		void LogError(const string& error);
-		void LogNullArgError(const string& funcname, const string& argname);
+		const std::string& GetLastError() const;
+		void LogError(const std::string& error);
+		void LogNullArgError(const std::string& funcname, const std::string& argname);
 		void LogException(const exception& exc);
 
 	protected:
-		string sLastError;
+		std::string sLastError;
 	};
 }

@@ -12,19 +12,17 @@ namespace az
 
 namespace az
 {
-	using namespace std;
-
 	struct ConnectionString
 	{
-		string sAccountName;
-		string sAccountKey;
+		std::string sAccountName;
+		std::string sAccountKey;
 		Azure::Core::Url blobEndpoint;
 	};
 
 	class ParsingError : public Error
 	{
 	public:
-		inline ParsingError(const string& sMessage):
+		inline ParsingError(const std::string& sMessage):
 			sMessage(sMessage)
 		{
 		}
@@ -34,10 +32,10 @@ namespace az
 			return sMessage.c_str();
 		}
 
-		string sMessage;
+		std::string sMessage;
 	};
 
-	ConnectionString ParseConnectionString(const string& sConnectionString);
+	ConnectionString ParseConnectionString(const std::string& sConnectionString);
 
 	bool operator==(const ConnectionString& a, const ConnectionString& b);
 }
