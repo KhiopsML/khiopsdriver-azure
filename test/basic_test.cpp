@@ -127,7 +127,7 @@ void setup_bad_credentials() {
         // Default Azurite credentials with AccountKey component slightly modified (last "w" replaced by "W")
         "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey="
         "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/"
-        "KBHBeksoGMGW==;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;";
+        "KBHBeksoGMGW==;BlobEndpoint=http://localhost:10000/devstoreaccount1;";
 }
 
 void cleanup_bad_credentials() {
