@@ -128,16 +128,15 @@ namespace az
 	string BlobAccessor::HeaderOfBlobs(const vector<Azure::Storage::Blobs::BlobClient>& blobs) const
 	{
 		string sLastHeader = "";
-		bool bAlreadyIterated = false;
+		const Azure::Storage::Blobs::BlobClient* firstBlobPtr = &blobs.front();
 		for (const Azure::Storage::Blobs::BlobClient& blob : blobs)
 		{
 			string sHeader = ReadBlobHeader(blob);
-			if (sHeader == "" || bAlreadyIterated && sHeader != sLastHeader)
+			if (sHeader == "" || &blob != firstBlobPtr && sHeader != sLastHeader)
 			{
 				return "";
 			}
 			sLastHeader = sHeader;
-			bAlreadyIterated = true;
 		}
 		return sLastHeader;
 	}
