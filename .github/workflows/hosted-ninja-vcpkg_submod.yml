@@ -81,13 +81,6 @@ jobs:
             az resource list
             echo az storage account list
             az storage account list
-            echo az login --identity
-            az login --identity
-            echo az storage container list --account-name khiopsdriverazure
-            az storage container list --account-name khiopsdriverazure
-            echo az storage file list --account-name khiopsdriverazure -s data-test-khiops-driver-azure
-            az storage file list --account-name khiopsdriverazure -s data-test-khiops-driver-azure
-
 
       - name: Install coverage tools
         if: matrix.os == 'ubuntu-latest'
@@ -114,17 +107,20 @@ jobs:
       - name: Generate coverage report
         if: matrix.os == 'ubuntu-latest'
         run: |
-          cmake --build --preset ninja-vcpkg-debug --target khiops-gcs_coverage --target khiops-gcs_cobertura
+          cmake --build --preset ninja-vcpkg-debug
+          ctest --preset test-debug --output-on-failure
+      # Disable coverage until we find how to fix the "line mismatch error"
+      # cmake --build --preset ninja-vcpkg-debug --target khiops-gcs_coverage --target khiops-gcs_cobertura
 
-      - name: Upload coverage results
-        uses: actions/upload-artifact@v4
-        if: matrix.os == 'ubuntu-latest'
-        with:
-          name: coverage
-          path: |
-            builds/ninja-multi-vcpkg/coverage/*
-            builds/ninja-multi-vcpkg/coverage.*
-          if-no-files-found: ignore
+      # - name: Upload coverage results
+      #   uses: actions/upload-artifact@v4
+      #   if: matrix.os == 'ubuntu-latest'
+      #   with:
+      #     name: coverage
+      #     path: |
+      #       builds/ninja-multi-vcpkg/coverage/*
+      #       builds/ninja-multi-vcpkg/coverage.*
+      #     if-no-files-found: ignore
 
       - name: Run CMake+vcpkg+Ninja+CTest to build packages and generate/build/test the code.
         uses: lukka/run-cmake@v10
