@@ -40,12 +40,14 @@ namespace az
 			{
 				throw NoFileError(GetUrl().GetAbsoluteUrl());
 			}
+			string sHeader = HeaderOfBlobs(blobs);
+			size_t sHeaderLen = sHeader.length();
 			return accumulate(blobs.begin(), blobs.end(), 0,
 				[](size_t total, const Azure::Storage::Blobs::BlobClient& blob)
 				{
 					return total + blob.GetProperties().Value.BlobSize;
 				}
-			);
+			) - (blobs.size() - 1) * (sHeaderLen + 1);
 		}
 	}
 
@@ -103,7 +105,7 @@ namespace az
 		}
 	}
 
-	string BlobAccessor::ReadHeader(const Azure::Storage::Blobs::BlobClient& blobClient) const
+	string BlobAccessor::ReadBlobHeader(const Azure::Storage::Blobs::BlobClient& blobClient) const
 	{
 		string sHeader = "";
 		constexpr size_t nBufferSize = 4096;
@@ -120,6 +122,23 @@ namespace az
 			bFoundLineFeed = (foundLineFeed = find(buffer, bufferReadEnd, '\n')) < bufferReadEnd;
 			sHeader.append((const char*)buffer, bFoundLineFeed ? foundLineFeed - buffer : nBytesRead);
 		} while (!bFoundLineFeed && nBytesRead == nBufferSize);
-		return sHeader;
+		return bFoundLineFeed ? sHeader : "";
+	}
+
+	string BlobAccessor::HeaderOfBlobs(const vector<Azure::Storage::Blobs::BlobClient>& blobs) const
+	{
+		string sLastHeader = "";
+		bool bAlreadyIterated = false;
+		for (const Azure::Storage::Blobs::BlobClient& blob : blobs)
+		{
+			string sHeader = ReadBlobHeader(blob);
+			if (sHeader == "" || bAlreadyIterated && sHeader != sLastHeader)
+			{
+				return "";
+			}
+			sLastHeader = sHeader;
+			bAlreadyIterated = true;
+		}
+		return sLastHeader;
 	}
 }
