@@ -31,7 +31,7 @@ namespace az
 		{
 		}
 
-		inline const char* what() const override
+		virtual const char* what() const noexcept
 		{
 			return sMessage.c_str();
 		}
@@ -48,7 +48,7 @@ namespace az
 		{
 		}
 
-		inline const char* what() const override
+		virtual const char* what() const noexcept
 		{
 			return sMessage.c_str();
 		}
@@ -60,7 +60,7 @@ namespace az
 	class NotConnectedError : public Error
 	{
 	public:
-		inline const char* what() const override
+		virtual const char* what() const noexcept
 		{
 			return "not connected";
 		}
@@ -69,7 +69,7 @@ namespace az
 	class IncompatibleConnectionStringError : public Error
 	{
 	public:
-		inline const char* what() const override
+		virtual const char* what() const noexcept
 		{
 			return "connection string is not valid for the provided URL";
 		}
@@ -78,7 +78,7 @@ namespace az
 	class NetworkError : public Error
 	{
 	public:
-		inline const char* what() const override
+		virtual const char* what() const noexcept
 		{
 			return "failed to communicate to the storage server";
 		}
@@ -92,7 +92,7 @@ namespace az
 		{
 		}
 
-		inline const char* what() const override
+		virtual const char* what() const noexcept
 		{
 			return sMessage.c_str();
 		}
@@ -109,7 +109,7 @@ namespace az
 		{
 		}
 
-		inline const char* what() const override
+		virtual const char* what() const noexcept
 		{
 			return sMessage.c_str();
 		}
@@ -126,7 +126,7 @@ namespace az
 		{
 		}
 
-		inline const char* what() const override
+		virtual const char* what() const noexcept
 		{
 			return sMessage.c_str();
 		}
@@ -138,7 +138,7 @@ namespace az
 	class GettingSizeOfDirError : public Error
 	{
 	public:
-		inline const char* what() const override
+		virtual const char* what() const noexcept
 		{
 			return "trying to get size of directory (invalid operation)";
 		}
@@ -152,7 +152,7 @@ namespace az
 		{
 		}
 
-		inline const char* what() const override
+		virtual const char* what() const noexcept
 		{
 			return sMessage.c_str();
 		}

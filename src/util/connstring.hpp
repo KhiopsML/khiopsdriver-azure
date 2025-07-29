@@ -27,7 +27,7 @@ namespace az
 		{
 		}
 
-		inline const char* what() const override
+		virtual const char* what() const noexcept
 		{
 			return sMessage.c_str();
 		}

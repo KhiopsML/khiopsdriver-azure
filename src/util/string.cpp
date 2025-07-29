@@ -42,7 +42,7 @@ namespace az
 	string ToLower(const string& str)
 	{
 		string lower(str.length(), '\0');
-		transform(str.begin(), str.end(), lower.begin(), tolower);
+		std::transform(str.begin(), str.end(), lower.begin(), [](unsigned char c){ return std::tolower(c); });
 		return lower;
 	}
 }
