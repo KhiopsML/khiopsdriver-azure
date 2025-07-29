@@ -9,10 +9,17 @@ if(DEFINED ENV{VCPKG_DEFAULT_TRIPLET} AND NOT DEFINED VCPKG_TARGET_TRIPLET)
 endif()
 
 cmake_minimum_required(VERSION 3.20)
+
 # Enforce c++14 standard.
-set (CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 14)
 
 project(khiops-azure LANGUAGES CXX)
+
+set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/modules/)
+
+# Exclude googletest from the installation and packages
+set(INSTALL_GTEST OFF)
+set(INSTALL_GMOCK OFF)
 
 include(GoogleTest)
 enable_testing()
@@ -42,11 +49,13 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY $<1:${CMAKE_BINARY_DIR}/bin/>)
 message(STATUS "Executables will be stored in ${CMAKE_BINARY_DIR}/bin/")
 message(STATUS "Libraries will be stored in ${CMAKE_BINARY_DIR}/lib/")
 
+# Avoid generating shared libs with version number in the filename
+set(CMAKE_PLATFORM_NO_VERSIONED_SONAME 1)
+
 if((CMAKE_SYSTEM_NAME STREQUAL "Linux") AND NOT(CMAKE_BUILD_TYPE STREQUAL "Release"))
     message("Build system == Linux, build with sanitizer tools")
     add_compile_options(-fsanitize=undefined -fsanitize=address -fno-sanitize-recover=all)
     add_link_options(-fsanitize=undefined -fsanitize=address -fno-sanitize-recover=all)
-    set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/modules/)
     include(CodeCoverage)
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_COVERAGE} ${CMAKE_CXX_FLAGS_DEBUG}")
     setup_target_for_coverage(${PROJECT_NAME}_coverage basic_test coverage)
