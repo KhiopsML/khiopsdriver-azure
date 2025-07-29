@@ -40,5 +40,7 @@ namespace az
 		virtual Azure::Storage::Blobs::BlobClient GetBlobClient() const = 0;
 
 		std::vector<Azure::Storage::Blobs::BlobClient> ListBlobs() const;
+
+		std::string ReadHeader(const Azure::Storage::Blobs::BlobClient& blobClient) const;
 	};
 }

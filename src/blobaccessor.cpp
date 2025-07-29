@@ -1,5 +1,6 @@
 #include "blobaccessor.hpp"
 #include <numeric>
+#include <algorithm>
 #include <azure/core/http/transport.hpp>
 #include "util/connstring.hpp"
 #include "util/string.hpp"
@@ -100,5 +101,25 @@ namespace az
 		{
 			throw NetworkError();
 		}
+	}
+
+	string BlobAccessor::ReadHeader(const Azure::Storage::Blobs::BlobClient& blobClient) const
+	{
+		string sHeader = "";
+		constexpr size_t nBufferSize = 4096;
+		uint8_t buffer[nBufferSize];
+		size_t nBytesRead;
+		uint8_t* bufferReadEnd;
+		uint8_t* foundLineFeed;
+		bool bFoundLineFeed;
+		auto bodyStream = blobClient.Download().Value.BodyStream;
+		do
+		{
+			nBytesRead = bodyStream->ReadToCount(buffer, nBufferSize);
+			bufferReadEnd = buffer + nBytesRead;
+			bFoundLineFeed = (foundLineFeed = find(buffer, bufferReadEnd, '\n')) < bufferReadEnd;
+			sHeader.append((const char*)buffer, bFoundLineFeed ? foundLineFeed - buffer : nBytesRead);
+		} while (!bFoundLineFeed && nBytesRead == nBufferSize);
+		return sHeader;
 	}
 }
