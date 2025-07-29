@@ -66,26 +66,25 @@ jobs:
         run: mkdir -p $VCPKG_DEFAULT_BINARY_CACHE
         shell: bash
 
-      - name: Install Azurite
-        id: azuright
-        uses: potatoqualitee/azuright@v1.1
-        #with:
-        #  self-signed-cert: true
-
-      # Populate storage emulator
-      - name:  Install
-        run:   |
-            if [ "$RUNNER_OS" == "Linux" ]; then
-              curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
-            elif [ "$RUNNER_OS" == "Windows" ]; then
-              pwsh scripts\\install_azurecli.ps1
-            else
-              brew update && brew install azure-cli
-            fi
-            az storage container create -n data-test-khiops-driver-azure --connection-string "${{ steps.azuright.outputs.connstring }}"
-            az storage blob upload-batch --destination data-test-khiops-driver-azure/khiops_data --source $PWD/khiops_data --connection-string "${{ steps.azuright.outputs.connstring }}"
-
-        shell: bash
+      # Retrieve azure credentials through WIF - needed to run tests
+      - name: Azure CLI Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+    
+      - name: Azure CLI script
+        uses: azure/cli@v2
+        with:
+          azcliversion: latest
+          inlineScript: |
+            az account show
+            # You can write your Azure CLI inline scripts here.
+            echo az resource list
+            az resource list
+            echo az storage account list
+            az storage account list
 
       # Setup the build machine with the most recent versions of CMake and Ninja. Both are cached if not already: on subsequent runs both will be quickly restored from GitHub cache service.
       - uses: lukka/get-cmake@v3.30.1
@@ -116,25 +115,24 @@ jobs:
 
       - name: Build debug version and run sanitizer checks
         if: matrix.os == 'ubuntu-latest'
-        env:
-          AZURE_STORAGE_CONNECTION_STRING: "${{ steps.azuright.outputs.connstring }}"
         run: |
           sudo apt-get update
           sudo apt-get install lcov gcovr
           cmake --preset ninja-multi-vcpkg -DCMAKE_BUILD_TYPE=Debug
           cmake --build --preset ninja-vcpkg-debug
           ctest --preset test-debug --output-on-failure
-          cmake --build --preset ninja-vcpkg-debug --target khiops-gcs_coverage --target khiops-gcs_cobertura
-
-      - name: Upload coverage results
-        uses: actions/upload-artifact@v4
-        if: matrix.os == 'ubuntu-latest'
-        with:
-          name: coverage
-          path: |
-            builds/ninja-multi-vcpkg/coverage/*
-            builds/ninja-multi-vcpkg/coverage.*
-          if-no-files-found: ignore
+      # Disable coverage until we find how to fix the "line mismatch error"
+      # cmake --build --preset ninja-vcpkg-debug --target khiops-gcs_coverage --target khiops-gcs_cobertura
+      
+      # - name: Upload coverage results
+      #   uses: actions/upload-artifact@v4
+      #   if: matrix.os == 'ubuntu-latest'
+      #   with:
+      #     name: coverage
+      #     path: |
+      #       builds/ninja-multi-vcpkg/coverage/*
+      #       builds/ninja-multi-vcpkg/coverage.*
+      #     if-no-files-found: ignore
       
       # Run CMake to generate Ninja project files, using the vcpkg's toolchain file to resolve and install
       # the dependencies as specified in vcpkg.json. Note that the vcpkg's toolchain is specified
@@ -156,8 +154,6 @@ jobs:
 
       # Test the whole project with CTest, again Release configuration only.
       - name: Test (Release configuration)
-        env:
-          AZURE_STORAGE_CONNECTION_STRING: "${{ steps.azuright.outputs.connstring }}"
         run: |
           ctest --preset test-release --output-on-failure
 
