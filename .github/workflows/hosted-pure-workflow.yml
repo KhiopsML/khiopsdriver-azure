@@ -34,7 +34,9 @@ jobs:
             triplet: x64-osx
           - os: macos-14
             triplet: arm64-osx
-         
+    permissions:
+      contents: 'read'
+      id-token: 'write'         
     env:
       # Indicates the location of the vcpkg as a Git submodule of the project repository.
       # Not using "VCPKG_ROOT" because a variable with the same name is defined in the VS's
@@ -74,17 +76,18 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
     
-      - name: Azure CLI script
-        uses: azure/cli@v2
-        with:
-          azcliversion: latest
-          inlineScript: |
-            az account show
-            # You can write your Azure CLI inline scripts here.
-            echo az resource list
-            az resource list
-            echo az storage account list
-            az storage account list
+      # Uncomment to debug login issues...
+      # - name: Azure CLI script
+      #   uses: azure/cli@v2
+      #   with:
+      #     azcliversion: latest
+      #     inlineScript: |
+      #       az account show
+      #       # You can write your Azure CLI inline scripts here.
+      #       echo az resource list
+      #       az resource list
+      #       echo az storage account list
+      #       az storage account list
 
       # Setup the build machine with the most recent versions of CMake and Ninja. Both are cached if not already: on subsequent runs both will be quickly restored from GitHub cache service.
       - uses: lukka/get-cmake@v3.30.1
