@@ -80,7 +80,7 @@ namespace az
 	public:
 		virtual const char* what() const noexcept override
 		{
-			return "failed to communicate to the storage server";
+			return "failed to communicate with the storage server";
 		}
 	};
 
