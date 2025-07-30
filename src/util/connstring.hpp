@@ -22,15 +22,9 @@ namespace az
 	class ParsingError : public Error
 	{
 	public:
-		inline ParsingError(const std::string& sMessage):
-			sMessage(sMessage)
-		{
-		}
+		ParsingError(const std::string& sMessage);
 
-		virtual const char* what() const noexcept
-		{
-			return sMessage.c_str();
-		}
+		virtual const char* what() const noexcept override;
 
 		std::string sMessage;
 	};

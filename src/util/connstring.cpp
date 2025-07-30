@@ -6,6 +6,16 @@ using namespace std;
 
 namespace az
 {
+	ParsingError::ParsingError(const std::string& sMessage) :
+		sMessage(sMessage)
+	{
+	}
+
+	const char* ParsingError::what() const noexcept
+	{
+		return sMessage.c_str();
+	}
+
 	// This is the default Azurite connection string, split in multiple lines for readability:
 	// AccountName=devstoreaccount1;
 	// AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;

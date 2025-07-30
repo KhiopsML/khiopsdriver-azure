@@ -14,15 +14,9 @@ namespace az
 	class EnvironmentVariableNotFoundError : public Error
 	{
 	public:
-		inline EnvironmentVariableNotFoundError(const std::string& sVarName):
-			sMessage((std::ostringstream() << "environment variable '" << sVarName << "' not found").str())
-		{
-		}
+		EnvironmentVariableNotFoundError(const std::string& sVarName);
 
-		virtual const char* what() const noexcept
-		{
-			return sMessage.c_str();
-		}
+		virtual const char* what() const noexcept override;
 
 	private:
 		std::string sMessage;

@@ -26,12 +26,12 @@ namespace az
 	class NullArgError : public Error
 	{
 	public:
-		inline NullArgError(const char* sFuncname, const char* sArgname):
+		NullArgError(const char* sFuncname, const char* sArgname):
 			sMessage((std::ostringstream() << "error passing null pointer as '" << sArgname << "' argument to function '" << sFuncname << "'").str())
 		{
 		}
 
-		virtual const char* what() const noexcept
+		virtual const char* what() const noexcept override
 		{
 			return sMessage.c_str();
 		}
@@ -43,12 +43,12 @@ namespace az
 	class InvalidDomainError : public Error
 	{
 	public:
-		inline InvalidDomainError(const std::string& sDomain):
+		InvalidDomainError(const std::string& sDomain):
 			sMessage((std::ostringstream() << "invalid domain: " << sDomain).str())
 		{
 		}
 
-		virtual const char* what() const noexcept
+		virtual const char* what() const noexcept override
 		{
 			return sMessage.c_str();
 		}
@@ -60,7 +60,7 @@ namespace az
 	class NotConnectedError : public Error
 	{
 	public:
-		virtual const char* what() const noexcept
+		virtual const char* what() const noexcept override
 		{
 			return "not connected";
 		}
@@ -69,7 +69,7 @@ namespace az
 	class IncompatibleConnectionStringError : public Error
 	{
 	public:
-		virtual const char* what() const noexcept
+		virtual const char* what() const noexcept override
 		{
 			return "connection string is not valid for the provided URL";
 		}
@@ -78,7 +78,7 @@ namespace az
 	class NetworkError : public Error
 	{
 	public:
-		virtual const char* what() const noexcept
+		virtual const char* what() const noexcept override
 		{
 			return "failed to communicate to the storage server";
 		}
@@ -87,12 +87,12 @@ namespace az
 	class InvalidUrlError : public Error
 	{
 	public:
-		inline InvalidUrlError(const std::string& sUrl):
+		InvalidUrlError(const std::string& sUrl):
 			sMessage((std::ostringstream() << "invalid URL: " << sUrl).str())
 		{
 		}
 
-		virtual const char* what() const noexcept
+		virtual const char* what() const noexcept override
 		{
 			return sMessage.c_str();
 		}
@@ -104,12 +104,12 @@ namespace az
 	class InvalidFileUrlPathError : public Error
 	{
 	public:
-		inline InvalidFileUrlPathError(const std::string& sPath):
+		InvalidFileUrlPathError(const std::string& sPath):
 			sMessage((std::ostringstream() << "invalid file URL path: " << sPath).str())
 		{
 		}
 
-		virtual const char* what() const noexcept
+		virtual const char* what() const noexcept override
 		{
 			return sMessage.c_str();
 		}
@@ -121,12 +121,12 @@ namespace az
 	class InvalidDirUrlPathError : public Error
 	{
 	public:
-		inline InvalidDirUrlPathError(const std::string& sPath):
+		InvalidDirUrlPathError(const std::string& sPath):
 			sMessage((std::ostringstream() << "invalid directory URL path: " << sPath).str())
 		{
 		}
 
-		virtual const char* what() const noexcept
+		virtual const char* what() const noexcept override
 		{
 			return sMessage.c_str();
 		}
@@ -138,7 +138,7 @@ namespace az
 	class GettingSizeOfDirError : public Error
 	{
 	public:
-		virtual const char* what() const noexcept
+		virtual const char* what() const noexcept override
 		{
 			return "trying to get size of directory (invalid operation)";
 		}
@@ -147,12 +147,12 @@ namespace az
 	class NoFileError : public Error
 	{
 	public:
-		inline NoFileError(const std::string& sUrl) :
+		NoFileError(const std::string& sUrl) :
 			sMessage((std::ostringstream() << "no file exists at URL " << sUrl).str())
 		{
 		}
 
-		virtual const char* what() const noexcept
+		virtual const char* what() const noexcept override
 		{
 			return sMessage.c_str();
 		}

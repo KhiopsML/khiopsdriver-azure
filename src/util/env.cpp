@@ -7,6 +7,16 @@ using namespace std;
 
 namespace az
 {
+	EnvironmentVariableNotFoundError::EnvironmentVariableNotFoundError(const std::string& sVarName) :
+		sMessage((std::ostringstream() << "environment variable '" << sVarName << "' not found").str())
+	{
+	}
+
+	const char* EnvironmentVariableNotFoundError::what() const noexcept
+	{
+		return sMessage.c_str();
+	}
+
 	string GetEnvironmentVariableOrThrow(const string& sVarName)
 	{
 		char* sValue = getenv(sVarName.c_str());
