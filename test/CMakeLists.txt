@@ -12,7 +12,14 @@ include(GoogleTest)
 
 # Find dependencies
 find_package(Boost CONFIG REQUIRED)
-add_executable(basic_test basic_test.cpp drivertest.cpp)
+
+add_executable(basic_test
+    basic_test.cpp
+    drivertest.cpp
+    uri_provider.hpp uri_provider.cpp
+    fixtures/storage_test.hpp fixtures/storage_test.cpp
+    ../src/util/string.hpp ../src/util/string.cpp
+)
 
 target_compile_options(
   basic_test

@@ -1,8 +1,8 @@
-#include "test_uri.hpp"
 #include "azureplugin.hpp"
 #include "azureplugin_internal.hpp"
 #include "returnval.hpp"
 #include "driver.hpp"
+#include "fixtures/storage_test.hpp"
 
 #include <cstring>
 #include <functional>
@@ -10,7 +10,7 @@
 #include <limits>
 #include <memory>
 #include <fstream>  
-#include <sstream>  
+#include <sstream>
 
 #include <boost/process/environment.hpp>
 
@@ -64,53 +64,53 @@ TEST(BasicTest, Disconnect)
     ASSERT_EQ(driver_isConnected(), nFalse);
 }
 
-TEST(BasicTest, GetFileSize)
+TEST_F(StorageTest, GetFileSize)
 {
 	ASSERT_EQ(driver_connect(), nSuccess);
-	ASSERT_EQ(driver_getFileSize(test_single_file), 5585568);
+	ASSERT_EQ(driver_getFileSize(sFileUrl), 5585568);
 	ASSERT_EQ(driver_disconnect(), nSuccess);
 }
 
-TEST(BasicTest, GetMultipartFileSize)
+TEST_F(StorageTest, GetMultipartFileSize)
 {
 	ASSERT_EQ(driver_connect(), nSuccess);
-	ASSERT_EQ(driver_getFileSize(test_glob_file), 5585568);
+	ASSERT_EQ(driver_getFileSize(sStarGlobFileUrl), 5585568);
 	ASSERT_EQ(driver_disconnect(), nSuccess);
 }
 
-TEST(BasicTest, GetFileSizeNonexistentFailure)
+TEST_F(StorageTest, GetFileSizeNonexistentFailure)
 {
 	ASSERT_EQ(driver_connect(), nSuccess);
-    ASSERT_EQ(driver_getFileSize(test_non_existent_file), nSizeFailure);
+    ASSERT_EQ(driver_getFileSize(sInexistantFileUrl), nSizeFailure);
     ASSERT_STRNE(driver_getlasterror(), NULL);
 	ASSERT_EQ(driver_disconnect(), nSuccess);
 }
 
-TEST(BasicTest, FileExists)
+TEST_F(StorageTest, FileExists)
 {
 	ASSERT_EQ(driver_connect(), nSuccess);
-	ASSERT_EQ(driver_fileExists(test_single_file), nTrue);
+	ASSERT_EQ(driver_fileExists(sFileUrl), nTrue);
 	ASSERT_EQ(driver_disconnect(), nSuccess);
 }
 
-TEST(BasicTest, FileExistsNonExistentfile)
+TEST_F(StorageTest, FileExistsNonExistentfile)
 {
     ASSERT_EQ(driver_connect(), nSuccess);
-    ASSERT_EQ(driver_fileExists(test_non_existent_file), nFalse);
+    ASSERT_EQ(driver_fileExists(sInexistantFileUrl), nFalse);
     ASSERT_EQ(driver_disconnect(), nSuccess);
 }
 
-TEST(BasicTest, DirExists)
+TEST_F(StorageTest, DirExists)
 {
 	ASSERT_EQ(driver_connect(), nSuccess);
-	ASSERT_EQ(driver_dirExists(test_dir_name), nTrue);
+	ASSERT_EQ(driver_dirExists(sDirUrl), nTrue);
 	ASSERT_EQ(driver_disconnect(), nSuccess);
 }
 
-TEST(BasicTest, DirExistsNonExistentDir)
+TEST_F(StorageTest, DirExistsNonExistentDir)
 {
     ASSERT_EQ(driver_connect(), nSuccess);
-    ASSERT_EQ(driver_dirExists(test_non_existent_dir), nTrue); // there is no such concept as a directory when dealing with blobs
+    ASSERT_EQ(driver_dirExists(sInexistantDirUrl), nTrue); // there is no such concept as a directory when dealing with blobs
     ASSERT_EQ(driver_disconnect(), nSuccess);
 }
 
