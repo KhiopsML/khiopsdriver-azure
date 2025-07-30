@@ -118,7 +118,7 @@ else()
     target_link_libraries(khiopsdriver_file_azure_testing PRIVATE Azure::azure-identity Azure::azure-storage-blobs Azure::azure-storage-files-shares spdlog::spdlog)
 endif()
 target_compile_options(khiopsdriver_file_azure_testing
-    PRIVATE $<$<CXX_COMPILER_ID:MSVC>:-Wall;/wd4582;/wd4583;/wd4625;/wd4626;/wd4710;/wd4711;/wd4820;/wd4868>
+    PRIVATE $<$<CXX_COMPILER_ID:MSVC>:-Wall;/wd4582;/wd4583;/wd4625;/wd4626;/wd4710;/wd4711;/wd4820;/wd4868;/permissive->
     PRIVATE $<$<CXX_COMPILER_ID:AppleClang,Clang,GNU>:-Wall;-Wextra;-pedantic>
 )
 
