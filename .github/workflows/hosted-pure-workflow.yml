@@ -75,7 +75,7 @@ jobs:
         #  self-signed-cert: true
 
       - name: Set Azurite env for later use
-        run: echo "AZURE_STORAGE_CONNECTION_STRING=${{ steps.azuright.outputs.connstring }}" >> $GITHUB_ENV
+        run: echo "AZURE_STORAGE_CONNECTION_STRING='"${{ steps.azuright.outputs.connstring }}"'" >> $GITHUB_ENV
         shell: bash
 
       # Populate storage emulator
