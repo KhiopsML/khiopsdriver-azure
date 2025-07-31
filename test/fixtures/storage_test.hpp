@@ -16,7 +16,12 @@ protected:
     static std::string sCreatedDirUrl;
     static std::string sInexistantFileUrl;
     static std::string sFileUrl;
-    static std::string sStarGlobFileUrl;
+    static std::string sBQFileUrl;
+    static std::string sBQSomePartFileUrl;
+    static std::string sBQShortPartFileUrl;
+    static std::string sBQEmptyFileUrl;
+    static std::string sSplitFileUrl;
+    static std::string sMultisplitFileUrl;
 };
 
 class AdvancedStorageTest : public StorageTest

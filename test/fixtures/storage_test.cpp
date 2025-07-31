@@ -17,7 +17,12 @@ void StorageTest::SetUpTestSuite()
     sCreatedDirUrl = sPrefix + "/data-test-khiops-driver-azure/CREATED_BY_TESTS/";
     sInexistantFileUrl = sPrefix + "/data-test-khiops-driver-azure/khiops_data/samples/non_existent_file.txt";
     sFileUrl = sPrefix + "/data-test-khiops-driver-azure/khiops_data/samples/Adult/Adult.txt";
-    sStarGlobFileUrl = sPrefix + "/data-test-khiops-driver-azure/khiops_data/bq_export/Adult/Adult-split-00000000000*.txt";
+    sBQFileUrl = sPrefix + "/data-test-khiops-driver-azure/khiops_data/bq_export/Adult/Adult-split-00000000000*.txt";
+    sBQSomePartFileUrl = sPrefix + "/data-test-khiops-driver-azure/khiops_data/bq_export/Adult/Adult-split-000000000001.txt";
+    sBQShortPartFileUrl = sPrefix + "/data-test-khiops-driver-azure/khiops_data/bq_export/Adult/Adult-split-000000000002.txt";
+    sBQEmptyFileUrl = sPrefix + "/data-test-khiops-driver-azure/khiops_data/bq_export/Adult_empty/Adult-split-00000000000*.txt";
+    sSplitFileUrl = sPrefix + "/data-test-khiops-driver-azure/khiops_data/split/Adult/Adult-split-0*.txt";
+    sMultisplitFileUrl = sPrefix + "/data-test-khiops-driver-azure/khiops_data/split/Adult_subsplit/**/Adult-split-0*.txt";
 }
 
 string StorageTest::sInexistantDirUrl;
@@ -25,7 +30,12 @@ string StorageTest::sDirUrl;
 string StorageTest::sCreatedDirUrl;
 string StorageTest::sInexistantFileUrl;
 string StorageTest::sFileUrl;
-string StorageTest::sStarGlobFileUrl;
+string StorageTest::sBQFileUrl;
+string StorageTest::sBQSomePartFileUrl;
+string StorageTest::sBQShortPartFileUrl;
+string StorageTest::sBQEmptyFileUrl;
+string StorageTest::sSplitFileUrl;
+string StorageTest::sMultisplitFileUrl;
 
 static bool IsEmulatedStorage()
 {

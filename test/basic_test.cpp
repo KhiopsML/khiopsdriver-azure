@@ -74,7 +74,7 @@ TEST_F(StorageTest, GetFileSize)
 TEST_F(StorageTest, GetMultipartFileSize)
 {
 	ASSERT_EQ(driver_connect(), nSuccess);
-	ASSERT_EQ(driver_getFileSize(sStarGlobFileUrl.c_str()), 5585568);
+	ASSERT_EQ(driver_getFileSize(sBQFileUrl.c_str()), 5585568);
 	ASSERT_EQ(driver_disconnect(), nSuccess);
 }
 

@@ -23,7 +23,7 @@ constexpr int kFailure{ 0 };
 
 TEST_F(AdvancedStorageTest, End2EndTest_SingleFile_512KB_OK)
 {
-	const char* inputFilename = "http://localhost:10000/devstoreaccount1/data-test-khiops-driver-azure/khiops_data/bq_export/Adult/Adult-split-000000000001.txt";
+	const char* inputFilename = sBQSomePartFileUrl.c_str();
 
 	/* default size of buffer passed to driver */
 	int nBufferSize = 512 * 1024;
@@ -35,7 +35,7 @@ TEST_F(AdvancedStorageTest, End2EndTest_SingleFile_512KB_OK)
 
 TEST_F(AdvancedStorageTest, End2EndTest_SingleFile_2MB_OK)
 {
-	const char* inputFilename = "http://localhost:10000/devstoreaccount1/data-test-khiops-driver-azure/khiops_data/bq_export/Adult/Adult-split-000000000001.txt";
+	const char* inputFilename = sBQSomePartFileUrl.c_str();
 
 	/* default size of buffer passed to driver */
 	int nBufferSize = 2 * 1024 * 1024;
@@ -48,7 +48,7 @@ TEST_F(AdvancedStorageTest, End2EndTest_SingleFile_2MB_OK)
 TEST_F(AdvancedStorageTest, End2EndTest_SingleFile_512B_OK)
 {
 	/* use this particular file because it is short and buffer size triggers lots of read operations */
-	const char* inputFilename = "http://localhost:10000/devstoreaccount1/data-test-khiops-driver-azure/khiops_data/bq_export/Adult/Adult-split-000000000002.txt";
+	const char* inputFilename = sBQShortPartFileUrl.c_str();
 
 	/* default size of buffer passed to driver */
 	int nBufferSize = 512;
@@ -60,7 +60,7 @@ TEST_F(AdvancedStorageTest, End2EndTest_SingleFile_512B_OK)
 
 TEST_F(AdvancedStorageTest, End2EndTest_MultipartBQFile_512KB_OK)
 {
-	const char* inputFilename = "http://localhost:10000/devstoreaccount1/data-test-khiops-driver-azure/khiops_data/bq_export/Adult/Adult-split-00000000000*.txt";
+	const char* inputFilename = sBQFileUrl.c_str();
 
 	/* default size of buffer passed to driver */
 	int nBufferSize = 512 * 1024;
@@ -72,7 +72,7 @@ TEST_F(AdvancedStorageTest, End2EndTest_MultipartBQFile_512KB_OK)
 
 TEST_F(AdvancedStorageTest, End2EndTest_MultipartBQEmptyFile_512KB_OK)
 {
-	const char* inputFilename = "http://localhost:10000/devstoreaccount1/data-test-khiops-driver-azure/khiops_data/bq_export/Adult_empty/Adult-split-00000000000*.txt";
+	const char* inputFilename = sBQEmptyFileUrl.c_str();
 
 	/* default size of buffer passed to driver */
 	int nBufferSize = 512 * 1024;
@@ -84,7 +84,7 @@ TEST_F(AdvancedStorageTest, End2EndTest_MultipartBQEmptyFile_512KB_OK)
 
 TEST_F(AdvancedStorageTest, End2EndTest_MultipartSplitFile_512KB_OK)
 {
-	const char* inputFilename = "http://localhost:10000/devstoreaccount1/data-test-khiops-driver-azure/khiops_data/split/Adult/Adult-split-0*.txt";
+	const char* inputFilename = sSplitFileUrl.c_str();
 
 	/* default size of buffer passed to driver */
 	int nBufferSize = 512 * 1024;
@@ -96,7 +96,7 @@ TEST_F(AdvancedStorageTest, End2EndTest_MultipartSplitFile_512KB_OK)
 
 TEST_F(AdvancedStorageTest, End2EndTest_MultipartSubsplitFile_512KB_OK)
 {
-	const char* inputFilename = "http://localhost:10000/devstoreaccount1/data-test-khiops-driver-azure/khiops_data/split/Adult_subsplit/**/Adult-split-0*.txt";
+	const char* inputFilename = sMultisplitFileUrl.c_str();
 
 	/* default size of buffer passed to driver */
 	int nBufferSize = 512 * 1024;
