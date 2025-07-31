@@ -1,5 +1,8 @@
 #pragma once
 
+class StorageTest;
+class AdvancedStorageTest;
+
 #include <string>
 #include <gtest/gtest.h>
 
@@ -14,4 +17,8 @@ protected:
     static std::string sInexistantFileUrl;
     static std::string sFileUrl;
     static std::string sStarGlobFileUrl;
+};
+
+class AdvancedStorageTest : public StorageTest
+{
 };
