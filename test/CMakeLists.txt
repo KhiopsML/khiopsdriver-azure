@@ -16,7 +16,6 @@ find_package(Boost CONFIG REQUIRED)
 add_executable(basic_test
     basic_test.cpp
     drivertest.cpp
-    uri_provider.hpp uri_provider.cpp
     fixtures/storage_test.hpp fixtures/storage_test.cpp
 )
 

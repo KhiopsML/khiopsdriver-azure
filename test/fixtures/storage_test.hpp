@@ -1,7 +1,7 @@
 #pragma once
 
+#include <string>
 #include <gtest/gtest.h>
-#include "../uri_provider.hpp"
 
 class StorageTest : public testing::Test
 {
@@ -16,5 +16,10 @@ protected:
     static const char* sStarGlobFileUrl;
 
 private:
-    static UriProvider uriProvider;
+    static std::string sInexistantDirUrlAsString;
+    static std::string sDirUrlAsString;
+    static std::string sCreatedDirUrlAsString;
+    static std::string sInexistantFileUrlAsString;
+    static std::string sFileUrlAsString;
+    static std::string sStarGlobFileUrlAsString;
 };
