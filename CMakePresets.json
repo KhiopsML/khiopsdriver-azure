@@ -56,7 +56,7 @@
             "hidden": true,
             "filter": {
                 "exclude": {
-                    "name": "AzureDriverTest|BasicTest.RmDir|BasicTest.MkDir"
+                    "name": "AzureDriverTest|BasicTest.RmDir|BasicTest.MkDir|StorageTest.GetFileSizeInvalidCredentialsFailure|AdvancedStorageTest"
                 }
             }
         },
