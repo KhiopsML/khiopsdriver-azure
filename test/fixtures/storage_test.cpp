@@ -1,10 +1,9 @@
 #include "storage_test.hpp"
 #include <cstdlib>
 #include <string>
-#include "../../src/util/string.hpp"
+#include <boost/algorithm/string/case_conv.hpp>
 
 using namespace std;
-using namespace az;
 
 static bool IsEmulatedStorage();
 
@@ -28,5 +27,5 @@ UriProvider StorageTest::uriProvider = UriProvider(IsEmulatedStorage());
 static bool IsEmulatedStorage()
 {
     char* value = getenv("AZURE_EMULATED_STORAGE");
-    return value && ToLower(string(value)) != "false";
+    return value && boost::to_lower_copy(string(value)) != "false";
 }

@@ -18,7 +18,6 @@ add_executable(basic_test
     drivertest.cpp
     uri_provider.hpp uri_provider.cpp
     fixtures/storage_test.hpp fixtures/storage_test.cpp
-    ../src/util/string.hpp ../src/util/string.cpp
 )
 
 target_compile_options(
