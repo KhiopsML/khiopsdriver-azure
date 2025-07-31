@@ -37,7 +37,7 @@ namespace az
 		}
 
 		string low_key = ToLower(sVarName);
-		if (low_key.find("token") || low_key.find("password") || low_key.find("key") || low_key.find("secret"))
+		if (low_key.find("token") != string::npos || low_key.find("password") != string::npos || low_key.find("key") != string::npos || low_key.find("secret") != string::npos)
 		{
 			spdlog::debug("No {} specified, using **REDACTED** as default.", sVarName);
 		}
