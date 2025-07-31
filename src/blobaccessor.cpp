@@ -74,8 +74,7 @@ namespace az
 
 	size_t BlobAccessor::GetFreeDiskSpace() const
 	{
-		// TODO: Implement
-		return 0;
+		return 5LL * 1024LL * 1024LL * 1024LL * 1024LL;
 	}
 
 	void BlobAccessor::CopyTo(const Azure::Core::Url& destUrl) const
