@@ -147,10 +147,8 @@ jobs:
           sudo apt-get install lcov gcovr
           cmake --preset ninja-multi-vcpkg -DCMAKE_BUILD_TYPE=Debug
           cmake --build --preset ninja-vcpkg-debug
-          #ctest --preset test-debug --output-on-failure
-          AZURE_EMULATED_STORAGE=true ctest --preset test-debug --output-on-failure -E ''AzureDriverTest|BasicTest.RmDir|BasicTest.MkDir''
-          AZURE_EMULATED_STORAGE=false ctest --preset test-debug --output-on-failure -E ''AzureDriverTest|BasicTest.RmDir|BasicTest.MkDir''
-
+          AZURE_EMULATED_STORAGE=true ctest --preset test-debug --output-on-failure
+          AZURE_EMULATED_STORAGE=false ctest --preset test-debug --output-on-failure
 
       # Disable coverage until we find how to fix the "line mismatch error"
       # cmake --build --preset ninja-vcpkg-debug --target khiops-gcs_coverage --target khiops-gcs_cobertura
@@ -186,8 +184,7 @@ jobs:
       # Test the whole project with CTest, again Release configuration only.
       - name: Test (Release configuration)
         run: |
-          #ctest --preset test-release --output-on-failure
-          test --preset test-release --output-on-failure -E ''AzureDriverTest|BasicTest.RmDir|BasicTest.MkDir''
+          test --preset test-release --output-on-failure
 
       - name: Upload the packages as artifacts
         uses: actions/upload-artifact@v4

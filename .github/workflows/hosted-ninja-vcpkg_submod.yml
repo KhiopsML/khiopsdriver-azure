@@ -135,8 +135,8 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           cmake --build --preset ninja-vcpkg-debug
-          AZURE_EMULATED_STORAGE=true ctest --preset test-debug --output-on-failure -E ''AzureDriverTest|BasicTest.RmDir|BasicTest.MkDir''
-          AZURE_EMULATED_STORAGE=false ctest --preset test-debug --output-on-failure -E ''AzureDriverTest|BasicTest.RmDir|BasicTest.MkDir''
+          AZURE_EMULATED_STORAGE=true ctest --preset test-debug --output-on-failure
+          AZURE_EMULATED_STORAGE=false ctest --preset test-debug --output-on-failure
 
       # Disable coverage until we find how to fix the "line mismatch error"
       # cmake --build --preset ninja-vcpkg-debug --target khiops-gcs_coverage --target khiops-gcs_cobertura
@@ -158,7 +158,7 @@ jobs:
           configurePresetAdditionalArgs: "['-DCMAKE_BUILD_TYPE=Release']"
           buildPreset: 'ninja-vcpkg-release'
           testPreset: 'test-release'
-          testPresetAdditionalArgs: "['--output-on-failure', '-E', ''AzureDriverTest|BasicTest.RmDir|BasicTest.MkDir''']"
+          testPresetAdditionalArgs: "['--output-on-failure']"
   
       - name: Upload the packages as artifacts
         uses: actions/upload-artifact@v4

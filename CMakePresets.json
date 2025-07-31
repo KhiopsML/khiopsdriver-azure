@@ -53,7 +53,12 @@
         {
             "name": "test-ninja-vcpkg",
             "configurePreset": "ninja-multi-vcpkg",
-            "hidden": true
+            "hidden": true,
+            "filter": {
+                "exclude": {
+                    "name": "AzureDriverTest|BasicTest.RmDir|BasicTest.MkDir"
+                }
+            }
         },
         {
             "name": "test-debug",
