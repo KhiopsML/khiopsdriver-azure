@@ -23,87 +23,38 @@ constexpr int kFailure{ 0 };
 
 TEST_F(AdvancedStorageTest, End2EndTest_SingleFile_512KB_OK)
 {
-	const char* inputFilename = sBQSomePartFileUrl.c_str();
-
-	/* default size of buffer passed to driver */
-	int nBufferSize = 512 * 1024;
-
-	/* error indicator in case of error */
-	int test_status = launch_test(inputFilename, nBufferSize);
-    ASSERT_EQ(test_status, kSuccess);
+    ASSERT_EQ(launch_test(sBQSomePartFileUrl.c_str(), 512 * 1024), kSuccess);
 }
 
 TEST_F(AdvancedStorageTest, End2EndTest_SingleFile_2MB_OK)
 {
-	const char* inputFilename = sBQSomePartFileUrl.c_str();
-
-	/* default size of buffer passed to driver */
-	int nBufferSize = 2 * 1024 * 1024;
-
-	/* error indicator in case of error */
-	int test_status = launch_test(inputFilename, nBufferSize);
-    ASSERT_EQ(test_status, kSuccess);
+    ASSERT_EQ(launch_test(sBQSomePartFileUrl.c_str(), 2 * 1024 * 1024), kSuccess);
 }
 
 TEST_F(AdvancedStorageTest, End2EndTest_SingleFile_512B_OK)
 {
 	/* use this particular file because it is short and buffer size triggers lots of read operations */
-	const char* inputFilename = sBQShortPartFileUrl.c_str();
-
-	/* default size of buffer passed to driver */
-	int nBufferSize = 512;
-
-	/* error indicator in case of error */
-	int test_status = launch_test(inputFilename, nBufferSize);
-    ASSERT_EQ(test_status, kSuccess);
+    ASSERT_EQ(launch_test(sBQShortPartFileUrl.c_str(), 512), kSuccess);
 }
 
 TEST_F(AdvancedStorageTest, End2EndTest_MultipartBQFile_512KB_OK)
 {
-	const char* inputFilename = sBQFileUrl.c_str();
-
-	/* default size of buffer passed to driver */
-	int nBufferSize = 512 * 1024;
-
-	/* error indicator in case of error */
-	int test_status = launch_test(inputFilename, nBufferSize);
-    ASSERT_EQ(test_status, kSuccess);
+    ASSERT_EQ(launch_test(sBQFileUrl.c_str(), 512 * 1024), kSuccess);
 }
 
 TEST_F(AdvancedStorageTest, End2EndTest_MultipartBQEmptyFile_512KB_OK)
 {
-	const char* inputFilename = sBQEmptyFileUrl.c_str();
-
-	/* default size of buffer passed to driver */
-	int nBufferSize = 512 * 1024;
-
-	/* error indicator in case of error */
-	int test_status = launch_test(inputFilename, nBufferSize);
-    ASSERT_EQ(test_status, kSuccess);
+    ASSERT_EQ(launch_test(sBQEmptyFileUrl.c_str(), 512 * 1024), kSuccess);
 }
 
 TEST_F(AdvancedStorageTest, End2EndTest_MultipartSplitFile_512KB_OK)
 {
-	const char* inputFilename = sSplitFileUrl.c_str();
-
-	/* default size of buffer passed to driver */
-	int nBufferSize = 512 * 1024;
-
-	/* error indicator in case of error */
-	int test_status = launch_test(inputFilename, nBufferSize);
-    ASSERT_EQ(test_status, kSuccess);
+    ASSERT_EQ(launch_test(sSplitFileUrl.c_str(), 512 * 1024), kSuccess);
 }
 
 TEST_F(AdvancedStorageTest, End2EndTest_MultipartSubsplitFile_512KB_OK)
 {
-	const char* inputFilename = sMultisplitFileUrl.c_str();
-
-	/* default size of buffer passed to driver */
-	int nBufferSize = 512 * 1024;
-
-	/* error indicator in case of error */
-	int test_status = launch_test(inputFilename, nBufferSize);
-    ASSERT_EQ(test_status, kSuccess);
+    ASSERT_EQ(launch_test(sMultisplitFileUrl.c_str(), 512 * 1024), kSuccess);
 }
 
 int launch_test(const char *inputFilename, int nBufferSize)
