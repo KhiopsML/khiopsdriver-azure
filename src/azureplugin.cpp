@@ -265,7 +265,6 @@ int driver_dirExists(const char* sUrl)
 	}
 }
 
-// TODO: Implement driver functions from this point.
 long long int driver_getFileSize(const char* sUrl)
 {
 	try
@@ -289,6 +288,7 @@ long long int driver_getFileSize(const char* sUrl)
 	}
 }
 
+// TODO: Implement driver functions from this point.
 void* driver_fopen(const char* sUrl, char mode)
 {
 	try
