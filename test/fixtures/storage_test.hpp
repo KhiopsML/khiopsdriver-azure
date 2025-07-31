@@ -1,9 +1,11 @@
 #pragma once
 
 class StorageTest;
+struct AdvancedStorageTestInput;
 class AdvancedStorageTest;
 
 #include <string>
+#include <cstddef>
 #include <gtest/gtest.h>
 
 class StorageTest : public testing::Test
@@ -22,8 +24,21 @@ protected:
     static std::string sBQEmptyFileUrl;
     static std::string sSplitFileUrl;
     static std::string sMultisplitFileUrl;
+
+    static std::string sUrlPrefix;
 };
 
 class AdvancedStorageTest : public StorageTest
 {
+protected:
+    static void SetUpTestSuite();
+
+    static std::string sOutputUrl;
+    static std::string sLocalFilePath;
+
+    void SetUp() override;
+    void TearDown() override;
+
+    std::string sInputUrl;
+    size_t nBufferSize;
 };

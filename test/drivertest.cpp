@@ -4,184 +4,90 @@
 #include "returnval.hpp"
 #include "fixtures/storage_test.hpp"
 
+#include <iostream>
 #include <sstream>
 
 #include <boost/uuid/uuid.hpp>            // uuid class
 #include <boost/uuid/uuid_generators.hpp> // generators
 #include <boost/uuid/uuid_io.hpp>         // streaming operators etc.
 
+using namespace std;
 using namespace az;
 
-/* functions prototype */
-int test(const char *file_name_input, const char *file_name_output, const char *file_name_local, int nBufferSize);
-int launch_test(const char *inputFilename, int nBufferSize);
 int copyFile(const char *file_name_input, const char *file_name_output, int nBufferSize);
 int copyFileWithFseek(const char *file_name_input, const char *file_name_output, int nBufferSize);
 int copyFileWithAppend(const char *file_name_input, const char *file_name_output, int nBufferSize);
 int removeFile(const char *filename);
 int compareSize(const char *file_name_output, long long int filesize);
 
+void launch_test(string sInputUrl, string sOutputUrl, string sLocalFilePath, size_t nBufferSize);
+
 TEST_F(AdvancedStorageTest, End2EndTest_SingleFile_512KB_OK)
 {
-    ASSERT_EQ(launch_test(sBQSomePartFileUrl.c_str(), 512 * 1024), nSuccess);
+	launch_test(sBQSomePartFileUrl.c_str(), sOutputUrl.c_str(), sLocalFilePath.c_str(), 512 * 1024);
 }
 
 TEST_F(AdvancedStorageTest, End2EndTest_SingleFile_2MB_OK)
 {
-    ASSERT_EQ(launch_test(sBQSomePartFileUrl.c_str(), 2 * 1024 * 1024), nSuccess);
+	launch_test(sBQSomePartFileUrl.c_str(), sOutputUrl.c_str(), sLocalFilePath.c_str(), 2 * 1024 * 1024);
 }
 
 TEST_F(AdvancedStorageTest, End2EndTest_SingleFile_512B_OK)
 {
 	/* use this particular file because it is short and buffer size triggers lots of read operations */
-    ASSERT_EQ(launch_test(sBQShortPartFileUrl.c_str(), 512), nSuccess);
+	launch_test(sBQShortPartFileUrl.c_str(), sOutputUrl.c_str(), sLocalFilePath.c_str(), 512);
 }
 
 TEST_F(AdvancedStorageTest, End2EndTest_MultipartBQFile_512KB_OK)
 {
-    ASSERT_EQ(launch_test(sBQFileUrl.c_str(), 512 * 1024), nSuccess);
+	launch_test(sBQFileUrl.c_str(), sOutputUrl.c_str(), sLocalFilePath.c_str(), 512 * 1024);
 }
 
 TEST_F(AdvancedStorageTest, End2EndTest_MultipartBQEmptyFile_512KB_OK)
 {
-    ASSERT_EQ(launch_test(sBQEmptyFileUrl.c_str(), 512 * 1024), nSuccess);
+	launch_test(sBQEmptyFileUrl.c_str(), sOutputUrl.c_str(), sLocalFilePath.c_str(), 512 * 1024);
 }
 
 TEST_F(AdvancedStorageTest, End2EndTest_MultipartSplitFile_512KB_OK)
 {
-    ASSERT_EQ(launch_test(sSplitFileUrl.c_str(), 512 * 1024), nSuccess);
+	launch_test(sSplitFileUrl.c_str(), sOutputUrl.c_str(), sLocalFilePath.c_str(), 512 * 1024);
 }
 
 TEST_F(AdvancedStorageTest, End2EndTest_MultipartSubsplitFile_512KB_OK)
 {
-    ASSERT_EQ(launch_test(sMultisplitFileUrl.c_str(), 512 * 1024), nSuccess);
+	launch_test(sMultisplitFileUrl.c_str(), sOutputUrl.c_str(), sLocalFilePath.c_str(), 512 * 1024);
 }
 
-int launch_test(const char *inputFilename, int nBufferSize)
+void launch_test(string sInputUrl, string sOutputUrl, string sLocalFilePath, size_t nBufferSize)
 {
-	int test_status = nSuccess;
+	cout << "Scheme: " << driver_getScheme() << endl;
+	cout << "Is read-only: " << driver_isReadOnly() << endl;
+	ASSERT_EQ(driver_fileExists(sInputUrl.c_str()), nTrue) << "input file does not exist";
+	size_t nInputFileSize = driver_getFileSize(sInputUrl.c_str());
+	cout << "Size of " << sInputUrl << " is " << nInputFileSize << endl;
 
-	std::stringstream outputFilename;
-	outputFilename << "http://localhost:10000/devstoreaccount1/data-test-khiops-driver-azure/khiops_data/output/" << boost::uuids::random_generator()() << "/output.txt";
-	std::stringstream localOutput;
-#ifdef _WIN32
-	localOutput << std::getenv("TEMP") << "\\out-" << boost::uuids::random_generator()() << ".txt";
-#else
-	localOutput << "/tmp/out-" << boost::uuids::random_generator()() << ".txt";
-#endif
-
-    // Connection to the file system
-    bool bIsconnected = driver_connect();
-    if (bIsconnected)
-    {
-        if (!driver_isConnected())
-        {
-            test_status = nFailure;
-            fprintf(stderr, "ERROR : connection is done but driver is not connected\n");
-        }
-        if (!driver_fileExists(inputFilename))
-        {
-            fprintf(stderr, "ERROR : %s is missing\n", inputFilename);
-            test_status = nFailure;
-        }
-        // The real test begins here
-        if (test_status == nSuccess)
-        {
-            test_status = test(inputFilename, outputFilename.str().c_str(), localOutput.str().c_str(), nBufferSize);
-        }
-        driver_disconnect();
-    }
-    else
-    {
-        test_status = nFailure;
-        fprintf(stderr, "ERROR : unable to connect to the file system\n");
-    }
-
-    if (test_status == nFailure)
-    {
-        printf("Test has failed\n");
-    }
-
-	return test_status;
-}
-
-/* functions definitions */
-
-int test(const char *file_name_input, const char *file_name_output, const char *file_name_local, int nBufferSize)
-{
-	// Basic information of the scheme
-	printf("scheme: %s\n", driver_getScheme());
-	printf("is read-only: %d\n", driver_isReadOnly());
-
-	// Checks size of input file
-	long long int filesize = driver_getFileSize(file_name_input);
-	printf("size of %s is %lld\n", file_name_input, filesize);
-
-	if (driver_fileExists(file_name_input) == 1)
-		printf("%s exists\n", file_name_input);
-	else
+	const vector<pair<string, int (*)(const char*, const char*, int)>> CopyFunctions =
 	{
-		printf("%s is missing, abort\n", file_name_input);
-		return nFailure;
+		make_pair("standard", copyFile),
+		make_pair("fseek", copyFileWithFseek),
+		make_pair("append", copyFileWithAppend)
+	};
+
+	for (const auto& CopyFunction : CopyFunctions)
+	{
+		cout << "Copy (" << CopyFunction.first << ") " << sInputUrl << " to " << sOutputUrl << endl;
+		ASSERT_EQ(CopyFunction.second(sInputUrl.c_str(), sOutputUrl.c_str(), nBufferSize), nSuccess) << "failed to copy file";
+		ASSERT_EQ(compareSize(sOutputUrl.c_str(), nInputFileSize), nSuccess) << "input file and output file sizes are different";
+		driver_remove(sOutputUrl.c_str());
+		ASSERT_EQ(driver_fileExists(sOutputUrl.c_str()), nFalse) << "failed to remove newly created file";
 	}
 
-	int copy_status = nSuccess;
-	
-	// Test copying files
-	printf("Copy %s to %s\n", file_name_input, file_name_output);
-	copy_status = copyFile(file_name_input, file_name_output, nBufferSize);
-	if (copy_status == nSuccess)
-	{
-		compareSize(file_name_output, filesize);
-		//removeFile(file_name_output);
-	}
+	cout << "Copy to local " << sInputUrl << " to " << sLocalFilePath << endl;
+	ASSERT_EQ(driver_copyToLocal(sInputUrl.c_str(), sLocalFilePath.c_str()), nSuccess) << "failed to copy file";
 
-	// Test copying files with fseek
-	printf("Copy with fseek %s to %s ...\n", file_name_input, file_name_output);
-	copy_status = copyFileWithFseek(file_name_input, file_name_output, nBufferSize);
-	if (copy_status == nSuccess)
-	{
-		compareSize(file_name_output, filesize);
-		removeFile(file_name_output);
-	}
-
-	// Test copying files with append
-	printf("Copy with append %s to %s ...\n", file_name_input, file_name_output);
-	copy_status = copyFileWithAppend(file_name_input, file_name_output, nBufferSize);
-	if (copy_status == nSuccess)
-	{
-		compareSize(file_name_output, filesize);
-		removeFile(file_name_output);
-	}
-
-	// Copy to local
-	if (copy_status == nSuccess)
-	{
-		printf("Copy to local %s to %s ...\n", file_name_input, file_name_local);
-		copy_status = driver_copyToLocal(file_name_input, file_name_local);
-		if (copy_status != nSuccess)
-			printf("Error while copying : %s\n", driver_getlasterror());
-		else
-			printf("copy %s to local is done\n", file_name_input);
-	}
-
-	// Copy from local
-	if (copy_status == nSuccess)
-	{
-		printf("Copy from local %s to %s ...\n", file_name_local, file_name_output);
-		copy_status = driver_copyFromLocal(file_name_local, file_name_output);
-		if (copy_status != nSuccess)
-			printf("Error while copying : %s\n", driver_getlasterror());
-		else
-			printf("copy %s from local is done\n", file_name_local);
-		if (!driver_fileExists(file_name_output))
-		{
-			printf("%s is missing !\n", file_name_output);
-			copy_status = nFailure;
-		}
-	}
-
-	return copy_status;
+	cout << "Copy from local " << sLocalFilePath << " to " << sOutputUrl << endl;
+	ASSERT_EQ(driver_copyFromLocal(sLocalFilePath.c_str(), sOutputUrl.c_str()), nSuccess) << "failed to copy file";
+	ASSERT_EQ(driver_fileExists(sOutputUrl.c_str()), nTrue) << sOutputUrl << " is missing";
 }
 
 // Copy file_name_input to file_name_output by steps of 1Kb
@@ -348,19 +254,6 @@ int copyFileWithAppend(const char *file_name_input, const char *file_name_output
 	}
 	driver_fclose(fileinput);
 	return copy_status;
-}
-
-int removeFile(const char *filename)
-{
-	int remove_status = driver_remove(filename);
-	if (remove_status != nSuccess)
-		printf("Error while removing : %s\n", driver_getlasterror());
-	if (driver_fileExists(filename))
-	{
-		printf("File %s should be removed !\n", filename);
-		remove_status = nFailure;
-	}
-	return remove_status;
 }
 
 int compareSize(const char *file_name_output, long long int filesize)
