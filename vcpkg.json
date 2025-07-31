@@ -11,7 +11,7 @@
         {"name": "azure-storage-files-shares-cpp"},
         {"name": "spdlog"}      
     ],
-    "builtin-baseline": "7087dcfba66c8da4acb50b09ea680b4e9050a4e9",
+    "builtin-baseline": "ef7dbf94b9198bc58f45951adcf1f041fcbc5ea0",
     "overrides": [
         {
             "name": "curl",
