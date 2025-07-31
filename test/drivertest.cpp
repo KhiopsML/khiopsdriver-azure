@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include "azureplugin.hpp"
+#include "fixtures/storage_test.hpp"
 
 #include <sstream>
 
@@ -20,7 +21,7 @@ int compareSize(const char *file_name_output, long long int filesize);
 constexpr int kSuccess{ 1 };
 constexpr int kFailure{ 0 };
 
-TEST(AzureDriverTest, End2EndTest_SingleFile_512KB_OK)
+TEST_F(AdvancedStorageTest, End2EndTest_SingleFile_512KB_OK)
 {
 	const char* inputFilename = "http://localhost:10000/devstoreaccount1/data-test-khiops-driver-azure/khiops_data/bq_export/Adult/Adult-split-000000000001.txt";
 
@@ -32,7 +33,7 @@ TEST(AzureDriverTest, End2EndTest_SingleFile_512KB_OK)
     ASSERT_EQ(test_status, kSuccess);
 }
 
-TEST(AzureDriverTest, End2EndTest_SingleFile_2MB_OK)
+TEST_F(AdvancedStorageTest, End2EndTest_SingleFile_2MB_OK)
 {
 	const char* inputFilename = "http://localhost:10000/devstoreaccount1/data-test-khiops-driver-azure/khiops_data/bq_export/Adult/Adult-split-000000000001.txt";
 
@@ -44,7 +45,7 @@ TEST(AzureDriverTest, End2EndTest_SingleFile_2MB_OK)
     ASSERT_EQ(test_status, kSuccess);
 }
 
-TEST(AzureDriverTest, End2EndTest_SingleFile_512B_OK)
+TEST_F(AdvancedStorageTest, End2EndTest_SingleFile_512B_OK)
 {
 	/* use this particular file because it is short and buffer size triggers lots of read operations */
 	const char* inputFilename = "http://localhost:10000/devstoreaccount1/data-test-khiops-driver-azure/khiops_data/bq_export/Adult/Adult-split-000000000002.txt";
@@ -57,7 +58,7 @@ TEST(AzureDriverTest, End2EndTest_SingleFile_512B_OK)
     ASSERT_EQ(test_status, kSuccess);
 }
 
-TEST(AzureDriverTest, End2EndTest_MultipartBQFile_512KB_OK)
+TEST_F(AdvancedStorageTest, End2EndTest_MultipartBQFile_512KB_OK)
 {
 	const char* inputFilename = "http://localhost:10000/devstoreaccount1/data-test-khiops-driver-azure/khiops_data/bq_export/Adult/Adult-split-00000000000*.txt";
 
@@ -69,7 +70,7 @@ TEST(AzureDriverTest, End2EndTest_MultipartBQFile_512KB_OK)
     ASSERT_EQ(test_status, kSuccess);
 }
 
-TEST(AzureDriverTest, End2EndTest_MultipartBQEmptyFile_512KB_OK)
+TEST_F(AdvancedStorageTest, End2EndTest_MultipartBQEmptyFile_512KB_OK)
 {
 	const char* inputFilename = "http://localhost:10000/devstoreaccount1/data-test-khiops-driver-azure/khiops_data/bq_export/Adult_empty/Adult-split-00000000000*.txt";
 
@@ -81,7 +82,7 @@ TEST(AzureDriverTest, End2EndTest_MultipartBQEmptyFile_512KB_OK)
     ASSERT_EQ(test_status, kSuccess);
 }
 
-TEST(AzureDriverTest, End2EndTest_MultipartSplitFile_512KB_OK)
+TEST_F(AdvancedStorageTest, End2EndTest_MultipartSplitFile_512KB_OK)
 {
 	const char* inputFilename = "http://localhost:10000/devstoreaccount1/data-test-khiops-driver-azure/khiops_data/split/Adult/Adult-split-0*.txt";
 
@@ -93,7 +94,7 @@ TEST(AzureDriverTest, End2EndTest_MultipartSplitFile_512KB_OK)
     ASSERT_EQ(test_status, kSuccess);
 }
 
-TEST(AzureDriverTest, End2EndTest_MultipartSubsplitFile_512KB_OK)
+TEST_F(AdvancedStorageTest, End2EndTest_MultipartSubsplitFile_512KB_OK)
 {
 	const char* inputFilename = "http://localhost:10000/devstoreaccount1/data-test-khiops-driver-azure/khiops_data/split/Adult_subsplit/**/Adult-split-0*.txt";
 
