@@ -70,9 +70,9 @@ jobs:
 
       - name: Install Azurite
         id: azuright
-        uses: potatoqualitee/azuright@v1.1
-        #with:
-        #  self-signed-cert: true
+        uses: sgouache/azuright@v1.2
+        with:
+          skip-api-version-check: true
 
       - name: Set Azurite env for later use
         run: echo "AZURE_STORAGE_CONNECTION_STRING=${{ steps.azuright.outputs.connstring }}" >> $GITHUB_ENV
