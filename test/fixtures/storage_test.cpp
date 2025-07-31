@@ -1,6 +1,5 @@
 #include "storage_test.hpp"
 #include <cstdlib>
-#include <string>
 #include <boost/algorithm/string/case_conv.hpp>
 
 using namespace std;
@@ -13,34 +12,20 @@ void StorageTest::SetUpTestSuite()
         ? "http://localhost:10000/devstoreaccount1"
         : "https://khiopsdriverazure.blob.core.windows.net";
 
-    sInexistantDirUrlAsString = sPrefix + "/data-test-khiops-driver-azure/khiops_data/bq_export/non_existent_dir/";
-    sDirUrlAsString = sPrefix + "/data-test-khiops-driver-azure/khiops_data/bq_export/Adult/";
-    sCreatedDirUrlAsString = sPrefix + "/data-test-khiops-driver-azure/CREATED_BY_TESTS/";
-    sInexistantFileUrlAsString = sPrefix + "/data-test-khiops-driver-azure/khiops_data/samples/non_existent_file.txt";
-    sFileUrlAsString = sPrefix + "/data-test-khiops-driver-azure/khiops_data/samples/Adult/Adult.txt";
-    sStarGlobFileUrlAsString = sPrefix + "/data-test-khiops-driver-azure/khiops_data/bq_export/Adult/Adult-split-00000000000*.txt";
-
-    sInexistantDirUrl = sInexistantDirUrlAsString.c_str();
-    sDirUrl = sDirUrlAsString.c_str();
-    sCreatedDirUrl = sCreatedDirUrlAsString.c_str();
-    sInexistantFileUrl = sInexistantFileUrlAsString.c_str();
-    sFileUrl = sFileUrlAsString.c_str();
-    sStarGlobFileUrl = sStarGlobFileUrlAsString.c_str();
+    sInexistantDirUrl = sPrefix + "/data-test-khiops-driver-azure/khiops_data/bq_export/non_existent_dir/";
+    sDirUrl = sPrefix + "/data-test-khiops-driver-azure/khiops_data/bq_export/Adult/";
+    sCreatedDirUrl = sPrefix + "/data-test-khiops-driver-azure/CREATED_BY_TESTS/";
+    sInexistantFileUrl = sPrefix + "/data-test-khiops-driver-azure/khiops_data/samples/non_existent_file.txt";
+    sFileUrl = sPrefix + "/data-test-khiops-driver-azure/khiops_data/samples/Adult/Adult.txt";
+    sStarGlobFileUrl = sPrefix + "/data-test-khiops-driver-azure/khiops_data/bq_export/Adult/Adult-split-00000000000*.txt";
 }
 
-const char* StorageTest::sInexistantDirUrl = nullptr;
-const char* StorageTest::sDirUrl = nullptr;
-const char* StorageTest::sCreatedDirUrl = nullptr;
-const char* StorageTest::sInexistantFileUrl = nullptr;
-const char* StorageTest::sFileUrl = nullptr;
-const char* StorageTest::sStarGlobFileUrl = nullptr;
-
-string StorageTest::sInexistantDirUrlAsString = string();
-string StorageTest::sDirUrlAsString = string();
-string StorageTest::sCreatedDirUrlAsString = string();
-string StorageTest::sInexistantFileUrlAsString = string();
-string StorageTest::sFileUrlAsString = string();
-string StorageTest::sStarGlobFileUrlAsString = string();
+string StorageTest::sInexistantDirUrl;
+string StorageTest::sDirUrl;
+string StorageTest::sCreatedDirUrl;
+string StorageTest::sInexistantFileUrl;
+string StorageTest::sFileUrl;
+string StorageTest::sStarGlobFileUrl;
 
 static bool IsEmulatedStorage()
 {

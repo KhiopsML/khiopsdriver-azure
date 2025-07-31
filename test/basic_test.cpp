@@ -67,21 +67,21 @@ TEST(BasicTest, Disconnect)
 TEST_F(StorageTest, GetFileSize)
 {
 	ASSERT_EQ(driver_connect(), nSuccess);
-	ASSERT_EQ(driver_getFileSize(sFileUrl), 5585568);
+	ASSERT_EQ(driver_getFileSize(sFileUrl.c_str()), 5585568);
 	ASSERT_EQ(driver_disconnect(), nSuccess);
 }
 
 TEST_F(StorageTest, GetMultipartFileSize)
 {
 	ASSERT_EQ(driver_connect(), nSuccess);
-	ASSERT_EQ(driver_getFileSize(sStarGlobFileUrl), 5585568);
+	ASSERT_EQ(driver_getFileSize(sStarGlobFileUrl.c_str()), 5585568);
 	ASSERT_EQ(driver_disconnect(), nSuccess);
 }
 
 TEST_F(StorageTest, GetFileSizeNonexistentFailure)
 {
 	ASSERT_EQ(driver_connect(), nSuccess);
-    ASSERT_EQ(driver_getFileSize(sInexistantFileUrl), nSizeFailure);
+    ASSERT_EQ(driver_getFileSize(sInexistantFileUrl.c_str()), nSizeFailure);
     ASSERT_STRNE(driver_getlasterror(), NULL);
 	ASSERT_EQ(driver_disconnect(), nSuccess);
 }
@@ -89,28 +89,28 @@ TEST_F(StorageTest, GetFileSizeNonexistentFailure)
 TEST_F(StorageTest, FileExists)
 {
 	ASSERT_EQ(driver_connect(), nSuccess);
-	ASSERT_EQ(driver_fileExists(sFileUrl), nTrue);
+	ASSERT_EQ(driver_fileExists(sFileUrl.c_str()), nTrue);
 	ASSERT_EQ(driver_disconnect(), nSuccess);
 }
 
 TEST_F(StorageTest, FileExistsNonExistentfile)
 {
     ASSERT_EQ(driver_connect(), nSuccess);
-    ASSERT_EQ(driver_fileExists(sInexistantFileUrl), nFalse);
+    ASSERT_EQ(driver_fileExists(sInexistantFileUrl.c_str()), nFalse);
     ASSERT_EQ(driver_disconnect(), nSuccess);
 }
 
 TEST_F(StorageTest, DirExists)
 {
 	ASSERT_EQ(driver_connect(), nSuccess);
-	ASSERT_EQ(driver_dirExists(sDirUrl), nTrue);
+	ASSERT_EQ(driver_dirExists(sDirUrl.c_str()), nTrue);
 	ASSERT_EQ(driver_disconnect(), nSuccess);
 }
 
 TEST_F(StorageTest, DirExistsNonExistentDir)
 {
     ASSERT_EQ(driver_connect(), nSuccess);
-    ASSERT_EQ(driver_dirExists(sInexistantDirUrl), nTrue); // there is no such concept as a directory when dealing with blobs
+    ASSERT_EQ(driver_dirExists(sInexistantDirUrl.c_str()), nTrue); // there is no such concept as a directory when dealing with blobs
     ASSERT_EQ(driver_disconnect(), nSuccess);
 }
 
@@ -149,14 +149,14 @@ TEST(BasicTest, GetFileSizeInvalidCredentialsFailure)
 TEST_F(StorageTest, RmDir)
 {
     ASSERT_EQ(driver_connect(), nSuccess);
-	ASSERT_EQ(driver_rmdir(sCreatedDirUrl), nSuccess);
+	ASSERT_EQ(driver_rmdir(sCreatedDirUrl.c_str()), nSuccess);
 	ASSERT_EQ(driver_disconnect(), nSuccess);
 }
 
 TEST_F(StorageTest, MkDir)
 {
 	ASSERT_EQ(driver_connect(), nSuccess);
-	ASSERT_EQ(driver_mkdir(sCreatedDirUrl), nSuccess);
+	ASSERT_EQ(driver_mkdir(sCreatedDirUrl.c_str()), nSuccess);
 	ASSERT_EQ(driver_disconnect(), nSuccess);
 }
 
