@@ -148,8 +148,8 @@ jobs:
           cmake --preset ninja-multi-vcpkg -DCMAKE_BUILD_TYPE=Debug
           cmake --build --preset ninja-vcpkg-debug
           #ctest --preset test-debug --output-on-failure
-          AZURE_EMULATED_STORAGE=true ctest --preset test-debug --output-on-failure -E 'AzureDriverTest|BasicTest.RmDir|BasicTest.MkDir'
-          AZURE_EMULATED_STORAGE=false ctest --preset test-debug --output-on-failure -E 'AzureDriverTest|BasicTest.RmDir|BasicTest.MkDir'
+          AZURE_EMULATED_STORAGE=true ctest --preset test-debug --output-on-failure -E ''AzureDriverTest|BasicTest.RmDir|BasicTest.MkDir''
+          AZURE_EMULATED_STORAGE=false ctest --preset test-debug --output-on-failure -E ''AzureDriverTest|BasicTest.RmDir|BasicTest.MkDir''
 
 
       # Disable coverage until we find how to fix the "line mismatch error"
@@ -187,7 +187,7 @@ jobs:
       - name: Test (Release configuration)
         run: |
           #ctest --preset test-release --output-on-failure
-          test --preset test-release --output-on-failure -E 'AzureDriverTest|BasicTest.RmDir|BasicTest.MkDir'
+          test --preset test-release --output-on-failure -E ''AzureDriverTest|BasicTest.RmDir|BasicTest.MkDir''
 
       - name: Upload the packages as artifacts
         uses: actions/upload-artifact@v4
