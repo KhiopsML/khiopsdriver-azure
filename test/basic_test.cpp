@@ -12,7 +12,7 @@
 #include <fstream>  
 #include <sstream>
 
-#include <boost/process/environment.hpp>
+#include <boost/process/v2/environment.hpp>
 
 #include <boost/uuid/uuid.hpp>            // uuid class
 #include <boost/uuid/uuid_generators.hpp> // generators
@@ -122,24 +122,22 @@ TEST(BasicTest, DriverConnectMissingCredentialsFailure)
 }
 
 void setup_bad_credentials() {
-    auto env = boost::this_process::environment();
-    env["AZURE_STORAGE_CONNECTION_STRING"] =
+    boost::process::v2::environment::set("AZURE_STORAGE_CONNECTION_STRING",
         // Default Azurite credentials with AccountKey component slightly modified (last "w" replaced by "W")
         "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey="
         "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/"
-        "KBHBeksoGMGW==;BlobEndpoint=http://localhost:10000/devstoreaccount1;";
+        "KBHBeksoGMGW==;BlobEndpoint=http://localhost:10000/devstoreaccount1;");
 }
 
 void cleanup_bad_credentials() {
-    auto env = boost::this_process::environment();
-    env.erase("AZURE_STORAGE_CONNECTION_STRING");
+    boost::process::v2::environment::unset("AZURE_STORAGE_CONNECTION_STRING");
 }
 
-TEST(BasicTest, GetFileSizeInvalidCredentialsFailure)
+TEST_F(StorageTest, GetFileSizeInvalidCredentialsFailure)
 {
     setup_bad_credentials();
 	ASSERT_EQ(driver_connect(), kSuccess);
-	ASSERT_EQ(driver_getFileSize(test_single_file), -1);
+	ASSERT_EQ(driver_getFileSize(sFileUrl), -1);
     ASSERT_STRNE(driver_getlasterror(), NULL);
 	ASSERT_EQ(driver_disconnect(), kSuccess);
     cleanup_bad_credentials();

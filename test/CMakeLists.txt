@@ -11,7 +11,7 @@ FetchContent_MakeAvailable(googletest)
 include(GoogleTest)
 
 # Find dependencies
-find_package(Boost CONFIG REQUIRED)
+find_package(Boost COMPONENTS process REQUIRED)
 
 add_executable(basic_test
     basic_test.cpp
@@ -35,9 +35,9 @@ target_include_directories(basic_test
   PRIVATE ${${PROJECT_NAME}_SOURCE_DIR}/src)
 
 if(WIN32)
-  target_link_libraries(basic_test PRIVATE GTest::gtest GTest::gmock GTest::gmock_main Azure::azure-identity Azure::azure-storage-blobs khiopsdriver_file_azure bcrypt)
+  target_link_libraries(basic_test PRIVATE GTest::gtest GTest::gmock GTest::gmock_main ${Boost_LIBRARIES} Azure::azure-identity Azure::azure-storage-blobs khiopsdriver_file_azure bcrypt)
 else ()
-  target_link_libraries(basic_test PRIVATE GTest::gtest GTest::gmock GTest::gmock_main Azure::azure-identity Azure::azure-storage-blobs khiopsdriver_file_azure)
+  target_link_libraries(basic_test PRIVATE GTest::gtest GTest::gmock GTest::gmock_main ${Boost_LIBRARIES} Azure::azure-identity Azure::azure-storage-blobs khiopsdriver_file_azure)
 endif ()
 
 gtest_discover_tests(basic_test)

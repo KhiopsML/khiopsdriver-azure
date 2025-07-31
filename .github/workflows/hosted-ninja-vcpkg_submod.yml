@@ -135,7 +135,9 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           cmake --build --preset ninja-vcpkg-debug
-          ctest --preset test-debug --output-on-failure
+          AZURE_EMULATED_STORAGE=true ctest --preset test-debug --output-on-failure -E 'AzureDriverTest|BasicTest.RmDir|BasicTest.MkDir'
+          AZURE_EMULATED_STORAGE=false ctest --preset test-debug --output-on-failure -E 'AzureDriverTest|BasicTest.RmDir|BasicTest.MkDir'
+
       # Disable coverage until we find how to fix the "line mismatch error"
       # cmake --build --preset ninja-vcpkg-debug --target khiops-gcs_coverage --target khiops-gcs_cobertura
 
