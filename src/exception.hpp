@@ -160,4 +160,21 @@ namespace az
 	private:
 		std::string sMessage;
 	};
+
+	class DeletionError : public Error
+	{
+	public:
+		DeletionError(const std::string& sUrl) :
+			sMessage((std::ostringstream() << "failed to delete " << sUrl).str())
+		{
+		}
+
+		virtual const char* what() const noexcept override
+		{
+			return sMessage.c_str();
+		}
+
+	private:
+		std::string sMessage;
+	};
 }

@@ -59,7 +59,21 @@ namespace az
 
 	void BlobAccessor::Remove() const
 	{
-		// TODO: Implement
+		vector<Azure::Storage::Blobs::BlobClient> blobs = ListBlobs();
+		if (blobs.empty())
+		{
+			throw NoFileError(GetUrl().GetAbsoluteUrl());
+		}
+		Azure::Storage::Blobs::DeleteBlobOptions opts;
+		opts.DeleteSnapshots = Azure::Storage::Blobs::Models::DeleteSnapshotsOption::IncludeSnapshots;
+		for (const Azure::Storage::Blobs::BlobClient& blob : blobs)
+		{
+			const string sBlobUrl = blob.GetUrl();
+			if (!blob.Delete(opts).Value.Deleted)
+			{
+				throw DeletionError(sBlobUrl);
+			}
+		}
 	}
 
 	void BlobAccessor::MkDir() const
