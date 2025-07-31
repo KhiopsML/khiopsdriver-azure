@@ -2,7 +2,8 @@
 <RunSettings>
     <RunConfiguration>
         <EnvironmentVariables>
-            <AZURE_EMULATED_STORAGE>true</AZURE_EMULATED_STORAGE>
+			<!-- Set AZURE_EMULATED_STORAGE's content to true to use Azurite instead of MS cloud. -->
+            <AZURE_EMULATED_STORAGE>false</AZURE_EMULATED_STORAGE>
             <AZURE_STORAGE_CONNECTION_STRING>AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;DefaultEndpointsProtocol=http;BlobEndpoint=http://localhost:10000/devstoreaccount1;QueueEndpoint=http://localhost:10001/devstoreaccount1;TableEndpoint=http://localhost:10002/devstoreaccount1;</AZURE_STORAGE_CONNECTION_STRING>
         </EnvironmentVariables>
     </RunConfiguration>
