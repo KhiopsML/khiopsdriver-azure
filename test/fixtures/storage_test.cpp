@@ -11,6 +11,7 @@ void StorageTest::SetUpTestSuite()
 {
     sInexistantDirUrl = uriProvider.sInexistantDir.c_str();
     sDirUrl = uriProvider.sDir.c_str();
+    sCreatedDirUrl = uriProvider.sCreatedDirUrl.c_str();
     sInexistantFileUrl = uriProvider.sInexistantFile.c_str();
     sFileUrl = uriProvider.sFile.c_str();
     sStarGlobFileUrl = uriProvider.sStarGlobFile.c_str();
@@ -18,6 +19,7 @@ void StorageTest::SetUpTestSuite()
 
 const char* StorageTest::sInexistantDirUrl = nullptr;
 const char* StorageTest::sDirUrl = nullptr;
+const char* StorageTest::sCreatedDirUrl = nullptr;
 const char* StorageTest::sInexistantFileUrl = nullptr;
 const char* StorageTest::sFileUrl = nullptr;
 const char* StorageTest::sStarGlobFileUrl = nullptr;

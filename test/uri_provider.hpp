@@ -11,6 +11,7 @@ public:
 
 	std::string sInexistantDir;
 	std::string sDir;
+	std::string sCreatedDirUrl;
 	std::string sInexistantFile;
 	std::string sFile;
 	std::string sStarGlobFile;

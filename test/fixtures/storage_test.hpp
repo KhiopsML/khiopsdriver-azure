@@ -10,6 +10,7 @@ protected:
 
     static const char* sInexistantDirUrl;
     static const char* sDirUrl;
+    static const char* sCreatedDirUrl;
     static const char* sInexistantFileUrl;
     static const char* sFileUrl;
     static const char* sStarGlobFileUrl;

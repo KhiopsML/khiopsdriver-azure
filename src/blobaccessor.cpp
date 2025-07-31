@@ -64,12 +64,12 @@ namespace az
 
 	void BlobAccessor::MkDir() const
 	{
-		// TODO: Implement
+		// Do nothing
 	}
 
 	void BlobAccessor::RmDir() const
 	{
-		// TODO: Implement
+		// Do nothing
 	}
 
 	size_t BlobAccessor::GetFreeDiskSpace() const

@@ -10,6 +10,7 @@ UriProvider::UriProvider(bool bIsEmulatedStorage)
 
 	sInexistantDir = sPrefix + "/data-test-khiops-driver-azure/khiops_data/bq_export/non_existent_dir/";
 	sDir = sPrefix + "/data-test-khiops-driver-azure/khiops_data/bq_export/Adult/";
+	sCreatedDirUrl = sPrefix + "/data-test-khiops-driver-azure/CREATED_BY_TESTS/";
 	sInexistantFile = sPrefix + "/data-test-khiops-driver-azure/khiops_data/samples/non_existent_file.txt";
 	sFile = sPrefix + "/data-test-khiops-driver-azure/khiops_data/samples/Adult/Adult.txt";
 	sStarGlobFile = sPrefix + "/data-test-khiops-driver-azure/khiops_data/bq_export/Adult/Adult-split-00000000000*.txt";

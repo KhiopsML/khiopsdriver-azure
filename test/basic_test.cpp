@@ -146,17 +146,17 @@ TEST(BasicTest, GetFileSizeInvalidCredentialsFailure)
 }
 #endif
 
-TEST(BasicTest, RmDir)
+TEST_F(StorageTest, RmDir)
 {
     ASSERT_EQ(driver_connect(), nSuccess);
-	ASSERT_EQ(driver_rmdir("dummy"), nSuccess);
+	ASSERT_EQ(driver_rmdir(sCreatedDirUrl), nSuccess);
 	ASSERT_EQ(driver_disconnect(), nSuccess);
 }
 
-TEST(BasicTest, MkDir)
+TEST_F(StorageTest, MkDir)
 {
 	ASSERT_EQ(driver_connect(), nSuccess);
-	ASSERT_EQ(driver_mkdir("dummy"), nSuccess);
+	ASSERT_EQ(driver_mkdir(sCreatedDirUrl), nSuccess);
 	ASSERT_EQ(driver_disconnect(), nSuccess);
 }
 

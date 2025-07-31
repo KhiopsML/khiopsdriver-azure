@@ -848,14 +848,6 @@ int driver_mkdir(const char* sUrl)
 		return nFailure;
 	}
 }
-/*{
-	ERROR_ON_NULL_ARG(filename, kFailure);
-
-	spdlog::debug("mkdir {}", filename);
-
-	assert(driver_isConnected());
-	return kSuccess;
-}*/
 
 int driver_rmdir(const char* sUrl)
 {
@@ -880,15 +872,6 @@ int driver_rmdir(const char* sUrl)
 		return nFailure;
 	}
 }
-/*{
-	ERROR_ON_NULL_ARG(filename, kFailure);
-
-	spdlog::debug("rmdir {}", filename);
-
-	assert(driver_isConnected());
-	spdlog::debug("Remove dir (does nothing...)");
-	return kSuccess;
-}*/
 
 long long int driver_diskFreeSpace(const char* sUrl)
 {
