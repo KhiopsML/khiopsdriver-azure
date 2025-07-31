@@ -22,6 +22,7 @@ const char* StorageTest::sDirUrl = nullptr;
 const char* StorageTest::sInexistantFileUrl = nullptr;
 const char* StorageTest::sFileUrl = nullptr;
 const char* StorageTest::sStarGlobFileUrl = nullptr;
+
 UriProvider StorageTest::uriProvider = UriProvider(IsEmulatedStorage());
 
 static bool IsEmulatedStorage()
