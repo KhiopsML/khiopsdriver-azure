@@ -137,7 +137,7 @@ TEST_F(StorageTest, GetFileSizeInvalidCredentialsFailure)
 {
     setup_bad_credentials();
 	ASSERT_EQ(driver_connect(), kSuccess);
-	ASSERT_EQ(driver_getFileSize(sFileUrl), -1);
+	ASSERT_EQ(driver_getFileSize(sFileUrl.c_str()), -1);
     ASSERT_STRNE(driver_getlasterror(), NULL);
 	ASSERT_EQ(driver_disconnect(), kSuccess);
     cleanup_bad_credentials();
