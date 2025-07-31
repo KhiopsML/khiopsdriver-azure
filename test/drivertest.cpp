@@ -24,38 +24,38 @@ void launch_test(string sInputUrl, string sOutputUrl, string sLocalFilePath, siz
 
 TEST_F(AdvancedStorageTest, End2EndTest_SingleFile_512KB_OK)
 {
-	launch_test(sBQSomePartFileUrl.c_str(), sOutputUrl.c_str(), sLocalFilePath.c_str(), 512 * 1024);
+	launch_test(sBQSomePartFileUrl, sOutputUrl, sLocalFilePath, 512 * 1024);
 }
 
 TEST_F(AdvancedStorageTest, End2EndTest_SingleFile_2MB_OK)
 {
-	launch_test(sBQSomePartFileUrl.c_str(), sOutputUrl.c_str(), sLocalFilePath.c_str(), 2 * 1024 * 1024);
+	launch_test(sBQSomePartFileUrl, sOutputUrl, sLocalFilePath, 2 * 1024 * 1024);
 }
 
 TEST_F(AdvancedStorageTest, End2EndTest_SingleFile_512B_OK)
 {
 	/* use this particular file because it is short and buffer size triggers lots of read operations */
-	launch_test(sBQShortPartFileUrl.c_str(), sOutputUrl.c_str(), sLocalFilePath.c_str(), 512);
+	launch_test(sBQShortPartFileUrl, sOutputUrl, sLocalFilePath, 512);
 }
 
 TEST_F(AdvancedStorageTest, End2EndTest_MultipartBQFile_512KB_OK)
 {
-	launch_test(sBQFileUrl.c_str(), sOutputUrl.c_str(), sLocalFilePath.c_str(), 512 * 1024);
+	launch_test(sBQFileUrl, sOutputUrl, sLocalFilePath, 512 * 1024);
 }
 
 TEST_F(AdvancedStorageTest, End2EndTest_MultipartBQEmptyFile_512KB_OK)
 {
-	launch_test(sBQEmptyFileUrl.c_str(), sOutputUrl.c_str(), sLocalFilePath.c_str(), 512 * 1024);
+	launch_test(sBQEmptyFileUrl, sOutputUrl, sLocalFilePath, 512 * 1024);
 }
 
 TEST_F(AdvancedStorageTest, End2EndTest_MultipartSplitFile_512KB_OK)
 {
-	launch_test(sSplitFileUrl.c_str(), sOutputUrl.c_str(), sLocalFilePath.c_str(), 512 * 1024);
+	launch_test(sSplitFileUrl, sOutputUrl, sLocalFilePath, 512 * 1024);
 }
 
 TEST_F(AdvancedStorageTest, End2EndTest_MultipartSubsplitFile_512KB_OK)
 {
-	launch_test(sMultisplitFileUrl.c_str(), sOutputUrl.c_str(), sLocalFilePath.c_str(), 512 * 1024);
+	launch_test(sMultisplitFileUrl, sOutputUrl, sLocalFilePath, 512 * 1024);
 }
 
 void launch_test(string sInputUrl, string sOutputUrl, string sLocalFilePath, size_t nBufferSize)
