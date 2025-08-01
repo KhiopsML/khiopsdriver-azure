@@ -20,45 +20,45 @@ int copyFileWithAppend(const char *file_name_input, const char *file_name_output
 int removeFile(const char *filename);
 int compareSize(const char *file_name_output, long long int filesize);
 
-void launch_test(string sInputUrl, string sOutputUrl, string sLocalFilePath, size_t nBufferSize);
+void EndToEndTest(string sInputUrl, string sOutputUrl, string sLocalFilePath, size_t nBufferSize);
 
 TEST_F(AdvancedStorageTest, End2EndTest_SingleFile_512KB_OK)
 {
-	launch_test(sBQSomePartFileUrl, sOutputUrl, sLocalFilePath, 512 * 1024);
+	EndToEndTest(sBQSomePartFileUrl, sOutputUrl, sLocalFilePath, 512 * 1024);
 }
 
 TEST_F(AdvancedStorageTest, End2EndTest_SingleFile_2MB_OK)
 {
-	launch_test(sBQSomePartFileUrl, sOutputUrl, sLocalFilePath, 2 * 1024 * 1024);
+	EndToEndTest(sBQSomePartFileUrl, sOutputUrl, sLocalFilePath, 2 * 1024 * 1024);
 }
 
 TEST_F(AdvancedStorageTest, End2EndTest_SingleFile_512B_OK)
 {
 	/* use this particular file because it is short and buffer size triggers lots of read operations */
-	launch_test(sBQShortPartFileUrl, sOutputUrl, sLocalFilePath, 512);
+	EndToEndTest(sBQShortPartFileUrl, sOutputUrl, sLocalFilePath, 512);
 }
 
 TEST_F(AdvancedStorageTest, End2EndTest_MultipartBQFile_512KB_OK)
 {
-	launch_test(sBQFileUrl, sOutputUrl, sLocalFilePath, 512 * 1024);
+	EndToEndTest(sBQFileUrl, sOutputUrl, sLocalFilePath, 512 * 1024);
 }
 
 TEST_F(AdvancedStorageTest, End2EndTest_MultipartBQEmptyFile_512KB_OK)
 {
-	launch_test(sBQEmptyFileUrl, sOutputUrl, sLocalFilePath, 512 * 1024);
+	EndToEndTest(sBQEmptyFileUrl, sOutputUrl, sLocalFilePath, 512 * 1024);
 }
 
 TEST_F(AdvancedStorageTest, End2EndTest_MultipartSplitFile_512KB_OK)
 {
-	launch_test(sSplitFileUrl, sOutputUrl, sLocalFilePath, 512 * 1024);
+	EndToEndTest(sSplitFileUrl, sOutputUrl, sLocalFilePath, 512 * 1024);
 }
 
 TEST_F(AdvancedStorageTest, End2EndTest_MultipartSubsplitFile_512KB_OK)
 {
-	launch_test(sMultisplitFileUrl, sOutputUrl, sLocalFilePath, 512 * 1024);
+	EndToEndTest(sMultisplitFileUrl, sOutputUrl, sLocalFilePath, 512 * 1024);
 }
 
-void launch_test(string sInputUrl, string sOutputUrl, string sLocalFilePath, size_t nBufferSize)
+void EndToEndTest(string sInputUrl, string sOutputUrl, string sLocalFilePath, size_t nBufferSize)
 {
 	cout << "Scheme: " << driver_getScheme() << endl;
 	cout << "Is read-only: " << driver_isReadOnly() << endl;
