@@ -91,10 +91,19 @@ namespace az
 		}
 	}
 
-	FileStream Driver::RetrieveFileStream(void* handle) const
+	FileReader Driver::RetrieveFileReader(const FileStreamHandle& handle) const
 	{
-		// TODO: Implement
-		return FileStream();
+
+	}
+
+	FileWriter Driver::RetrieveFileWriter(const FileStreamHandle& handle) const
+	{
+
+	}
+
+	FileAppender Driver::RetrieveFileAppender(const FileStreamHandle& handle) const
+	{
+
 	}
 
 	void Driver::CheckConnected() const

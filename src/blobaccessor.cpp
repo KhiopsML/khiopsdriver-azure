@@ -53,8 +53,17 @@ namespace az
 
 	FileStream BlobAccessor::Open(char mode) const
 	{
-		// TODO: Implement
-		return FileStream();
+		switch (mode)
+		{
+		case 'r':
+			return OpenForReading();
+		case 'w':
+			return OpenForWriting();
+		case 'a':
+			return OpenForAppending();
+		default:
+			throw InvalidFileStreamModeError(GetUrl().GetAbsoluteUrl(), mode);
+		}
 	}
 
 	void BlobAccessor::Remove() const
@@ -118,39 +127,8 @@ namespace az
 		}
 	}
 
-	string BlobAccessor::ReadBlobHeader(const Azure::Storage::Blobs::BlobClient& blobClient) const
+	unique_ptr<FileReader> BlobAccessor::OpenForReading() const
 	{
-		string sHeader = "";
-		constexpr size_t nBufferSize = 4096;
-		uint8_t buffer[nBufferSize];
-		size_t nBytesRead;
-		uint8_t* bufferReadEnd;
-		uint8_t* foundLineFeed;
-		bool bFoundLineFeed;
-		auto bodyStream = blobClient.Download().Value.BodyStream;
-		do
-		{
-			nBytesRead = bodyStream->ReadToCount(buffer, nBufferSize);
-			bufferReadEnd = buffer + nBytesRead;
-			bFoundLineFeed = (foundLineFeed = find(buffer, bufferReadEnd, '\n')) < bufferReadEnd;
-			sHeader.append((const char*)buffer, bFoundLineFeed ? foundLineFeed - buffer : nBytesRead);
-		} while (!bFoundLineFeed && nBytesRead == nBufferSize);
-		return bFoundLineFeed ? sHeader : "";
-	}
-
-	string BlobAccessor::HeaderOfBlobs(const vector<Azure::Storage::Blobs::BlobClient>& blobs) const
-	{
-		string sLastHeader = "";
-		const Azure::Storage::Blobs::BlobClient* firstBlobPtr = &blobs.front();
-		for (const Azure::Storage::Blobs::BlobClient& blob : blobs)
-		{
-			string sHeader = ReadBlobHeader(blob);
-			if (sHeader == "" || &blob != firstBlobPtr && sHeader != sLastHeader)
-			{
-				return "";
-			}
-			sLastHeader = sHeader;
-		}
-		return sLastHeader;
+		vector<Azure::Storage::Blobs::BlobClient> blobs = ListBlobs();
 	}
 }

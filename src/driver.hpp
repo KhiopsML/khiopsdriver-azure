@@ -7,6 +7,7 @@ namespace az
 
 #include <string>
 #include <memory>
+#include <unordered_map>
 #include "fileaccessor.hpp"
 #include "filestream.hpp"
 #include "util/macro.hpp"
@@ -41,12 +42,18 @@ namespace az
 		bool IsConnected() const;
 
 		std::unique_ptr<FileAccessor> CreateFileAccessor(const std::string& url) const;
-		FileStream RetrieveFileStream(void* handle) const;
+		FileReader RetrieveFileReader(const FileStreamHandle& handle) const;
+		FileWriter RetrieveFileWriter(const FileStreamHandle& handle) const;
+		FileAppender RetrieveFileAppender(const FileStreamHandle& handle) const;
 
 	protected:
 		void CheckConnected() const;
 		bool IsEmulatedStorage() const;
 
 		bool bIsConnected;
+
+		std::unordered_map<FileStreamHandle, FileReader> fileReaders;
+		std::unordered_map<FileStreamHandle, FileWriter> fileWriters;
+		std::unordered_map<FileStreamHandle, FileAppender> fileAppenders;
 	};
 }

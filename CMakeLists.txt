@@ -85,7 +85,14 @@ set(SourceList
     cloudblobaccessor.hpp cloudblobaccessor.cpp
     emulatedblobaccessor.hpp emulatedblobaccessor.cpp
     cloudshareaccessor.hpp cloudshareaccessor.cpp
-    filestream.hpp filestream.cpp
+    filestreamhandle.hpp filestreamhandle.cpp
+    filereader.hpp filereader.cpp
+    blobreader.hpp blobreader.cpp
+    fileoutputstream.hpp fileoutputstream.cpp
+    filewriter.hpp filewriter.cpp
+    fileappender.hpp fileappender.cpp
+    fileinfo.hpp fileinfo.cpp
+    blobfileinfo.hpp blobfileinfo.cpp
     blobpathresolve.hpp blobpathresolve.cpp
     sharepathresolve.hpp sharepathresolve.cpp
 )

@@ -442,7 +442,7 @@ long long int driver_fread(void* dest, size_t size, size_t count, void* handle)
 		{
 			throw NullArgError(__func__, STRINGIFY(handle));
 		}
-		return driver.RetrieveFileStream(handle).Read(dest, size, count);
+		return driver.RetrieveFileReader(FileStreamHandle(handle)).Read(dest, size, count);
 	}
 	catch (const exception& exc)
 	{
