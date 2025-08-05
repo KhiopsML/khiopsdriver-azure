@@ -177,4 +177,21 @@ namespace az
 	private:
 		std::string sMessage;
 	};
+
+	class InvalidFileStreamModeError : public Error
+	{
+	public:
+		InvalidFileStreamModeError(const std::string& sUrl, char mode) :
+			sMessage((std::ostringstream() << "tried to open file " << sUrl << " with invalid mode " << mode).str())
+		{
+		}
+
+		virtual const char* what() const noexcept override
+		{
+			return sMessage.c_str();
+		}
+
+	private:
+		std::string sMessage;
+	};
 }
