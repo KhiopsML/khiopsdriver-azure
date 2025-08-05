@@ -7,9 +7,13 @@ namespace az
 
 #include "fileaccessor.hpp"
 #include <vector>
+#include <memory>
 #include <azure/core.hpp>
 #include <azure/storage/blobs.hpp>
 #include "exception.hpp"
+#include "filereader.hpp"
+#include "filewriter.hpp"
+#include "fileappender.hpp"
 
 namespace az
 {
@@ -41,7 +45,8 @@ namespace az
 
 		std::vector<Azure::Storage::Blobs::BlobClient> ListBlobs() const;
 
-		std::string ReadBlobHeader(const Azure::Storage::Blobs::BlobClient& blobClient) const;
-		std::string HeaderOfBlobs(const std::vector<Azure::Storage::Blobs::BlobClient>& blobs) const;
+		std::unique_ptr<FileReader> OpenForReading() const;
+		std::unique_ptr<FileWriter> OpenForWriting() const;
+		std::unique_ptr<FileAppender> OpenForAppending() const;
 	};
 }

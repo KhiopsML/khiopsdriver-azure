@@ -2,36 +2,13 @@
 
 namespace az
 {
-	void* FileStream::GetHandle() const
+	const FileStreamHandle& FileStream::GetHandle() const
 	{
-		// TODO: Implement
-		return nullptr;
+		return handle;
 	}
 
-	void FileStream::Close()
+	FileStream::FileStream() :
+		handle(FileStreamHandle())
 	{
-		// TODO: Implement
-	}
-
-	size_t FileStream::Read(void* dest, size_t size, size_t count)
-	{
-		// TODO: Implement
-		return 0;
-	}
-
-	void FileStream::Seek(long long int offset, int whence)
-	{
-		// TODO: Implement
-	}
-
-	size_t FileStream::Write(const void* source, size_t size, size_t count)
-	{
-		// TODO: Implement
-		return 0;
-	}
-
-	void FileStream::Flush()
-	{
-		// TODO: Implement
 	}
 }
