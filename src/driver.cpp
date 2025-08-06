@@ -91,11 +91,12 @@ namespace az
 		}
 	}
 
-	FileReader Driver::RetrieveFileReader(const FileStreamHandle& handle) const
+	unique_ptr<FileReader> Driver::RetrieveFileReader(const FileStreamHandle& handle) const
 	{
-
+		// TODO: Implement
+		return nullptr;
 	}
-
+#if false
 	FileWriter Driver::RetrieveFileWriter(const FileStreamHandle& handle) const
 	{
 
@@ -105,7 +106,7 @@ namespace az
 	{
 
 	}
-
+#endif
 	void Driver::CheckConnected() const
 	{
 		if (!IsConnected())

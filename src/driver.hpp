@@ -42,9 +42,11 @@ namespace az
 		bool IsConnected() const;
 
 		std::unique_ptr<FileAccessor> CreateFileAccessor(const std::string& url) const;
-		FileReader RetrieveFileReader(const FileStreamHandle& handle) const;
+		std::unique_ptr<FileReader> RetrieveFileReader(const FileStreamHandle& handle) const;
+#if false
 		FileWriter RetrieveFileWriter(const FileStreamHandle& handle) const;
 		FileAppender RetrieveFileAppender(const FileStreamHandle& handle) const;
+#endif
 
 	protected:
 		void CheckConnected() const;
@@ -52,8 +54,10 @@ namespace az
 
 		bool bIsConnected;
 
+#if false
 		std::unordered_map<FileStreamHandle, FileReader> fileReaders;
 		std::unordered_map<FileStreamHandle, FileWriter> fileWriters;
 		std::unordered_map<FileStreamHandle, FileAppender> fileAppenders;
+#endif
 	};
 }

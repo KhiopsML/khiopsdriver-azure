@@ -21,9 +21,10 @@ namespace az
 	static unique_ptr<BodyStream> GetBlobFilePartBodyStream(const BlobClient& client, size_t nHeaderLen);
 	static string ReadBlobHeaderFromBodyStream(unique_ptr<BodyStream>& bodyStream);
 
-	BlobFileInfo::BlobFileInfo(const vector<BlobClient>& clients) :
+	BlobFileInfo::BlobFileInfo(const vector<BlobClient>& clients) /*:
 		FileInfo(Map<BlobClient, FilePartInfo>(clients, GetBlobFilePartInfo)),
-		bodyStreams(Map<BlobClient, unique_ptr<BodyStream>>(clients, bind(GetBlobFilePartBodyStream, placeholders::_1, GetHeader().length())))
+		bodyStreams(Map<BlobClient, unique_ptr<BodyStream>>(clients, bind(GetBlobFilePartBodyStream, placeholders::_1, GetHeader().length())))*/
+		// TODO: Enable the above
 	{
 	}
 
