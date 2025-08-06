@@ -18,5 +18,6 @@ namespace az
 
 	protected:
 		FileReader();
+		size_t nCurrentPos;
 	};
 }

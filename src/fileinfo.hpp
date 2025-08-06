@@ -21,9 +21,11 @@ namespace az
 		class NoFilePartInfoError;
 		struct PartInfo;
 
+		FileInfo();
 		FileInfo(const std::vector<FilePartInfo>& filePartInfo);
 		const std::string& GetHeader() const;
 		const std::vector<PartInfo>& GetParts() const;
+		size_t GetSize() const;
 		size_t GetFilePartIndexOfUserOffset(size_t nUserOffset) const;
 
 		class NoFilePartInfoError : public Error
@@ -45,6 +47,7 @@ namespace az
 	private:
 		std::string sHeader;
 		std::vector<PartInfo> parts;
+		size_t nSize;
 	};
 
 	struct FilePartInfo
