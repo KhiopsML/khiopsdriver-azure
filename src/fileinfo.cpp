@@ -6,11 +6,11 @@ using namespace std;
 namespace az
 {
 	static string GetHeaderOfFile(const vector<FilePartInfo>& filePartInfo);
-	static vector<FileInfo::PartInfo> GetFileParts(const vector<FilePartInfo>& filePartInfo, const string& sHeader);
+	static vector<FileInfo::PartInfo> GetFileParts(const vector<FilePartInfo>& filePartInfo, size_t nHeaderLen);
 
 	FileInfo::FileInfo(const vector<FilePartInfo>& filePartInfo):
 		sHeader(GetHeaderOfFile(filePartInfo)),
-		parts(GetFileParts(filePartInfo, sHeader))
+		parts(GetFileParts(filePartInfo, sHeader.length()))
 	{
 	}
 
@@ -42,14 +42,18 @@ namespace az
 			: sFirstHeader;
 	}
 
-	static vector<FileInfo::PartInfo> GetFileParts(const vector<FilePartInfo>& filePartInfo, const string& sHeader)
+	static vector<FileInfo::PartInfo> GetFileParts(const vector<FilePartInfo>& filePartInfo, size_t nHeaderLen)
 	{
 		vector<FileInfo::PartInfo> parts;
+		size_t nRealOffset = 0;
 		size_t nUserOffset = 0;
+		size_t nContentSize;
 		for (const auto& partInfo : filePartInfo)
 		{
-			parts.push_back(FileInfo::PartInfo { nUserOffset + sHeader.length(), partInfo.nSize - sHeader.length(), nUserOffset });
-			nUserOffset += partInfo.nSize;
+			nContentSize = partInfo.nSize - nHeaderLen;
+			parts.push_back(FileInfo::PartInfo { nRealOffset, nUserOffset, nContentSize });
+			nRealOffset += partInfo.nSize;
+			nUserOffset += nContentSize;
 		}
 		return parts;
 	}

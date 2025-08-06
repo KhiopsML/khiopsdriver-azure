@@ -38,8 +38,8 @@ namespace az
 		struct PartInfo
 		{
 			size_t nRealOffset;
-			size_t nSize;
 			size_t nUserOffset;
+			size_t nContentSize;
 		};
 
 	private:
