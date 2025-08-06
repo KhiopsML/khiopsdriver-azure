@@ -45,6 +45,7 @@ namespace az
 		range.Offset = nHeaderLen;
 		opts.Range = range;
 		DownloadBlobResult downloadBlobResult = move(client.Download(opts).Value);
+		return move(downloadBlobResult.BodyStream);
 	}
 
 	static string ReadBlobHeaderFromBodyStream(unique_ptr<BodyStream>& bodyStream)

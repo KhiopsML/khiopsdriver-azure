@@ -18,7 +18,6 @@ namespace az
 
 	void BlobReader::Close()
 	{
-
 	}
 
 	size_t BlobReader::Read(void* dest, size_t size, size_t count)

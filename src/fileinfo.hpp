@@ -3,8 +3,6 @@
 namespace az
 {
 	class FileInfo;
-	class FileInfo::NoFilePartInfoError;
-	struct FileInfo::PartInfo;
 	struct FilePartInfo;
 }
 
