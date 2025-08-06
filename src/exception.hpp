@@ -11,6 +11,10 @@ namespace az
 	class InvalidFileUrlPathError;
 	class InvalidDirUrlPathError;
 	class GettingSizeOfDirError;
+	class NoFileError;
+	class DeletionError;
+	class InvalidFileStreamModeError;
+	class InvalidSeekOriginError;
 }
 
 #include <exception>
@@ -183,6 +187,23 @@ namespace az
 	public:
 		InvalidFileStreamModeError(const std::string& sUrl, char mode) :
 			sMessage((std::ostringstream() << "tried to open file " << sUrl << " with invalid mode " << mode).str())
+		{
+		}
+
+		virtual const char* what() const noexcept override
+		{
+			return sMessage.c_str();
+		}
+
+	private:
+		std::string sMessage;
+	};
+
+	class InvalidSeekOriginError : public Error
+	{
+	public:
+		InvalidSeekOriginError(int nOrigin) :
+			sMessage((std::ostringstream() << "tried to seek from invalid origin '" << nOrigin << "'").str())
 		{
 		}
 

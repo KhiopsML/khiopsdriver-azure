@@ -5,7 +5,8 @@ using namespace std;
 namespace az
 {
 	FileReader::FileReader() :
-		FileStream()
+		FileStream(),
+		nCurrentPos(0)
 	{
 	}
 }

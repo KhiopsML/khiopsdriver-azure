@@ -1,18 +1,53 @@
 #include "blobfileinfo.hpp"
 #include <string>
-#include <memory>
+#include <algorithm>
+#include <iterator>
+#include <functional>
+#include <azure/storage/blobs/blob_options.hpp>
+#include <azure/core/http/http.hpp>
+#include <azure/storage/blobs/rest_client.hpp>
+#include "util/map.hpp"
 
 using namespace std;
+using BlobClient = Azure::Storage::Blobs::BlobClient;
+using BodyStream = Azure::Core::IO::BodyStream;
+using DownloadBlobOptions = Azure::Storage::Blobs::DownloadBlobOptions;
+using HttpRange = Azure::Core::Http::HttpRange;
+using DownloadBlobResult = Azure::Storage::Blobs::Models::DownloadBlobResult;
 
 namespace az
 {
-	FilePartInfo GetBlobFilePartInfo(const Azure::Storage::Blobs::BlobClient& blobClient)
+	static FilePartInfo GetBlobFilePartInfo(const BlobClient& blobClient);
+	static unique_ptr<BodyStream> GetBlobFilePartBodyStream(const BlobClient& client, size_t nHeaderLen);
+	static string ReadBlobHeaderFromBodyStream(unique_ptr<BodyStream>& bodyStream);
+
+	BlobFileInfo::BlobFileInfo(const vector<BlobClient>& clients) :
+		FileInfo(Map<BlobClient, FilePartInfo>(clients, GetBlobFilePartInfo)),
+		bodyStreams(Map<BlobClient, unique_ptr<BodyStream>>(clients, bind(GetBlobFilePartBodyStream, placeholders::_1, GetHeader().length())))
 	{
-		const auto downloadBlobResult = move(blobClient.Download().Value);
-		return FilePartInfo{ ReadBlobHeaderFromBodyStream(*downloadBlobResult.BodyStream), (size_t)downloadBlobResult.BlobSize };
 	}
 
-	static string ReadBlobHeaderFromBodyStream(Azure::Core::IO::BodyStream& bodyStream)
+	vector<unique_ptr<BodyStream>>& BlobFileInfo::GetBodyStreams()
+	{
+		return bodyStreams;
+	}
+
+	static FilePartInfo GetBlobFilePartInfo(const BlobClient& client)
+	{
+		DownloadBlobResult downloadBlobResult = move(client.Download().Value);
+		return FilePartInfo { ReadBlobHeaderFromBodyStream(downloadBlobResult.BodyStream), (size_t)downloadBlobResult.BlobSize };
+	}
+
+	static unique_ptr<BodyStream> GetBlobFilePartBodyStream(const BlobClient& client, size_t nHeaderLen)
+	{
+		DownloadBlobOptions opts;
+		HttpRange range;
+		range.Offset = nHeaderLen;
+		opts.Range = range;
+		DownloadBlobResult downloadBlobResult = move(client.Download(opts).Value);
+	}
+
+	static string ReadBlobHeaderFromBodyStream(unique_ptr<BodyStream>& bodyStream)
 	{
 		string sHeader = "";
 		constexpr size_t nBufferSize = 4096;
@@ -24,7 +59,7 @@ namespace az
 
 		do
 		{
-			nBytesRead = bodyStream.ReadToCount(buffer, nBufferSize);
+			nBytesRead = bodyStream->ReadToCount(buffer, nBufferSize);
 			bufferReadEnd = buffer + nBytesRead;
 			bFoundLineFeed = (foundLineFeed = find(buffer, bufferReadEnd, '\n')) < bufferReadEnd;
 			sHeader.append((const char*)buffer, bFoundLineFeed ? foundLineFeed + 1 - buffer : nBytesRead);

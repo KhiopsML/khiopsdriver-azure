@@ -1,5 +1,6 @@
 #include "fileinfo.hpp"
 #include <algorithm>
+#include <numeric>
 
 using namespace std;
 
@@ -8,9 +9,14 @@ namespace az
 	static string GetHeaderOfFile(const vector<FilePartInfo>& filePartInfo);
 	static vector<FileInfo::PartInfo> GetFileParts(const vector<FilePartInfo>& filePartInfo, size_t nHeaderLen);
 
-	FileInfo::FileInfo(const vector<FilePartInfo>& filePartInfo):
+	FileInfo::FileInfo()
+	{
+	}
+
+	FileInfo::FileInfo(const vector<FilePartInfo>& filePartInfo) :
 		sHeader(GetHeaderOfFile(filePartInfo)),
-		parts(GetFileParts(filePartInfo, sHeader.length()))
+		parts(GetFileParts(filePartInfo, sHeader.length())),
+		nSize(accumulate(parts.begin(), parts.end(), 0, [](size_t nTotal, const FileInfo::PartInfo& partInfo) { return nTotal + partInfo.nContentSize; }))
 	{
 	}
 
@@ -22,6 +28,11 @@ namespace az
 	const vector<FileInfo::PartInfo>& FileInfo::GetParts() const
 	{
 		return parts;
+	}
+
+	size_t FileInfo::GetSize() const
+	{
+		return nSize;
 	}
 
 	size_t FileInfo::GetFilePartIndexOfUserOffset(size_t nUserOffset) const
