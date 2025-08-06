@@ -298,7 +298,19 @@ void* driver_fopen(const char* sUrl, char mode)
 		{
 			throw NullArgError(__func__, STRINGIFY(sUrl));
 		}
-		return driver.CreateFileAccessor(sUrl)->Open(mode).GetHandle();
+		switch (mode)
+		{
+		case 'r':
+			return (void*)driver.CreateFileAccessor(sUrl)->OpenForReading()->GetHandle();
+		case 'w':
+			// TODO: Implement
+			return nullptr;
+		case 'a':
+			// TODO: Implement
+			return nullptr;
+		default:
+			throw InvalidFileStreamModeError(sUrl, mode);
+		}
 	}
 	catch (const exception& exc)
 	{
@@ -380,9 +392,10 @@ void* driver_fopen(const char* sUrl, char mode)
 		return nullptr;
 	}
 }*/
-
 int driver_fclose(void* handle)
 {
+	return -1; // TODO: Remove
+#if false
 	try
 	{
 		spdlog::debug("Closing file with handle {}", handle);
@@ -403,6 +416,7 @@ int driver_fclose(void* handle)
 		errorLogger.LogError(sCaughtNonExceptionValue);
 		return nCloseFailure;
 	}
+#endif
 }
 /*{
 	assert(driver_isConnected());
@@ -428,9 +442,10 @@ int driver_fclose(void* handle)
 	LogError("Cannot identify stream.");
 	return kCloseEOF;
 }*/
-
 long long int driver_fread(void* dest, size_t size, size_t count, void* handle)
 {
+	return -1; // TODO: Remove
+#if false
 	try
 	{
 		spdlog::debug("Reading {}*{} bytes from file with handle {} to {}", size, count, handle, dest);
@@ -454,6 +469,7 @@ long long int driver_fread(void* dest, size_t size, size_t count, void* handle)
 		errorLogger.LogError(sCaughtNonExceptionValue);
 		return nReadFailure;
 	}
+#endif
 }
 /*{
 	KH_AZ_CONNECTION_ERROR(kBadSize);
@@ -529,9 +545,10 @@ long long int driver_fread(void* dest, size_t size, size_t count, void* handle)
 
 	return to_read;
 }*/
-
 int driver_fseek(void* handle, long long int offset, int whence)
 {
+	return -1; // TODO: Remove
+#if false
 	try
 	{
 		spdlog::debug("Seeking offset {} from {} in file with handle {}", offset, whence, handle);
@@ -552,6 +569,7 @@ int driver_fseek(void* handle, long long int offset, int whence)
 		errorLogger.LogError(sCaughtNonExceptionValue);
 		return nSeekFailure;
 	}
+#endif
 }
 /*{
 	KH_AZ_CONNECTION_ERROR(kBadSize);
@@ -642,9 +660,10 @@ const char* driver_getlasterror()
 		return "error while trying to fetch last error";
 	}
 }
-
 long long int driver_fwrite(const void* source, size_t size, size_t count, void* handle)
 {
+	return -1; // TODO: Remove
+#if false
 	try
 	{
 		spdlog::debug("Writing {}*{} bytes from {} to file with handle {}", size, count, source, handle);
@@ -668,6 +687,7 @@ long long int driver_fwrite(const void* source, size_t size, size_t count, void*
 		errorLogger.LogError(sCaughtNonExceptionValue);
 		return nWriteFailure;
 	}
+#endif
 }
 /*{
 	KH_AZ_CONNECTION_ERROR(kBadSize);
@@ -724,9 +744,10 @@ long long int driver_fwrite(const void* source, size_t size, size_t count, void*
 
 	return kBadSize;
 }*/
-
 int driver_fflush(void* handle)
 {
+	return -1; // TODO: Remove
+#if false
 	try
 	{
 		spdlog::debug("Flushing file with handle {}", handle);
@@ -747,6 +768,7 @@ int driver_fflush(void* handle)
 		errorLogger.LogError(sCaughtNonExceptionValue);
 		return nFlushFailure;
 	}
+#endif
 }
 /*{
 	KH_AZ_CONNECTION_ERROR(-1);

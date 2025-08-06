@@ -14,7 +14,7 @@ namespace az
 	{
 	}
 
-	explicit FileStreamHandle::operator void*() const
+	FileStreamHandle::operator void*() const
 	{
 		return (void*)handle;
 	}
