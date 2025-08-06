@@ -47,7 +47,7 @@ namespace az
 				{
 					return total + blob.GetProperties().Value.BlobSize;
 				}
-			) - (blobs.size() - 1) * (sHeaderLen + 1);
+			) - (blobs.size() - 1) * sHeaderLen;
 		}
 	}
 

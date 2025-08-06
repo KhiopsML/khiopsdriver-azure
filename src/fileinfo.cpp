@@ -5,34 +5,13 @@ using namespace std;
 
 namespace az
 {
+	static string GetHeaderOfFile(const vector<FilePartInfo>& filePartInfo);
+	static vector<FileInfo::PartInfo> GetFileParts(const vector<FilePartInfo>& filePartInfo, const string& sHeader);
+
 	FileInfo::FileInfo(const vector<FilePartInfo>& filePartInfo):
-		offsets()
+		sHeader(GetHeaderOfFile(filePartInfo)),
+		parts(GetFileParts(filePartInfo, sHeader))
 	{
-		bool bFirstIter = true;
-		bool bMayHaveHeader = true;
-		size_t nOffset = 0;
-		for (const auto& partInfo: filePartInfo)
-		{
-			if (bFirstIter)
-			{
-				if (partInfo.sHeader.empty())
-				{
-					bMayHaveHeader = false;
-				}
-				else
-				{
-					sHeader = partInfo.sHeader;
-				}
-				bFirstIter = false;
-			}
-			else if (bMayHaveHeader && partInfo.sHeader != sHeader)
-			{
-				sHeader = string();
-				bMayHaveHeader = false;
-			}
-			offsets.push_back(nOffset);
-			nOffset += partInfo.nSize;
-		}
 	}
 
 	const string& FileInfo::GetHeader() const
@@ -40,17 +19,38 @@ namespace az
 		return sHeader;
 	}
 
-	const vector<size_t>& FileInfo::GetOffsets() const
+	const vector<FileInfo::PartInfo>& FileInfo::GetParts() const
 	{
-		return offsets;
+		return parts;
 	}
 
-	size_t FileInfo::GetFilePartIndexOfPos(size_t nPos) const
+	size_t FileInfo::GetFilePartIndexOfUserOffset(size_t nUserOffset) const
 	{
-		if (offsets.empty())
+		if (parts.empty())
 		{
-			throw NoOffsetError();
+			throw NoFilePartInfoError();
 		}
-		return find_if(offsets.begin(), offsets.end(), [nPos](size_t offset) { return nPos < offset; }) - 1 - offsets.begin();
+		return find_if(parts.begin(), parts.end(), [nUserOffset](const auto& part) { return nUserOffset < part.nUserOffset; }) - 1 - parts.begin();
+	}
+
+	static string GetHeaderOfFile(const vector<FilePartInfo>& filePartInfo)
+	{
+		string sFirstHeader = filePartInfo.front().sHeader;
+		return sFirstHeader.empty()
+			|| any_of(filePartInfo.begin() + 1, filePartInfo.end(), [sFirstHeader](const auto& partInfo) { return partInfo.sHeader != sFirstHeader; })
+			? string()
+			: sFirstHeader;
+	}
+
+	static vector<FileInfo::PartInfo> GetFileParts(const vector<FilePartInfo>& filePartInfo, const string& sHeader)
+	{
+		vector<FileInfo::PartInfo> parts;
+		size_t nUserOffset = 0;
+		for (const auto& partInfo : filePartInfo)
+		{
+			parts.push_back(FileInfo::PartInfo { nUserOffset + sHeader.length(), partInfo.nSize - sHeader.length(), nUserOffset });
+			nUserOffset += partInfo.nSize;
+		}
+		return parts;
 	}
 }

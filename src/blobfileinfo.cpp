@@ -27,7 +27,7 @@ namespace az
 			nBytesRead = bodyStream.ReadToCount(buffer, nBufferSize);
 			bufferReadEnd = buffer + nBytesRead;
 			bFoundLineFeed = (foundLineFeed = find(buffer, bufferReadEnd, '\n')) < bufferReadEnd;
-			sHeader.append((const char*)buffer, bFoundLineFeed ? foundLineFeed - buffer : nBytesRead);
+			sHeader.append((const char*)buffer, bFoundLineFeed ? foundLineFeed + 1 - buffer : nBytesRead);
 		} while (!bFoundLineFeed && nBytesRead == nBufferSize);
 
 		return bFoundLineFeed ? sHeader : "";
