@@ -3,7 +3,8 @@
 namespace az
 {
 	class FileInfo;
-	class FileInfo::NoOffsetError;
+	class FileInfo::NoFilePartInfoError;
+	struct FileInfo::PartInfo;
 	struct FilePartInfo;
 }
 
@@ -17,23 +18,33 @@ namespace az
 	class FileInfo
 	{
 	public:
+		class NoFilePartInfoError;
+		struct PartInfo;
+
 		FileInfo(const std::vector<FilePartInfo>& filePartInfo);
 		const std::string& GetHeader() const;
-		const std::vector<size_t>& GetOffsets() const;
-		size_t GetFilePartIndexOfPos(size_t nPos) const;
+		const std::vector<PartInfo>& GetParts() const;
+		size_t GetFilePartIndexOfUserOffset(size_t nUserOffset) const;
 
-		class NoOffsetError : public Error
+		class NoFilePartInfoError : public Error
 		{
 		public:
 			virtual const char* what() const noexcept override
 			{
-				return "no offset found in file info";
+				return "no part info found in file info";
 			}
+		};
+
+		struct PartInfo
+		{
+			size_t nRealOffset;
+			size_t nSize;
+			size_t nUserOffset;
 		};
 
 	private:
 		std::string sHeader;
-		std::vector<size_t> offsets;
+		std::vector<PartInfo> parts;
 	};
 
 	struct FilePartInfo
