@@ -47,10 +47,10 @@ namespace az
 		}
 	}
 
-	FileStream ShareAccessor::Open(char mode) const
+	std::unique_ptr<FileReader> ShareAccessor::OpenForReading() const
 	{
 		// TODO: Implement
-		return FileStream();
+		return nullptr;
 	}
 
 	void ShareAccessor::Remove() const

@@ -7,8 +7,11 @@ namespace az
 
 #include <vector>
 #include <string>
+#include <memory>
 #include <azure/core/url.hpp>
-#include "filestream.hpp"
+#include "filereader.hpp"
+#include "filewriter.hpp"
+#include "fileappender.hpp"
 
 namespace az
 {
@@ -17,7 +20,9 @@ namespace az
 	public:
 		virtual bool Exists() const = 0;
 		virtual size_t GetSize() const = 0;
-		virtual FileStream Open(char mode) const = 0;
+		virtual std::unique_ptr<FileReader> OpenForReading() const = 0;
+		//virtual FileStream OpenForWriting() const = 0;
+		//virtual FileStream OpenForAppending() const = 0;
 		virtual void Remove() const = 0;
 		virtual void MkDir() const = 0;
 		virtual void RmDir() const = 0;

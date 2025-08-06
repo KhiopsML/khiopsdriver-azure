@@ -1,4 +1,5 @@
 #include "blobaccessor.hpp"
+#include <memory>
 #include <numeric>
 #include <algorithm>
 #include <azure/core/http/transport.hpp>
@@ -6,6 +7,7 @@
 #include "util/string.hpp"
 #include "util/env.hpp"
 #include "blobpathresolve.hpp"
+#include "blobreader.hpp"
 
 using namespace std;
 
@@ -40,30 +42,14 @@ namespace az
 			{
 				throw NoFileError(GetUrl().GetAbsoluteUrl());
 			}
-			string sHeader = HeaderOfBlobs(blobs);
-			size_t sHeaderLen = sHeader.length();
-			return accumulate(blobs.begin(), blobs.end(), 0,
-				[](size_t total, const Azure::Storage::Blobs::BlobClient& blob)
-				{
-					return total + blob.GetProperties().Value.BlobSize;
-				}
-			) - (blobs.size() - 1) * sHeaderLen;
+			return BlobFileInfo(blobs).GetSize();
 		}
 	}
 
-	FileStream BlobAccessor::Open(char mode) const
+	unique_ptr<FileReader> BlobAccessor::OpenForReading() const
 	{
-		switch (mode)
-		{
-		case 'r':
-			return OpenForReading();
-		case 'w':
-			return OpenForWriting();
-		case 'a':
-			return OpenForAppending();
-		default:
-			throw InvalidFileStreamModeError(GetUrl().GetAbsoluteUrl(), mode);
-		}
+		vector<Azure::Storage::Blobs::BlobClient> blobs = ListBlobs();
+		return make_unique<BlobReader>(move(blobs));
 	}
 
 	void BlobAccessor::Remove() const
@@ -125,10 +111,5 @@ namespace az
 		{
 			throw NetworkError();
 		}
-	}
-
-	unique_ptr<FileReader> BlobAccessor::OpenForReading() const
-	{
-		vector<Azure::Storage::Blobs::BlobClient> blobs = ListBlobs();
 	}
 }

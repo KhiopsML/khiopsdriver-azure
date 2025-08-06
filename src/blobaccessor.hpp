@@ -7,7 +7,6 @@ namespace az
 
 #include "fileaccessor.hpp"
 #include <vector>
-#include <memory>
 #include <azure/core.hpp>
 #include <azure/storage/blobs.hpp>
 #include "exception.hpp"
@@ -24,7 +23,7 @@ namespace az
 
 		bool Exists() const override;
 		size_t GetSize() const override;
-		FileStream Open(char mode) const override;
+		std::unique_ptr<FileReader> OpenForReading() const override;
 		void Remove() const override;
 		void MkDir() const override;
 		void RmDir() const override;
@@ -44,9 +43,5 @@ namespace az
 		virtual Azure::Storage::Blobs::BlobClient GetBlobClient() const = 0;
 
 		std::vector<Azure::Storage::Blobs::BlobClient> ListBlobs() const;
-
-		std::unique_ptr<FileReader> OpenForReading() const;
-		std::unique_ptr<FileWriter> OpenForWriting() const;
-		std::unique_ptr<FileAppender> OpenForAppending() const;
 	};
 }
