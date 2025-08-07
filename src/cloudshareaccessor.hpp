@@ -16,7 +16,7 @@ namespace az
 	class CloudShareAccessor : public ShareAccessor, public CloudFileAccessor
 	{
 	public:
-		CloudShareAccessor(const Azure::Core::Url& url);
+		CloudShareAccessor(const Azure::Core::Url& url, const std::function<const std::unique_ptr<FileReader>& (std::unique_ptr<FileReader>)>& registerReader, const std::function<const std::unique_ptr<FileWriter>& (std::unique_ptr<FileWriter>)>& registerWriter, const std::function<const std::unique_ptr<FileAppender>& (std::unique_ptr<FileAppender>)>& registerAppender);
 		~CloudShareAccessor();
 
 	protected:

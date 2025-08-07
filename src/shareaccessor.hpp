@@ -19,7 +19,7 @@ namespace az
 
 		bool Exists() const override;
 		size_t GetSize() const override;
-		std::unique_ptr<FileReader> OpenForReading() const override;
+		std::unique_ptr<FileReader>& OpenForReading() const override;
 		void Remove() const override;
 		void MkDir() const override;
 		void RmDir() const override;
@@ -28,7 +28,7 @@ namespace az
 		void CopyFrom(const Azure::Core::Url& sourceUrl) const override;
 
 	protected:
-		ShareAccessor(const Azure::Core::Url& url);
+		ShareAccessor(const Azure::Core::Url& url, const std::function<const std::unique_ptr<FileReader>& (std::unique_ptr<FileReader>)>& registerReader, const std::function<const std::unique_ptr<FileWriter>& (std::unique_ptr<FileWriter>)>& registerWriter, const std::function<const std::unique_ptr<FileAppender>& (std::unique_ptr<FileAppender>)>& registerAppender);
 
 		virtual std::string GetShareName() const = 0;
 		virtual std::vector<std::string> GetPath() const = 0;

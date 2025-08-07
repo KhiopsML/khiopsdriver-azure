@@ -41,23 +41,25 @@ namespace az
 		void Disconnect();
 		bool IsConnected() const;
 
-		std::unique_ptr<FileAccessor> CreateFileAccessor(const std::string& url) const;
-		std::unique_ptr<FileReader> RetrieveFileReader(const FileStreamHandle& handle) const;
+		std::unique_ptr<FileAccessor> CreateFileAccessor(const std::string& url);
+		const std::unique_ptr<FileReader>& RetrieveFileReader(const FileStreamHandle& handle) const;
 #if false
-		FileWriter RetrieveFileWriter(const FileStreamHandle& handle) const;
-		FileAppender RetrieveFileAppender(const FileStreamHandle& handle) const;
+		const std::unique_ptr<FileWriter>& RetrieveFileWriter(const FileStreamHandle& handle) const;
+		const std::unique_ptr<FileAppender>& RetrieveFileAppender(const FileStreamHandle& handle) const;
 #endif
 
 	protected:
 		void CheckConnected() const;
 		bool IsEmulatedStorage() const;
 
+		const std::unique_ptr<FileReader>& RegisterReader(std::unique_ptr<FileReader> readerPtr);
+		const std::unique_ptr<FileWriter>& RegisterWriter(std::unique_ptr<FileWriter> writerPtr);
+		const std::unique_ptr<FileAppender>& RegisterAppender(std::unique_ptr<FileAppender> appenderPtr);
+
 		bool bIsConnected;
 
-#if false
-		std::unordered_map<FileStreamHandle, FileReader> fileReaders;
-		std::unordered_map<FileStreamHandle, FileWriter> fileWriters;
-		std::unordered_map<FileStreamHandle, FileAppender> fileAppenders;
-#endif
+		std::unordered_map<FileStreamHandle, std::unique_ptr<FileReader>, FileStreamHandle::Hash> fileReaders;
+		std::unordered_map<FileStreamHandle, std::unique_ptr<FileWriter>, FileStreamHandle::Hash> fileWriters;
+		std::unordered_map<FileStreamHandle, std::unique_ptr<FileAppender>, FileStreamHandle::Hash> fileAppenders;
 	};
 }

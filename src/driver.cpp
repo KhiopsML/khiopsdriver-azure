@@ -58,7 +58,7 @@ namespace az
 		return bIsConnected;
 	}
 
-	unique_ptr<FileAccessor> Driver::CreateFileAccessor(const string& sUrl) const
+	unique_ptr<FileAccessor> Driver::CreateFileAccessor(const string& sUrl)
 	{
 		CheckConnected();
 		const string sBlobDomain = ".blob.core.windows.net";
@@ -75,15 +75,15 @@ namespace az
 		const string& sHost = url.GetHost();
 		if (IsEmulatedStorage())
 		{
-			return make_unique<EmulatedBlobAccessor>(url);
+			return make_unique<EmulatedBlobAccessor>(url, bind(&Driver::RegisterReader, this, placeholders::_1), bind(&Driver::RegisterWriter, this, placeholders::_1), bind(&Driver::RegisterAppender, this, placeholders::_1));
 		}
 		else if (EndsWith(sHost, sBlobDomain))
 		{
-			return make_unique<CloudBlobAccessor>(url);
+			return make_unique<CloudBlobAccessor>(url, bind(&Driver::RegisterReader, this, placeholders::_1), bind(&Driver::RegisterWriter, this, placeholders::_1), bind(&Driver::RegisterAppender, this, placeholders::_1));
 		}
 		else if (EndsWith(sHost, sFileDomain))
 		{
-			return make_unique<CloudShareAccessor>(url);
+			return make_unique<CloudShareAccessor>(url, bind(&Driver::RegisterReader, this, placeholders::_1), bind(&Driver::RegisterWriter, this, placeholders::_1), bind(&Driver::RegisterAppender, this, placeholders::_1));
 		}
 		else
 		{
@@ -91,18 +91,17 @@ namespace az
 		}
 	}
 
-	unique_ptr<FileReader> Driver::RetrieveFileReader(const FileStreamHandle& handle) const
+	const unique_ptr<FileReader>& Driver::RetrieveFileReader(const FileStreamHandle& handle) const
 	{
-		// TODO: Implement
-		return nullptr;
+		return fileReaders.at(handle);
 	}
 #if false
-	FileWriter Driver::RetrieveFileWriter(const FileStreamHandle& handle) const
+	const unique_ptr<FileWriter>& Driver::RetrieveFileWriter(const FileStreamHandle& handle) const
 	{
 
 	}
 
-	FileAppender Driver::RetrieveFileAppender(const FileStreamHandle& handle) const
+	const unique_ptr<FileAppender>& Driver::RetrieveFileAppender(const FileStreamHandle& handle) const
 	{
 
 	}
@@ -118,5 +117,20 @@ namespace az
 	bool Driver::IsEmulatedStorage() const
 	{
 		return ToLower(GetEnvironmentVariableOrDefault("AZURE_EMULATED_STORAGE", "false")) != "false";
+	}
+
+	const unique_ptr<FileReader>& Driver::RegisterReader(unique_ptr<FileReader> readerPtr)
+	{
+		return fileReaders[readerPtr->GetHandle()] = move(readerPtr);
+	}
+
+	const unique_ptr<FileWriter>& Driver::RegisterWriter(unique_ptr<FileWriter> writerPtr)
+	{
+		return fileWriters[writerPtr->GetHandle()] = move(writerPtr);
+	}
+
+	const unique_ptr<FileAppender>& Driver::RegisterAppender(unique_ptr<FileAppender> appenderPtr)
+	{
+		return fileAppenders[appenderPtr->GetHandle()] = move(appenderPtr);
 	}
 }

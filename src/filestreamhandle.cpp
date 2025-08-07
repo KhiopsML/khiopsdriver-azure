@@ -18,4 +18,14 @@ namespace az
 	{
 		return (void*)handle;
 	}
+
+	bool operator==(const FileStreamHandle& a, const FileStreamHandle& b)
+	{
+		return a.handle == b.handle;
+	}
+
+	size_t FileStreamHandle::Hash::operator()(const FileStreamHandle& fileStreamHandle) const
+	{
+		return (size_t)(void*)(fileStreamHandle);
+	}
 }

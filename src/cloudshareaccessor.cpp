@@ -7,8 +7,8 @@ using namespace std;
 
 namespace az
 {
-	CloudShareAccessor::CloudShareAccessor(const Azure::Core::Url& url):
-		ShareAccessor(url),
+	CloudShareAccessor::CloudShareAccessor(const Azure::Core::Url& url, const function<const unique_ptr<FileReader>& (unique_ptr<FileReader>)>& registerReader, const function<const unique_ptr<FileWriter>& (unique_ptr<FileWriter>)>& registerWriter, const function<const unique_ptr<FileAppender>& (unique_ptr<FileAppender>)>& registerAppender) :
+		ShareAccessor(url, registerReader, registerWriter, registerAppender),
 		CloudFileAccessor()
 	{
 		CheckUrl();

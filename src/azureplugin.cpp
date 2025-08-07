@@ -444,8 +444,6 @@ int driver_fclose(void* handle)
 }*/
 long long int driver_fread(void* dest, size_t size, size_t count, void* handle)
 {
-	return -1; // TODO: Remove
-#if false
 	try
 	{
 		spdlog::debug("Reading {}*{} bytes from file with handle {} to {}", size, count, handle, dest);
@@ -457,7 +455,7 @@ long long int driver_fread(void* dest, size_t size, size_t count, void* handle)
 		{
 			throw NullArgError(__func__, STRINGIFY(handle));
 		}
-		return driver.RetrieveFileReader(FileStreamHandle(handle)).Read(dest, size, count);
+		return driver.RetrieveFileReader(FileStreamHandle(handle))->Read(dest, size, count);
 	}
 	catch (const exception& exc)
 	{
@@ -469,7 +467,6 @@ long long int driver_fread(void* dest, size_t size, size_t count, void* handle)
 		errorLogger.LogError(sCaughtNonExceptionValue);
 		return nReadFailure;
 	}
-#endif
 }
 /*{
 	KH_AZ_CONNECTION_ERROR(kBadSize);

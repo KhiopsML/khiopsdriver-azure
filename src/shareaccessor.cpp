@@ -47,10 +47,11 @@ namespace az
 		}
 	}
 
-	unique_ptr<FileReader> ShareAccessor::OpenForReading() const
+	unique_ptr<FileReader>& ShareAccessor::OpenForReading() const
 	{
 		// TODO: Implement
-		return nullptr;
+		auto r = unique_ptr<FileReader>();
+		return r;
 	}
 
 	void ShareAccessor::Remove() const
@@ -84,8 +85,8 @@ namespace az
 		// TODO: Implement
 	}
 
-	ShareAccessor::ShareAccessor(const Azure::Core::Url& url):
-		FileAccessor(url)
+	ShareAccessor::ShareAccessor(const Azure::Core::Url& url, const function<const unique_ptr<FileReader>& (unique_ptr<FileReader>)>& registerReader, const function<const unique_ptr<FileWriter>& (unique_ptr<FileWriter>)>& registerWriter, const function<const unique_ptr<FileAppender>& (unique_ptr<FileAppender>)>& registerAppender) :
+		FileAccessor(url, registerReader, registerWriter, registerAppender)
 	{
 	}
 
