@@ -47,7 +47,7 @@ namespace az
 		}
 	}
 
-	std::unique_ptr<FileReader> ShareAccessor::OpenForReading() const
+	unique_ptr<FileReader> ShareAccessor::OpenForReading() const
 	{
 		// TODO: Implement
 		return nullptr;
