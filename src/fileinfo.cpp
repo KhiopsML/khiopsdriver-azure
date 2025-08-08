@@ -59,12 +59,18 @@ namespace az
 		size_t nRealOffset = 0;
 		size_t nUserOffset = 0;
 		size_t nContentSize;
+		bool bFirstIter = true;
 		for (const auto& partInfo : filePartInfo)
 		{
-			nContentSize = partInfo.nSize - nHeaderLen;
+			nContentSize = bFirstIter ? partInfo.nSize : partInfo.nSize - nHeaderLen;
 			parts.push_back(FileInfo::PartInfo { nRealOffset, nUserOffset, nContentSize });
+			if (bFirstIter)
+			{
+				nRealOffset += nHeaderLen;
+			}
 			nRealOffset += partInfo.nSize;
 			nUserOffset += nContentSize;
+			bFirstIter = false;
 		}
 		return parts;
 	}

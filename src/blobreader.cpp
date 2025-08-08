@@ -25,15 +25,15 @@ namespace az
 		size_t nTotalFileSize = fileInfo.GetSize();
 		size_t nToRead = size * count;
 		size_t nRead = 0;
-		size_t nFilePartIndex;
+		size_t nFilePartIndex = fileInfo.GetFilePartIndexOfUserOffset((long long int)nCurrentPos);
 
 		while (nToRead > 0 && nRead < nTotalFileSize)
 		{
-			nFilePartIndex = fileInfo.GetFilePartIndexOfUserOffset((long long int)nCurrentPos);
 			unique_ptr<Azure::Core::IO::BodyStream>& bodyStream = fileInfo.GetBodyStreams().at(nFilePartIndex);
 			dest = ((uint8_t*)dest) + nRead;
 			nToRead -= (nRead = bodyStream->ReadToCount((uint8_t*)dest, nToRead));
 			nCurrentPos += nRead;
+			nFilePartIndex++;
 		}
 		return nRead;
 	}

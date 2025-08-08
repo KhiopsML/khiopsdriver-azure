@@ -18,13 +18,15 @@ using DownloadBlobResult = Azure::Storage::Blobs::Models::DownloadBlobResult;
 namespace az
 {
 	static FilePartInfo GetBlobFilePartInfo(const BlobClient& blobClient);
-	static unique_ptr<BodyStream> GetBlobFilePartBodyStream(const BlobClient& client, size_t nHeaderLen);
+	static unique_ptr<BodyStream> GetBlobFilePartBodyStream(const BlobClient& client, size_t nOffset);
 	static string ReadBlobHeaderFromBodyStream(unique_ptr<BodyStream>& bodyStream);
 
 	BlobFileInfo::BlobFileInfo(const vector<BlobClient>& clients):
 		FileInfo(MAP(BlobClient, FilePartInfo, clients, GetBlobFilePartInfo)),
-		bodyStreams(MAP(BlobClient, unique_ptr<BodyStream>, clients, bind(GetBlobFilePartBodyStream, placeholders::_1, GetHeader().length())))
+		bodyStreams()
 	{
+		bodyStreams.push_back(GetBlobFilePartBodyStream(clients.front(), 0));
+		transform(clients.begin() + 1, clients.end(), back_inserter(bodyStreams), bind(GetBlobFilePartBodyStream, placeholders::_1, GetHeader().length()));
 	}
 
 	vector<unique_ptr<BodyStream>>& BlobFileInfo::GetBodyStreams()
@@ -38,11 +40,11 @@ namespace az
 		return FilePartInfo { ReadBlobHeaderFromBodyStream(downloadBlobResult.BodyStream), (size_t)downloadBlobResult.BlobSize };
 	}
 
-	static unique_ptr<BodyStream> GetBlobFilePartBodyStream(const BlobClient& client, size_t nHeaderLen)
+	static unique_ptr<BodyStream> GetBlobFilePartBodyStream(const BlobClient& client, size_t nOffset)
 	{
 		DownloadBlobOptions opts;
 		HttpRange range;
-		range.Offset = nHeaderLen;
+		range.Offset = nOffset;
 		opts.Range = range;
 		DownloadBlobResult downloadBlobResult = move(client.Download(opts).Value);
 		return move(downloadBlobResult.BodyStream);
