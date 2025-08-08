@@ -89,24 +89,25 @@ jobs:
 
       # Retrieve azure credentials through WIF - needed to run tests
       - name: Azure CLI Login
-        uses: azure/login@v2
+        uses: azure/login@v2.3.0
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       # Uncomment to debug login issues...
-      # - name: Azure CLI script
-      #   uses: azure/cli@v2
-      #   with:
-      #     azcliversion: latest
-      #     inlineScript: |
-      #       az account show
-      #       # You can write your Azure CLI inline scripts here.
-      #       echo az resource list
-      #       az resource list
-      #       echo az storage account list
-      #       az storage account list
+      - name: Azure CLI script
+        uses: azure/cli@v2.3.0
+        with:
+          azcliversion: latest
+          inlineScript: |
+            echo az account show
+            az account show
+            # You can write your Azure CLI inline scripts here.
+            echo az resource list
+            az resource list
+            echo az storage account list
+            az storage account list
 
       - name: Install coverage tools
         if: matrix.os == 'ubuntu-latest'
