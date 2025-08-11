@@ -13,7 +13,8 @@ namespace az
 	}
 
 	FileOutputStream::FileOutputStream() :
-		FileStream()
+		FileStream(),
+		nCurrentPos(0)
 	{
 	}
 }

@@ -19,5 +19,6 @@ namespace az
 
 	protected:
 		FileOutputStream();
+		size_t nCurrentPos;
 	};
 }

@@ -14,6 +14,5 @@ namespace az
 	{
 	public:
 		FileWriter();
-		size_t Write(const void* source, size_t size, size_t count) override;
 	};
 }

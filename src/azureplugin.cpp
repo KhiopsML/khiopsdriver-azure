@@ -303,7 +303,7 @@ void* driver_fopen(const char* sUrl, char mode)
 		case 'r':
 			return (void*)driver.CreateFileAccessor(sUrl)->OpenForReading()->GetHandle();
 		case 'w':
-			// TODO: Implement
+			return (void*)driver.CreateFileAccessor(sUrl)->OpenForWriting()->GetHandle();
 			return nullptr;
 		case 'a':
 			// TODO: Implement
@@ -394,7 +394,7 @@ void* driver_fopen(const char* sUrl, char mode)
 }*/
 int driver_fclose(void* handle)
 {
-	return -1; // TODO: Remove
+	return nCloseSuccess; // TODO: Implement real function
 #if false
 	try
 	{
@@ -586,8 +586,6 @@ const char* driver_getlasterror()
 }
 long long int driver_fwrite(const void* source, size_t size, size_t count, void* handle)
 {
-	return -1; // TODO: Remove
-#if false
 	try
 	{
 		spdlog::debug("Writing {}*{} bytes from {} to file with handle {}", size, count, source, handle);
@@ -599,7 +597,7 @@ long long int driver_fwrite(const void* source, size_t size, size_t count, void*
 		{
 			throw NullArgError(__func__, STRINGIFY(handle));
 		}
-		return driver.RetrieveFileStream(handle).Write(source, size, count);
+		return driver.RetrieveFileWriter(FileStreamHandle(handle))->Write(source, size, count);
 	}
 	catch (const exception& exc)
 	{
@@ -611,7 +609,6 @@ long long int driver_fwrite(const void* source, size_t size, size_t count, void*
 		errorLogger.LogError(sCaughtNonExceptionValue);
 		return nWriteFailure;
 	}
-#endif
 }
 /*{
 	KH_AZ_CONNECTION_ERROR(kBadSize);

@@ -24,6 +24,7 @@ namespace az
 		bool Exists() const override;
 		size_t GetSize() const override;
 		const std::unique_ptr<FileReader>& OpenForReading() const override;
+		const std::unique_ptr<FileWriter>& OpenForWriting() const override;
 		void Remove() const override;
 		void MkDir() const override;
 		void RmDir() const override;

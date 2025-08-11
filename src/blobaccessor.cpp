@@ -8,6 +8,7 @@
 #include "util/env.hpp"
 #include "blobpathresolve.hpp"
 #include "blobreader.hpp"
+#include "blobwriter.hpp"
 
 using namespace std;
 
@@ -50,6 +51,11 @@ namespace az
 	{
 		vector<Azure::Storage::Blobs::BlobClient> blobs = ListBlobs();
 		return RegisterReader(make_unique<BlobReader>(move(blobs)));
+	}
+
+	const unique_ptr<FileWriter>& BlobAccessor::OpenForWriting() const
+	{
+		return RegisterWriter(make_unique<BlobWriter>(move(GetBlobClient())));
 	}
 
 	void BlobAccessor::Remove() const

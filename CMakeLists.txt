@@ -92,7 +92,7 @@ set(SourceList
     filewriter.hpp filewriter.cpp
     fileappender.hpp fileappender.cpp
     blobreader.hpp blobreader.cpp
-    blobwriter.hpp
+    blobwriter.hpp blobwriter.cpp
     sharereader.hpp
     sharewriter.hpp
     fileoutputstream.hpp fileoutputstream.cpp

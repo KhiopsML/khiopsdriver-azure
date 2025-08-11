@@ -43,8 +43,8 @@ namespace az
 
 		std::unique_ptr<FileAccessor> CreateFileAccessor(const std::string& url);
 		const std::unique_ptr<FileReader>& RetrieveFileReader(const FileStreamHandle& handle) const;
-#if false
 		const std::unique_ptr<FileWriter>& RetrieveFileWriter(const FileStreamHandle& handle) const;
+#if false
 		const std::unique_ptr<FileAppender>& RetrieveFileAppender(const FileStreamHandle& handle) const;
 #endif
 

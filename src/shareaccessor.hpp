@@ -9,6 +9,7 @@ namespace az
 #include <azure/core.hpp>
 #include <azure/storage/files/shares.hpp>
 #include "filereader.hpp"
+#include "filewriter.hpp"
 
 namespace az
 {
@@ -20,6 +21,7 @@ namespace az
 		bool Exists() const override;
 		size_t GetSize() const override;
 		std::unique_ptr<FileReader>& OpenForReading() const override;
+		std::unique_ptr<FileWriter>& OpenForWriting() const override;
 		void Remove() const override;
 		void MkDir() const override;
 		void RmDir() const override;

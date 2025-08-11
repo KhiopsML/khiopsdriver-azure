@@ -95,12 +95,13 @@ namespace az
 	{
 		return fileReaders.at(handle);
 	}
-#if false
+
 	const unique_ptr<FileWriter>& Driver::RetrieveFileWriter(const FileStreamHandle& handle) const
 	{
-
+		return fileWriters.at(handle);
 	}
 
+#if false
 	const unique_ptr<FileAppender>& Driver::RetrieveFileAppender(const FileStreamHandle& handle) const
 	{
 

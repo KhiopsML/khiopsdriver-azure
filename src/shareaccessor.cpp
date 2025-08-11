@@ -54,6 +54,13 @@ namespace az
 		return r;
 	}
 
+	unique_ptr<FileWriter>& ShareAccessor::OpenForWriting() const
+	{
+		// TODO: Implement
+		auto r = unique_ptr<FileWriter>();
+		return r;
+	}
+
 	void ShareAccessor::Remove() const
 	{
 		// TODO: Implement
