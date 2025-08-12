@@ -73,7 +73,6 @@ set(SourceList
     util/env.hpp util/env.cpp
     util/connstring.hpp util/connstring.cpp
     util/glob.hpp util/glob.cpp
-    util/map.hpp util/map.cpp
     exception.hpp
     returnval.hpp
     logging.hpp logging.cpp

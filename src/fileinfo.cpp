@@ -13,11 +13,11 @@ namespace az
 	{
 	}
 
-	FileInfo::FileInfo(const vector<FilePartInfo>& filePartInfo) :
-		sHeader(GetHeaderOfFile(filePartInfo)),
-		parts(GetFileParts(filePartInfo, sHeader.length())),
-		nSize(accumulate(parts.begin(), parts.end(), 0, [](size_t nTotal, const FileInfo::PartInfo& partInfo) { return nTotal + partInfo.nContentSize; }))
+	FileInfo::FileInfo(const vector<FilePartInfo>& filePartInfo)
 	{
+		sHeader = GetHeaderOfFile(filePartInfo);
+		parts = GetFileParts(filePartInfo, sHeader.length());
+		nSize = accumulate(parts.begin(), parts.end(), 0, [](size_t nTotal, const FileInfo::PartInfo& partInfo) { return nTotal + partInfo.nContentSize; });
 	}
 
 	const string& FileInfo::GetHeader() const

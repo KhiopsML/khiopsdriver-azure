@@ -42,9 +42,11 @@ namespace az
 			size_t nContentSize;
 		};
 
+	protected:
+		std::vector<PartInfo> parts;
+
 	private:
 		std::string sHeader;
-		std::vector<PartInfo> parts;
 		size_t nSize;
 	};
 
