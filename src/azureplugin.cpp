@@ -323,75 +323,7 @@ void* driver_fopen(const char* sUrl, char mode)
 		return nullptr;
 	}
 }
-/*{
-	KH_AZ_CONNECTION_ERROR(nullptr);
 
-	ERROR_ON_NULL_ARG(filename, nullptr);
-
-	spdlog::debug("fopen {} {}", filename, mode);
-
-	auto name_parsing_result = ParseAzureUri(filename);
-	ERROR_ON_NAMES(name_parsing_result, nullptr);
-
-	auto& parsed_names = name_parsing_result.GetValue();
-
-	switch (mode)
-	{
-	case 'r':
-	{
-		auto register_res = RegisterReader(std::move(parsed_names.bucket), std::move(parsed_names.object));
-		if (!register_res)
-		{
-			LogBadResult(register_res, "Error while opening reader stream.");
-			return nullptr;
-		}
-		return register_res.GetValue();
-	}
-	case 'w':
-	{
-		auto register_res =
-			RegisterWriter(std::move(parsed_names.bucket), std::move(parsed_names.object), WriterMode::kWrite);
-		if (!register_res)
-		{
-			LogBadResult(register_res, "Error while opening writer stream.");
-			return nullptr;
-		}
-		return register_res.GetValue();
-	}
-	case 'a':
-	{
-		std::string target = std::move(parsed_names.object);
-		// determine if object is a multifile
-		const auto pattern_1st_sp_char_pos = FindPatternSpecialChar(target);
-		if (pattern_1st_sp_char_pos)
-		{
-			// filter the present blobs and pick the last file as target
-			const auto container_client = BlobContainerClient::CreateFromConnectionString(
-				GetConnectionStringFromEnv(), parsed_names.bucket);
-			auto filter_res = FilterList(parsed_names.bucket, target, *pattern_1st_sp_char_pos);
-			if (!filter_res)
-			{
-				LogBadResult(filter_res, "Error while opening stream in append mode.");
-				return nullptr;
-			}
-			target = std::move(filter_res.GetValue().back().Name);
-		}
-
-		// open the stream
-		auto register_res =
-			RegisterWriter(std::move(parsed_names.bucket), std::move(target), WriterMode::kAppend);
-		if (!register_res)
-		{
-			LogBadResult(register_res, "Error while opening stream in append mode.");
-			return nullptr;
-		}
-		return register_res.GetValue();
-	}
-	default:
-		LogError("Invalid open mode: " + mode);
-		return nullptr;
-	}
-}*/
 int driver_fclose(void* handle)
 {
 	try
@@ -415,30 +347,7 @@ int driver_fclose(void* handle)
 		return nCloseFailure;
 	}
 }
-/*{
-	assert(driver_isConnected());
 
-	ERROR_ON_NULL_ARG(stream, kCloseEOF);
-
-	spdlog::debug("fclose {}", (void*)stream);
-
-	const auto reader_stream_it = FindReader(stream);
-	if (reader_stream_it != active_reader_handles.end())
-	{
-		EraseRemove<Reader>(reader_stream_it, active_reader_handles);
-		return kCloseSuccess;
-	}
-
-	const auto writer_stream_it = FindWriter(stream);
-	if (writer_stream_it != active_writer_handles.end())
-	{
-		EraseRemove<Writer>(writer_stream_it, active_writer_handles);
-		return kCloseSuccess;
-	}
-
-	LogError("Cannot identify stream.");
-	return kCloseEOF;
-}*/
 long long int driver_fread(void* dest, size_t size, size_t count, void* handle)
 {
 	try
@@ -607,61 +516,7 @@ long long int driver_fwrite(const void* source, size_t size, size_t count, void*
 		return nWriteFailure;
 	}
 }
-/*{
-	KH_AZ_CONNECTION_ERROR(kBadSize);
 
-	ERROR_ON_NULL_ARG(stream, kBadSize);
-	ERROR_ON_NULL_ARG(ptr, kBadSize);
-
-	if (0 == size)
-	{
-		LogError("Error passing size 0 to fwrite");
-		return kBadSize;
-	}
-
-	spdlog::debug("fwrite {} {} {} {}", ptr, size, count, stream);
-
-	const auto& writer_ptr_it = FindWriter(stream);
-	if (writer_ptr_it == active_writer_handles.end())
-	{
-		LogError("Cannot identify stream as a writer stream.");
-		return kBadSize;
-	}
-
-	// fast exit for 0
-	if (0 == count)
-	{
-		return 0;
-	}
-
-	// prevent integer overflow
-	if (WillSizeCountProductOverflow(size, count))
-	{
-		LogError("Error on write: product size * count is too large, would overflow");
-		return kBadSize;
-	}
-
-	// stage a block containing the data from the buffer
-	auto& writer = **writer_ptr_it;
-	const size_t to_write = size * count;
-	Azure::Core::IO::MemoryBodyStream streambuf(reinterpret_cast<const uint8_t*>(ptr), to_write);
-
-	try
-	{
-		writer.client_.AppendBlock(streambuf);
-		return static_cast<long long>(to_write);
-	}
-	catch (const StorageException& e)
-	{
-		LogException("Error while writing data.", e.what());
-	}
-	catch (const std::exception& e)
-	{
-		LogException("Error while writing data.", e.what());
-	}
-
-	return kBadSize;
-}*/
 int driver_fflush(void* handle)
 {
 	return -1; // TODO: Remove
