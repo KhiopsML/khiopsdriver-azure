@@ -14,7 +14,7 @@ namespace az
 	{
 	public:
 		virtual void Close() = 0;
-		virtual size_t Write(const void* source, size_t size, size_t count) = 0;
+		virtual size_t Write(const void* source, size_t nSize, size_t nCount) = 0;
 		void Flush();
 
 	protected:

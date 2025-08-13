@@ -9,7 +9,7 @@ namespace az
 	{
 	}
 
-	size_t FileAppender::Write(const void* source, size_t size, size_t count)
+	size_t FileAppender::Write(const void* source, size_t nSize, size_t nCount)
 	{
 		// TODO: Implement
 		return 0;

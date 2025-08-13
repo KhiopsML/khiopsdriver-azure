@@ -15,6 +15,7 @@ namespace az
 	class DeletionError;
 	class InvalidFileStreamModeError;
 	class InvalidSeekOriginError;
+	class InvalidSeekOffsetError;
 }
 
 #include <exception>
@@ -204,6 +205,23 @@ namespace az
 	public:
 		InvalidSeekOriginError(int nOrigin) :
 			sMessage((std::ostringstream() << "tried to seek from invalid origin '" << nOrigin << "'").str())
+		{
+		}
+
+		virtual const char* what() const noexcept override
+		{
+			return sMessage.c_str();
+		}
+
+	private:
+		std::string sMessage;
+	};
+
+	class InvalidSeekOffsetError : public Error
+	{
+	public:
+		InvalidSeekOffsetError(int nOffset, int nOrigin) :
+			sMessage((std::ostringstream() << "tried to seek " << nOffset << " bytes from origin '" << nOrigin << "' which is outside the file").str())
 		{
 		}
 

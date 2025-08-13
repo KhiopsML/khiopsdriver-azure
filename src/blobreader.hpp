@@ -19,8 +19,8 @@ namespace az
 		BlobReader(std::vector<Azure::Storage::Blobs::BlobClient>&& clients);
 
 		void Close() override;
-		size_t Read(void* dest, size_t size, size_t count) override;
-		void Seek(long long int offset, int whence) override;
+		size_t Read(void* dest, size_t nSize, size_t nCount) override;
+		void Seek(long long int nOffset, int nOrigin) override;
 
 	private:
 		std::vector<Azure::Storage::Blobs::BlobClient> clients;

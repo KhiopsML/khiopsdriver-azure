@@ -13,8 +13,8 @@ namespace az
 	class FileReader : public FileStream
 	{
 	public:
-		virtual size_t Read(void* dest, size_t size, size_t count) = 0;
-		virtual void Seek(long long int offset, int whence) = 0;
+		virtual size_t Read(void* dest, size_t nSize, size_t nCount) = 0;
+		virtual void Seek(long long int nOffset, int nOrigin) = 0;
 
 	protected:
 		FileReader();

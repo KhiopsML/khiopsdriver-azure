@@ -21,7 +21,7 @@ namespace az
 	{
 	}
 
-	size_t BlobWriter::Write(const void* source, size_t size, size_t count)
+	size_t BlobWriter::Write(const void* source, size_t nSize, size_t nCount)
 	{
 		// TODO: Optimize this function
 		vector<Azure::Storage::Blobs::Models::BlobBlock> blocks;
@@ -35,7 +35,7 @@ namespace az
 		}
 		vector<string> blockIds;
 		transform(blocks.begin(), blocks.end(), back_inserter(blockIds), [](const auto& block) { return block.Name; });
-		size_t nToWrite = size * count;
+		size_t nToWrite = nSize * nCount;
 		size_t nWritten = 0;
 		while (nToWrite > 0)
 		{
