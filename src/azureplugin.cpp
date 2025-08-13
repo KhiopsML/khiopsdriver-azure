@@ -376,8 +376,6 @@ long long int driver_fread(void* dest, size_t size, size_t count, void* handle)
 
 int driver_fseek(void* handle, long long int offset, int whence)
 {
-	return -1; // TODO: Remove
-#if false
 	try
 	{
 		spdlog::debug("Seeking offset {} from {} in file with handle {}", offset, whence, handle);
@@ -385,7 +383,7 @@ int driver_fseek(void* handle, long long int offset, int whence)
 		{
 			throw NullArgError(__func__, STRINGIFY(handle));
 		}
-		driver.RetrieveFileStream(handle).Seek(offset, whence);
+		driver.RetrieveFileReader(handle)->Seek(offset, whence);
 		return nSeekSuccess;
 	}
 	catch (const exception& exc)
@@ -398,7 +396,6 @@ int driver_fseek(void* handle, long long int offset, int whence)
 		errorLogger.LogError(sCaughtNonExceptionValue);
 		return nSeekFailure;
 	}
-#endif
 }
 /*{
 	KH_AZ_CONNECTION_ERROR(kBadSize);
