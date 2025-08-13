@@ -19,6 +19,7 @@ namespace az
 	public:
 		BlobWriter(Azure::Storage::Blobs::BlobClient&& client);
 
+		void Close() override;
 		size_t Write(const void* source, size_t size, size_t count) override;
 
 	private:

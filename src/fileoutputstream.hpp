@@ -13,7 +13,7 @@ namespace az
 	class FileOutputStream : public FileStream
 	{
 	public:
-		void Close() override;
+		virtual void Close() = 0;
 		virtual size_t Write(const void* source, size_t size, size_t count) = 0;
 		void Flush();
 

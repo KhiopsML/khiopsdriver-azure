@@ -394,8 +394,6 @@ void* driver_fopen(const char* sUrl, char mode)
 }*/
 int driver_fclose(void* handle)
 {
-	return nCloseSuccess; // TODO: Implement real function
-#if false
 	try
 	{
 		spdlog::debug("Closing file with handle {}", handle);
@@ -403,7 +401,7 @@ int driver_fclose(void* handle)
 		{
 			throw NullArgError(__func__, STRINGIFY(handle));
 		}
-		driver.RetrieveFileStream(handle).Close();
+		driver.RetrieveFileStream(handle)->Close();
 		return nCloseSuccess;
 	}
 	catch (const exception& exc)
@@ -416,7 +414,6 @@ int driver_fclose(void* handle)
 		errorLogger.LogError(sCaughtNonExceptionValue);
 		return nCloseFailure;
 	}
-#endif
 }
 /*{
 	assert(driver_isConnected());

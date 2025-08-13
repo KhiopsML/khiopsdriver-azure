@@ -91,6 +91,20 @@ namespace az
 		}
 	}
 
+	const unique_ptr<FileStream>& Driver::RetrieveFileStream(const FileStreamHandle& handle) const
+	{
+		auto rIt = fileReaders.find(handle);
+		if (rIt != fileReaders.end())
+		{
+			return (const unique_ptr<FileStream>&)rIt->second;
+		}
+		auto wIt = fileWriters.find(handle);
+		if (wIt != fileWriters.end())
+		{
+			return (const unique_ptr<FileStream>&)wIt->second;
+		}
+	}
+
 	const unique_ptr<FileReader>& Driver::RetrieveFileReader(const FileStreamHandle& handle) const
 	{
 		return fileReaders.at(handle);

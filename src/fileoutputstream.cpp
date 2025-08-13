@@ -2,11 +2,6 @@
 
 namespace az
 {
-	void FileOutputStream::Close()
-	{
-		// TODO: Implement
-	}
-
 	void FileOutputStream::Flush()
 	{
 		// TODO: Implement

@@ -17,6 +17,10 @@ namespace az
 	{
 	}
 
+	void BlobWriter::Close()
+	{
+	}
+
 	size_t BlobWriter::Write(const void* source, size_t size, size_t count)
 	{
 		// TODO: Optimize this function

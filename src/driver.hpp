@@ -42,6 +42,7 @@ namespace az
 		bool IsConnected() const;
 
 		std::unique_ptr<FileAccessor> CreateFileAccessor(const std::string& url);
+		const std::unique_ptr<FileStream>& RetrieveFileStream(const FileStreamHandle& handle) const;
 		const std::unique_ptr<FileReader>& RetrieveFileReader(const FileStreamHandle& handle) const;
 		const std::unique_ptr<FileWriter>& RetrieveFileWriter(const FileStreamHandle& handle) const;
 #if false
