@@ -304,7 +304,6 @@ void* driver_fopen(const char* sUrl, char mode)
 			return (void*)driver.CreateFileAccessor(sUrl)->OpenForReading()->GetHandle();
 		case 'w':
 			return (void*)driver.CreateFileAccessor(sUrl)->OpenForWriting()->GetHandle();
-			return nullptr;
 		case 'a':
 			// TODO: Implement
 			return nullptr;
