@@ -15,8 +15,8 @@ using namespace std;
 using namespace az;
 
 int CopyFile(const char *file_name_input, const char *file_name_output, int nBufferSize);
-int copyFileWithFseek(const char *file_name_input, const char *file_name_output, int nBufferSize);
-int copyFileWithAppend(const char *file_name_input, const char *file_name_output, int nBufferSize);
+int CopyFileWithFseek(const char *file_name_input, const char *file_name_output, int nBufferSize);
+int CopyFileWithAppend(const char *file_name_input, const char *file_name_output, int nBufferSize);
 int removeFile(const char *filename);
 int compareSize(const char *file_name_output, long long int filesize);
 
@@ -142,7 +142,7 @@ int CopyFile(const char *sInputFileUrl, const char *sOutputFileUrl, int nBufferS
 }
 
 // Copy file_name_input to file_name_output by steps of 1Kb by using fseek before each read
-int copyFileWithFseek(const char *sInputFileUrl, const char *sOutputFileUrl, int nBufferSize)
+int CopyFileWithFseek(const char *sInputFileUrl, const char *sOutputFileUrl, int nBufferSize)
 {
 	// Opens for read
 	void *fileinput = driver_fopen(sInputFileUrl, 'r');
@@ -196,7 +196,7 @@ int copyFileWithFseek(const char *sInputFileUrl, const char *sOutputFileUrl, int
 }
 
 // Copy file_name_input to file_name_output by steps of 1Kb
-int copyFileWithAppend(const char *sInputFileUrl, const char *sOutputFileUrl, int nBufferSize)
+int CopyFileWithAppend(const char *sInputFileUrl, const char *sOutputFileUrl, int nBufferSize)
 {
 	// Make sure output file doesn't exist
 	driver_remove(sOutputFileUrl);
