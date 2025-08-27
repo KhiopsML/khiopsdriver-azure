@@ -32,8 +32,8 @@ namespace az
 			{
 				std::make_shared<Azure::Identity::EnvironmentCredential>(), // for Client ID + Client Secret or Certificate environment variables
 				std::make_shared<Azure::Identity::WorkloadIdentityCredential>(),
-				std::make_shared<Azure::Identity::AzureCliCredential>(),
-				std::make_shared<Azure::Identity::ManagedIdentityCredential>()
+				std::make_shared<Azure::Identity::ManagedIdentityCredential>(),
+				std::make_shared<Azure::Identity::AzureCliCredential>()
 			}
 		);
 	}
