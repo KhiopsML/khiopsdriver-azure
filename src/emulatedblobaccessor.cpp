@@ -1,4 +1,5 @@
 #include "emulatedblobaccessor.hpp"
+#include <sstream>
 #include <regex>
 #include "exception.hpp"
 #include "util/connstring.hpp"

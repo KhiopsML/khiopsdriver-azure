@@ -22,8 +22,8 @@ namespace az
 		virtual bool Exists() const = 0;
 		virtual size_t GetSize() const = 0;
 		virtual const std::unique_ptr<FileReader>& OpenForReading() const = 0;
-		virtual const std::unique_ptr<FileWriter>& OpenForWriting() const = 0;
-		//virtual FileStream OpenForAppending() const = 0;
+		virtual const std::unique_ptr<FileOutputStream>& OpenForWriting() const = 0;
+		virtual const std::unique_ptr<FileOutputStream>& OpenForAppending() const = 0;
 		virtual void Remove() const = 0;
 		virtual void MkDir() const = 0;
 		virtual void RmDir() const = 0;

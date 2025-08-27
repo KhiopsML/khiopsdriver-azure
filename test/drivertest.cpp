@@ -66,17 +66,9 @@ void EndToEndTest(string sInputUrl, string sOutputUrl, string sLocalFilePath, si
 	size_t nInputFileSize = driver_getFileSize(sInputUrl.c_str());
 	cout << "Size of " << sInputUrl << " is " << nInputFileSize << endl;
 
-	const vector<pair<string, int (*)(const char*, const char*, int)>> CopyFunctions =
+	for (const auto& Copy : {CopyFile, CopyFileWithFseek, CopyFileWithAppend})
 	{
-		make_pair("standard", CopyFile),
-		make_pair("fseek", copyFileWithFseek),
-		make_pair("append", copyFileWithAppend)
-	};
-
-	for (const auto& CopyFunction : CopyFunctions)
-	{
-		cout << "Copy (" << CopyFunction.first << ") " << sInputUrl << " to " << sOutputUrl << endl;
-		ASSERT_EQ(CopyFunction.second(sInputUrl.c_str(), sOutputUrl.c_str(), nBufferSize), nSuccess) << "failed to copy file";
+		ASSERT_EQ(Copy(sInputUrl.c_str(), sOutputUrl.c_str(), nBufferSize), nSuccess) << "failed to copy file";
 		ASSERT_EQ(compareSize(sOutputUrl.c_str(), nInputFileSize), nSuccess) << "input file and output file sizes are different";
 		driver_remove(sOutputUrl.c_str());
 		ASSERT_EQ(driver_fileExists(sOutputUrl.c_str()), nFalse) << "failed to remove newly created file";
@@ -93,6 +85,7 @@ void EndToEndTest(string sInputUrl, string sOutputUrl, string sLocalFilePath, si
 // Copy file_name_input to file_name_output by steps of 1Kb
 int CopyFile(const char *sInputFileUrl, const char *sOutputFileUrl, int nBufferSize)
 {
+	cout << "Standard copy of " << sInputFileUrl << " to " << sOutputFileUrl << endl;
 	// Opens for read
 	void *fileinput = driver_fopen(sInputFileUrl, 'r');
 	if (fileinput == NULL)
@@ -144,6 +137,7 @@ int CopyFile(const char *sInputFileUrl, const char *sOutputFileUrl, int nBufferS
 // Copy file_name_input to file_name_output by steps of 1Kb by using fseek before each read
 int CopyFileWithFseek(const char *sInputFileUrl, const char *sOutputFileUrl, int nBufferSize)
 {
+	cout << "FSeek copy of " << sInputFileUrl << " to " << sOutputFileUrl << endl;
 	// Opens for read
 	void *fileinput = driver_fopen(sInputFileUrl, 'r');
 	if (fileinput == NULL)
@@ -198,6 +192,7 @@ int CopyFileWithFseek(const char *sInputFileUrl, const char *sOutputFileUrl, int
 // Copy file_name_input to file_name_output by steps of 1Kb
 int CopyFileWithAppend(const char *sInputFileUrl, const char *sOutputFileUrl, int nBufferSize)
 {
+	cout << "Append copy of " << sInputFileUrl << " to " << sOutputFileUrl << endl;
 	// Make sure output file doesn't exist
 	driver_remove(sOutputFileUrl);
 

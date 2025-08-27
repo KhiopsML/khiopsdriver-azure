@@ -73,7 +73,7 @@ set(SourceList
     util/env.hpp util/env.cpp
     util/connstring.hpp util/connstring.cpp
     util/glob.hpp util/glob.cpp
-    exception.hpp
+    exception.hpp exception.cpp
     returnval.hpp
     logging.hpp logging.cpp
     errorlogger.hpp errorlogger.cpp
@@ -92,6 +92,7 @@ set(SourceList
     fileappender.hpp fileappender.cpp
     blobreader.hpp blobreader.cpp
     blobwriter.hpp blobwriter.cpp
+    blobappender.hpp blobappender.cpp
     sharereader.hpp
     sharewriter.hpp
     fileoutputstream.hpp fileoutputstream.cpp

@@ -9,6 +9,7 @@
 #include "blobpathresolve.hpp"
 #include "blobreader.hpp"
 #include "blobwriter.hpp"
+#include "blobappender.hpp"
 
 using namespace std;
 
@@ -53,9 +54,14 @@ namespace az
 		return RegisterReader(make_unique<BlobReader>(move(blobs)));
 	}
 
-	const unique_ptr<FileWriter>& BlobAccessor::OpenForWriting() const
+	const unique_ptr<FileOutputStream>& BlobAccessor::OpenForWriting() const
 	{
-		return RegisterWriter(make_unique<BlobWriter>(move(GetBlobClient())));
+		return (const unique_ptr<FileOutputStream>&)RegisterWriter(make_unique<BlobWriter>(move(GetBlobClient())));
+	}
+
+	const unique_ptr<FileOutputStream>& BlobAccessor::OpenForAppending() const
+	{
+		return (const unique_ptr<FileOutputStream>&)RegisterAppender(make_unique<BlobAppender>(move(GetBlobClient())));
 	}
 
 	void BlobAccessor::Remove() const

@@ -1,4 +1,4 @@
-#include "blobwriter.hpp"
+#include "blobappender.hpp"
 #include <algorithm>
 #include <iterator>
 #include <sstream>
@@ -12,17 +12,16 @@ using namespace std;
 
 namespace az
 {
-	BlobWriter::BlobWriter(Azure::Storage::Blobs::BlobClient&& client):
+	BlobAppender::BlobAppender(Azure::Storage::Blobs::BlobClient&& client):
 		client(client.AsBlockBlobClient())
 	{
-		this->client.CommitBlockList({});
 	}
 
-	void BlobWriter::Close()
+	void BlobAppender::Close()
 	{
 	}
 
-	size_t BlobWriter::Write(const void* source, size_t nSize, size_t nCount)
+	size_t BlobAppender::Write(const void* source, size_t nSize, size_t nCount)
 	{
 		// TODO: Optimize this function
 		vector<Azure::Storage::Blobs::Models::BlobBlock> blocks;

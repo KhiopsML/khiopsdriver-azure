@@ -1,4 +1,5 @@
 #include "cloudshareaccessor.hpp"
+#include <sstream>
 #include <regex>
 #include "exception.hpp"
 #include "util/string.hpp"

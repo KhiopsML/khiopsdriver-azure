@@ -16,11 +16,12 @@ namespace az
 	class InvalidFileStreamModeError;
 	class InvalidSeekOriginError;
 	class InvalidSeekOffsetError;
+	class FileStreamNotFoundError;
 }
 
 #include <exception>
 #include <string>
-#include <sstream>
+#include "filestreamhandle.hpp"
 
 namespace az
 {
@@ -31,15 +32,9 @@ namespace az
 	class NullArgError : public Error
 	{
 	public:
-		NullArgError(const char* sFuncname, const char* sArgname):
-			sMessage((std::ostringstream() << "error passing null pointer as '" << sArgname << "' argument to function '" << sFuncname << "'").str())
-		{
-		}
+		NullArgError(const char* sFuncname, const char* sArgname);
 
-		virtual const char* what() const noexcept override
-		{
-			return sMessage.c_str();
-		}
+		virtual const char* what() const noexcept override;
 
 	private:
 		std::string sMessage;
@@ -48,15 +43,9 @@ namespace az
 	class InvalidDomainError : public Error
 	{
 	public:
-		InvalidDomainError(const std::string& sDomain):
-			sMessage((std::ostringstream() << "invalid domain: " << sDomain).str())
-		{
-		}
+		InvalidDomainError(const std::string& sDomain);
 
-		virtual const char* what() const noexcept override
-		{
-			return sMessage.c_str();
-		}
+		virtual const char* what() const noexcept override;
 
 	private:
 		std::string sMessage;
@@ -65,42 +54,27 @@ namespace az
 	class NotConnectedError : public Error
 	{
 	public:
-		virtual const char* what() const noexcept override
-		{
-			return "not connected";
-		}
+		virtual const char* what() const noexcept override;
 	};
 
 	class IncompatibleConnectionStringError : public Error
 	{
 	public:
-		virtual const char* what() const noexcept override
-		{
-			return "connection string is not valid for the provided URL";
-		}
+		virtual const char* what() const noexcept override;
 	};
 
 	class NetworkError : public Error
 	{
 	public:
-		virtual const char* what() const noexcept override
-		{
-			return "failed to communicate with the storage server";
-		}
+		virtual const char* what() const noexcept override;
 	};
 
 	class InvalidUrlError : public Error
 	{
 	public:
-		InvalidUrlError(const std::string& sUrl):
-			sMessage((std::ostringstream() << "invalid URL: " << sUrl).str())
-		{
-		}
+		InvalidUrlError(const std::string& sUrl);
 
-		virtual const char* what() const noexcept override
-		{
-			return sMessage.c_str();
-		}
+		virtual const char* what() const noexcept override;
 
 	private:
 		std::string sMessage;
@@ -109,15 +83,9 @@ namespace az
 	class InvalidFileUrlPathError : public Error
 	{
 	public:
-		InvalidFileUrlPathError(const std::string& sPath):
-			sMessage((std::ostringstream() << "invalid file URL path: " << sPath).str())
-		{
-		}
+		InvalidFileUrlPathError(const std::string& sPath);
 
-		virtual const char* what() const noexcept override
-		{
-			return sMessage.c_str();
-		}
+		virtual const char* what() const noexcept override;
 
 	private:
 		std::string sMessage;
@@ -126,15 +94,9 @@ namespace az
 	class InvalidDirUrlPathError : public Error
 	{
 	public:
-		InvalidDirUrlPathError(const std::string& sPath):
-			sMessage((std::ostringstream() << "invalid directory URL path: " << sPath).str())
-		{
-		}
+		InvalidDirUrlPathError(const std::string& sPath);
 
-		virtual const char* what() const noexcept override
-		{
-			return sMessage.c_str();
-		}
+		virtual const char* what() const noexcept override;
 
 	private:
 		std::string sMessage;
@@ -143,24 +105,15 @@ namespace az
 	class GettingSizeOfDirError : public Error
 	{
 	public:
-		virtual const char* what() const noexcept override
-		{
-			return "trying to get size of directory (invalid operation)";
-		}
+		virtual const char* what() const noexcept override;
 	};
 
 	class NoFileError : public Error
 	{
 	public:
-		NoFileError(const std::string& sUrl) :
-			sMessage((std::ostringstream() << "no file exists at URL " << sUrl).str())
-		{
-		}
+		NoFileError(const std::string& sUrl);
 
-		virtual const char* what() const noexcept override
-		{
-			return sMessage.c_str();
-		}
+		virtual const char* what() const noexcept override;
 
 	private:
 		std::string sMessage;
@@ -169,15 +122,9 @@ namespace az
 	class DeletionError : public Error
 	{
 	public:
-		DeletionError(const std::string& sUrl) :
-			sMessage((std::ostringstream() << "failed to delete " << sUrl).str())
-		{
-		}
+		DeletionError(const std::string& sUrl);
 
-		virtual const char* what() const noexcept override
-		{
-			return sMessage.c_str();
-		}
+		virtual const char* what() const noexcept override;
 
 	private:
 		std::string sMessage;
@@ -186,15 +133,9 @@ namespace az
 	class InvalidFileStreamModeError : public Error
 	{
 	public:
-		InvalidFileStreamModeError(const std::string& sUrl, char mode) :
-			sMessage((std::ostringstream() << "tried to open file " << sUrl << " with invalid mode " << mode).str())
-		{
-		}
+		InvalidFileStreamModeError(const std::string& sUrl, char mode);
 
-		virtual const char* what() const noexcept override
-		{
-			return sMessage.c_str();
-		}
+		virtual const char* what() const noexcept override;
 
 	private:
 		std::string sMessage;
@@ -203,15 +144,9 @@ namespace az
 	class InvalidSeekOriginError : public Error
 	{
 	public:
-		InvalidSeekOriginError(int nOrigin) :
-			sMessage((std::ostringstream() << "tried to seek from invalid origin '" << nOrigin << "'").str())
-		{
-		}
+		InvalidSeekOriginError(int nOrigin);
 
-		virtual const char* what() const noexcept override
-		{
-			return sMessage.c_str();
-		}
+		virtual const char* what() const noexcept override;
 
 	private:
 		std::string sMessage;
@@ -220,15 +155,20 @@ namespace az
 	class InvalidSeekOffsetError : public Error
 	{
 	public:
-		InvalidSeekOffsetError(int nOffset, int nOrigin) :
-			sMessage((std::ostringstream() << "tried to seek " << nOffset << " bytes from origin '" << nOrigin << "' which is outside the file").str())
-		{
-		}
+		InvalidSeekOffsetError(int nOffset, int nOrigin);
 
-		virtual const char* what() const noexcept override
-		{
-			return sMessage.c_str();
-		}
+		virtual const char* what() const noexcept override;
+
+	private:
+		std::string sMessage;
+	};
+
+	class FileStreamNotFoundError : public Error
+	{
+	public:
+		FileStreamNotFoundError(const FileStreamHandle& handle);
+
+		virtual const char* what() const noexcept override;
 
 	private:
 		std::string sMessage;

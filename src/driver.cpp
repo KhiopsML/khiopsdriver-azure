@@ -93,34 +93,19 @@ namespace az
 
 	const unique_ptr<FileStream>& Driver::RetrieveFileStream(const FileStreamHandle& handle) const
 	{
-		auto rIt = fileReaders.find(handle);
-		if (rIt != fileReaders.end())
-		{
-			return (const unique_ptr<FileStream>&)rIt->second;
-		}
-		auto wIt = fileWriters.find(handle);
-		if (wIt != fileWriters.end())
-		{
-			return (const unique_ptr<FileStream>&)wIt->second;
-		}
+		return RetrieveFileStream(handle, true, true, true);
 	}
 
 	const unique_ptr<FileReader>& Driver::RetrieveFileReader(const FileStreamHandle& handle) const
 	{
-		return fileReaders.at(handle);
+		return (const unique_ptr<FileReader>&)RetrieveFileStream(handle, true, false, false);
 	}
 
-	const unique_ptr<FileWriter>& Driver::RetrieveFileWriter(const FileStreamHandle& handle) const
+	const unique_ptr<FileOutputStream>& Driver::RetrieveFileOutputStream(const FileStreamHandle& handle) const
 	{
-		return fileWriters.at(handle);
+		return (const unique_ptr<FileOutputStream>&)RetrieveFileStream(handle, false, true, true);
 	}
 
-#if false
-	const unique_ptr<FileAppender>& Driver::RetrieveFileAppender(const FileStreamHandle& handle) const
-	{
-
-	}
-#endif
 	void Driver::CheckConnected() const
 	{
 		if (!IsConnected())
@@ -147,5 +132,34 @@ namespace az
 	const unique_ptr<FileAppender>& Driver::RegisterAppender(unique_ptr<FileAppender> appenderPtr)
 	{
 		return fileAppenders[appenderPtr->GetHandle()] = move(appenderPtr);
+	}
+
+	const unique_ptr<FileStream>& Driver::RetrieveFileStream(const FileStreamHandle& handle, bool bSearchReaders, bool bSearchWriters, bool bSearchAppenders) const
+	{
+		if (bSearchReaders)
+		{
+			auto rIt = fileReaders.find(handle);
+			if (rIt != fileReaders.end())
+			{
+				return (const unique_ptr<FileStream>&)rIt->second;
+			}
+		}
+		if (bSearchWriters)
+		{
+			auto wIt = fileWriters.find(handle);
+			if (wIt != fileWriters.end())
+			{
+				return (const unique_ptr<FileStream>&)wIt->second;
+			}
+		}
+		if (bSearchAppenders)
+		{
+			auto aIt = fileAppenders.find(handle);
+			if (aIt != fileAppenders.end())
+			{
+				return (const unique_ptr<FileStream>&)aIt->second;
+			}
+		}
+		throw FileStreamNotFoundError(handle);
 	}
 }

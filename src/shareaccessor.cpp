@@ -47,17 +47,24 @@ namespace az
 		}
 	}
 
-	unique_ptr<FileReader>& ShareAccessor::OpenForReading() const
+	const unique_ptr<FileReader>& ShareAccessor::OpenForReading() const
 	{
 		// TODO: Implement
 		auto r = unique_ptr<FileReader>();
 		return r;
 	}
 
-	unique_ptr<FileWriter>& ShareAccessor::OpenForWriting() const
+	const unique_ptr<FileOutputStream>& ShareAccessor::OpenForWriting() const
 	{
 		// TODO: Implement
-		auto r = unique_ptr<FileWriter>();
+		auto r = unique_ptr<FileOutputStream>();
+		return r;
+	}
+
+	const unique_ptr<FileOutputStream>& ShareAccessor::OpenForAppending() const
+	{
+		// TODO: Implement
+		auto r = unique_ptr<FileOutputStream>();
 		return r;
 	}
 
