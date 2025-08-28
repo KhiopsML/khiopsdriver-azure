@@ -80,6 +80,8 @@ void EndToEndTest(string sInputUrl, string sOutputUrl, string sLocalFilePath, si
 	cout << "Copy from local " << sLocalFilePath << " to " << sOutputUrl << endl;
 	ASSERT_EQ(driver_copyFromLocal(sLocalFilePath.c_str(), sOutputUrl.c_str()), nSuccess) << "failed to copy file";
 	ASSERT_EQ(driver_fileExists(sOutputUrl.c_str()), nTrue) << sOutputUrl << " is missing";
+	driver_remove(sOutputUrl.c_str());
+	ASSERT_EQ(driver_fileExists(sOutputUrl.c_str()), nFalse) << "failed to remove newly created file";
 }
 
 // Copy file_name_input to file_name_output by steps of 1Kb
