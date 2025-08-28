@@ -53,12 +53,7 @@
         {
             "name": "test-ninja-vcpkg",
             "configurePreset": "ninja-multi-vcpkg",
-            "hidden": true,
-            "filter": {
-                "exclude": {
-                    "name": "AzureDriverTest|BasicTest.RmDir|BasicTest.MkDir|StorageTest.GetFileSizeInvalidCredentialsFailure|AdvancedStorageTest"
-                }
-            }
+            "hidden": true
         },
         {
             "name": "test-debug",
