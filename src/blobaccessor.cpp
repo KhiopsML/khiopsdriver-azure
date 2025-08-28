@@ -98,7 +98,7 @@ namespace az
 		return 5LL * 1024LL * 1024LL * 1024LL * 1024LL;
 	}
 
-	void BlobAccessor::CopyTo(const Azure::Core::Url& destUrl) const
+	void BlobAccessor::CopyTo(const string& destUrl) const
 	{
 		// TODO: Implement
 	}

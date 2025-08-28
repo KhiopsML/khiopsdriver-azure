@@ -30,7 +30,7 @@ namespace az
 		void MkDir() const override;
 		void RmDir() const override;
 		size_t GetFreeDiskSpace() const override;
-		void CopyTo(const Azure::Core::Url& destUrl) const override;
+		void CopyTo(const std::string& destUrl) const override;
 		void CopyFrom(const Azure::Core::Url& sourceUrl) const override;
 
 	protected:

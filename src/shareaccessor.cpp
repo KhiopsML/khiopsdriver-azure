@@ -89,7 +89,7 @@ namespace az
 		return 0;
 	}
 
-	void ShareAccessor::CopyTo(const Azure::Core::Url& destUrl) const
+	void ShareAccessor::CopyTo(const string& destUrl) const
 	{
 		// TODO: Implement
 	}
