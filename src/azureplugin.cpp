@@ -607,7 +607,7 @@ int driver_copyFromLocal(const char* sSourceUrl, const char* sDestUrl)
 		{
 			throw NullArgError(__func__, STRINGIFY(sDestUrl));
 		}
-		driver.CreateFileAccessor(sDestUrl)->CopyFrom(Azure::Core::Url(sSourceUrl));
+		driver.CreateFileAccessor(sDestUrl)->CopyFrom(sSourceUrl);
 		return nSuccess;
 	}
 	catch (const exception& exc)

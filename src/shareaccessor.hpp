@@ -28,7 +28,7 @@ namespace az
 		void RmDir() const override;
 		size_t GetFreeDiskSpace() const override;
 		void CopyTo(const std::string& destUrl) const override;
-		void CopyFrom(const Azure::Core::Url& sourceUrl) const override;
+		void CopyFrom(const std::string& sourceUrl) const override;
 
 	protected:
 		ShareAccessor(const Azure::Core::Url& url, const std::function<const std::unique_ptr<FileReader>& (std::unique_ptr<FileReader>)>& registerReader, const std::function<const std::unique_ptr<FileWriter>& (std::unique_ptr<FileWriter>)>& registerWriter, const std::function<const std::unique_ptr<FileAppender>& (std::unique_ptr<FileAppender>)>& registerAppender);

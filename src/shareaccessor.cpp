@@ -94,7 +94,7 @@ namespace az
 		// TODO: Implement
 	}
 
-	void ShareAccessor::CopyFrom(const Azure::Core::Url& sourceUrl) const
+	void ShareAccessor::CopyFrom(const string& sourceUrl) const
 	{
 		// TODO: Implement
 	}

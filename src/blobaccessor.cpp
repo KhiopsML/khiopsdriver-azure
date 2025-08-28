@@ -100,10 +100,10 @@ namespace az
 
 	void BlobAccessor::CopyTo(const string& destUrl) const
 	{
-		// TODO: Implement
+		GetBlobClient().
 	}
 
-	void BlobAccessor::CopyFrom(const Azure::Core::Url& sourceUrl) const
+	void BlobAccessor::CopyFrom(const string& sourceUrl) const
 	{
 		// TODO: Implement
 	}

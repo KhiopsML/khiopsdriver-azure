@@ -29,7 +29,7 @@ namespace az
 		virtual void RmDir() const = 0;
 		virtual size_t GetFreeDiskSpace() const = 0;
 		virtual void CopyTo(const std::string& destUrl) const = 0;
-		virtual void CopyFrom(const Azure::Core::Url& sourceUrl) const = 0;
+		virtual void CopyFrom(const std::string& sourceUrl) const = 0;
 
 		virtual ~FileAccessor() = 0;
 
