@@ -104,7 +104,7 @@ namespace az
 		const auto& reader = OpenForReading();
 		constexpr size_t nBufferSize = 4ULL * 1024 * 1024; // TODO
 		char* buffer = new char[nBufferSize];
-		size_t nRead = 0;
+		size_t nRead;
 		ofstream ofs(destUrl, ios::binary);
 
 		while ((nRead = reader->Read(buffer, 1, nBufferSize)) > 0)
@@ -117,7 +117,24 @@ namespace az
 
 	void BlobAccessor::CopyFrom(const string& sourceUrl) const
 	{
-		// TODO: Implement
+		const auto& writer = OpenForWriting();
+		constexpr size_t nBufferSize = 4ULL * 1024 * 1024; // TODO
+		char* buffer = new char[nBufferSize];
+		size_t nRead;
+		ifstream ifs(sourceUrl, ios::binary);
+
+		for (;;)
+		{
+			ifs.read(buffer, nBufferSize);
+			nRead = ifs.gcount();
+			if (nRead == 0)
+			{
+				break;
+			}
+			writer->Write(buffer, 1, nRead);
+		};
+
+		delete[] buffer;
 	}
 
 	BlobAccessor::BlobAccessor(const Azure::Core::Url& url, const function<const unique_ptr<FileReader>& (unique_ptr<FileReader>)>& registerReader, const function<const unique_ptr<FileWriter>& (unique_ptr<FileWriter>)>& registerWriter, const function<const unique_ptr<FileAppender>& (unique_ptr<FileAppender>)>& registerAppender) :
