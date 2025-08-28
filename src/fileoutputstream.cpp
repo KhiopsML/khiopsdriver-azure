@@ -4,7 +4,7 @@ namespace az
 {
 	void FileOutputStream::Flush()
 	{
-		// TODO: Implement
+		// Do nothing
 	}
 
 	FileOutputStream::FileOutputStream() :
