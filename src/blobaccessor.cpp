@@ -2,6 +2,7 @@
 #include <memory>
 #include <numeric>
 #include <algorithm>
+#include <fstream>
 #include <azure/core/http/transport.hpp>
 #include "util/connstring.hpp"
 #include "util/string.hpp"
@@ -100,7 +101,18 @@ namespace az
 
 	void BlobAccessor::CopyTo(const string& destUrl) const
 	{
-		GetBlobClient().
+		const auto& reader = OpenForReading();
+		constexpr size_t nBufferSize = 4ULL * 1024 * 1024; // TODO
+		char* buffer = new char[nBufferSize];
+		size_t nRead = 0;
+		ofstream ofs(destUrl, ios::binary);
+
+		while ((nRead = reader->Read(buffer, 1, nBufferSize)) > 0)
+		{
+			ofs.write(buffer, nRead);
+		}
+
+		delete[] buffer;
 	}
 
 	void BlobAccessor::CopyFrom(const string& sourceUrl) const
