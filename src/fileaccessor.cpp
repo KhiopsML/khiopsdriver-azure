@@ -10,11 +10,11 @@ namespace az
 	}
 
 	FileAccessor::FileAccessor(const Azure::Core::Url& url, const function<const unique_ptr<FileReader>& (unique_ptr<FileReader>)>& registerReader, const function<const unique_ptr<FileWriter>& (unique_ptr<FileWriter>)>& registerWriter, const function<const unique_ptr<FileAppender>& (unique_ptr<FileAppender>)>& registerAppender):
-		url(url),
-		bHasDirUrl(EndsWith(url.GetPath(), "/")),
 		RegisterReader(registerReader),
 		RegisterWriter(registerWriter),
-		RegisterAppender(registerAppender)
+		RegisterAppender(registerAppender),
+		url(url),
+		bHasDirUrl(EndsWith(url.GetPath(), "/"))
 	{
 	}
 
