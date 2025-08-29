@@ -12,9 +12,9 @@ namespace az
 		vector<string> fragments;
 		size_t nOffset = 0;
 		size_t nDelimPos;
-		for (size_t nSplits = 0; nMaxSplits == -1 || nSplits <= nMaxSplits; nSplits++)
+		for (size_t nSplits = 0; nMaxSplits == -1 || nSplits <= static_cast<size_t>(nMaxSplits); nSplits++)
 		{
-			nDelimPos = nSplits == nMaxSplits ? string::npos : str.find(delim, nOffset);
+			nDelimPos = nSplits == static_cast<size_t>(nMaxSplits) ? string::npos : str.find(delim, nOffset);
 			fragments.push_back(move(nOffset == nStrLen ? "" : str.substr(nOffset, nDelimPos - nOffset)));
 			if (nDelimPos == string::npos)
 			{
