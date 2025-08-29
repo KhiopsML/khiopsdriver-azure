@@ -132,7 +132,7 @@ namespace az
 				break;
 			}
 			writer->Write(buffer, 1, nRead);
-		};
+		}
 
 		delete[] buffer;
 	}
