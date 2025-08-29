@@ -16,6 +16,10 @@ namespace az
 	{
 	}
 
+	BlobReader::~BlobReader()
+	{
+	}
+
 	void BlobReader::Close()
 	{
 	}

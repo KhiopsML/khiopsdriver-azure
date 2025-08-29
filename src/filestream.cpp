@@ -2,6 +2,10 @@
 
 namespace az
 {
+	FileStream::~FileStream()
+	{
+	}
+
 	const FileStreamHandle& FileStream::GetHandle() const
 	{
 		return handle;
