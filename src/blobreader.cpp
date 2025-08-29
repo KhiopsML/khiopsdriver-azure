@@ -1,5 +1,5 @@
 #include "blobreader.hpp"
-#include <cstdio>
+#include <ios>
 #include <memory>
 #include <azure/core/io/body_stream.hpp>
 #include "blobfileinfo.hpp"
@@ -47,11 +47,11 @@ namespace az
 
 		switch (nOrigin)
 		{
-		case SEEK_SET:
+		case ios::beg:
 			nSignedDest = nOffset;
-		case SEEK_CUR:
+		case ios::cur:
 			nSignedDest = ((long long int)nCurrentPos) + nOffset;
-		case SEEK_END:
+		case ios::end:
 			nSignedDest = nTotalFileSize - nOffset;
 		default:
 			throw InvalidSeekOriginError(nOrigin);

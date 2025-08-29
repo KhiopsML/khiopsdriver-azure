@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <assert.h>
+#include <ios>
 #include <cstdio>
 #include <fstream>
 #include <iostream>
@@ -382,7 +383,22 @@ int driver_fseek(void* handle, long long int offset, int whence)
 		{
 			throw NullArgError(__func__, STRINGIFY(handle));
 		}
-		driver.RetrieveFileReader(handle)->Seek(offset, whence);
+		int nOrigin;
+		switch (whence)
+		{
+		case 0:
+			nOrigin = ios::beg;
+			break;
+		case 1:
+			nOrigin = ios::cur;
+			break;
+		case 2:
+			nOrigin = ios::end;
+			break;
+		default:
+			throw InvalidSeekOriginError(whence);
+		}
+		driver.RetrieveFileReader(handle)->Seek(offset, nOrigin);
 		return nSeekSuccess;
 	}
 	catch (const exception& exc)
