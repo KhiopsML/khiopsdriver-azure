@@ -53,7 +53,7 @@ namespace az
 
 	Azure::Storage::Files::Shares::ShareDirectoryClient CloudShareAccessor::GetDirClient() const
 	{
-		return Azure::Storage::Files::Shares::ShareDirectoryClient(GetUrl().GetAbsoluteUrl(), GetCredential());
+		return GetShareClient().GetRootDirectoryClient();
 	}
 
 	Azure::Storage::Files::Shares::ShareFileClient CloudShareAccessor::GetFileClient() const
