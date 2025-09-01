@@ -8,6 +8,7 @@
 #include "util/string.hpp"
 #include "util/env.hpp"
 #include "blobpathresolve.hpp"
+#include "blobfileinfo.hpp"
 #include "blobreader.hpp"
 #include "blobwriter.hpp"
 #include "blobappender.hpp"
