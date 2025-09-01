@@ -1,7 +1,6 @@
 #pragma once
 
 class StorageTest;
-struct AdvancedStorageTestInput;
 class AdvancedStorageTest;
 
 #include <string>
