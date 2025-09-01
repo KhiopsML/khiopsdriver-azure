@@ -1,6 +1,7 @@
 #include "cloudshareaccessor.hpp"
 #include <sstream>
 #include <regex>
+#include <azure/storage/files/shares/share_options.hpp>
 #include "exception.hpp"
 #include "util/string.hpp"
 
@@ -48,7 +49,9 @@ namespace az
 
 	Azure::Storage::Files::Shares::ShareClient CloudShareAccessor::GetShareClient() const
 	{
-		return Azure::Storage::Files::Shares::ShareClient(GetShareUrl(), GetCredential());
+		Azure::Storage::Files::Shares::ShareClientOptions opts;
+		opts.ShareTokenIntent = Azure::Storage::Files::Shares::Models::ShareTokenIntent::Backup;
+		return Azure::Storage::Files::Shares::ShareClient(GetShareUrl(), GetCredential(), opts);
 	}
 
 	Azure::Storage::Files::Shares::ShareDirectoryClient CloudShareAccessor::GetDirClient() const
