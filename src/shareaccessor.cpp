@@ -4,6 +4,7 @@
 #include <numeric>
 #include "exception.hpp"
 #include "sharepathresolve.hpp"
+#include "sharefileinfo.hpp"
 
 using namespace std;
 
@@ -38,12 +39,7 @@ namespace az
 			{
 				throw NoFileError(GetUrl().GetAbsoluteUrl());
 			}
-			return accumulate(files.begin(), files.end(), 0,
-				[](size_t total, const Azure::Storage::Files::Shares::ShareFileClient& file)
-				{
-					return total + file.GetProperties().Value.FileSize;
-				}
-			);
+			return ShareFileInfo(files).GetSize();
 		}
 	}
 
@@ -103,17 +99,6 @@ namespace az
 		FileAccessor(url, registerReader, registerWriter, registerAppender)
 	{
 	}
-
-	//vector<string> ShareAccessor::ResolveUrl() const
-	//{
-	//	vector<string> path = GetPath();
-	//	return ResolveUrlRecursively(
-	//		GetDirClient(),
-	//		queue<string, deque<string>>(deque<string>(path.begin(), path.end())),
-	//		HasDirUrl(),
-	//		""
-	//	);
-	//}
 
 	vector<Azure::Storage::Files::Shares::ShareDirectoryClient> ShareAccessor::ListDirs() const
 	{
