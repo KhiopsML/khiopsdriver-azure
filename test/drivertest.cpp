@@ -6,6 +6,7 @@
 
 #include <iostream>
 #include <sstream>
+#include <tuple>
 
 #include <boost/uuid/uuid.hpp>            // uuid class
 #include <boost/uuid/uuid_generators.hpp> // generators
@@ -20,47 +21,47 @@ int CopyFileWithAppend(const char *file_name_input, const char *file_name_output
 int removeFile(const char *filename);
 int compareSize(const char *file_name_output, long long int filesize);
 
-void EndToEndTest(string sInputUrl, string sOutputUrl, string sLocalFilePath, size_t nBufferSize);
+void EndToEndTest_(string sInputUrl, string sOutputUrl, string sLocalFilePath, size_t nBufferSize);
 
-INSTANTIATE_TEST_SUITE_P(BlobAndShare, AdvancedStorageTest, testing::Values(StorageType::BLOB, StorageType::SHARE));
+INSTANTIATE_TEST_SUITE_P(BlobAndShare, EndToEndTest, testing::Values(StorageType::BLOB, StorageType::SHARE), EndToEndTest::FormatParam);
 
-TEST_P(AdvancedStorageTest, End2EndTest_SingleFile_512KB_OK)
+TEST_P(EndToEndTest, End2EndTest_SingleFile_512KB_OK)
 {
-	EndToEndTest(url.BQSomeFilePart(), url.RandomOutputFile(), sLocalFilePath, 512ULL * 1024);
+	EndToEndTest_(url.BQSomeFilePart(), url.RandomOutputFile(), sLocalFilePath, 512ULL * 1024);
 }
 
-TEST_P(AdvancedStorageTest, End2EndTest_SingleFile_2MB_OK)
+TEST_P(EndToEndTest, End2EndTest_SingleFile_2MB_OK)
 {
-	EndToEndTest(url.BQSomeFilePart(), url.RandomOutputFile(), sLocalFilePath, 2ULL * 1024 * 1024);
+	EndToEndTest_(url.BQSomeFilePart(), url.RandomOutputFile(), sLocalFilePath, 2ULL * 1024 * 1024);
 }
 
-TEST_P(AdvancedStorageTest, End2EndTest_SingleFile_512B_OK)
+TEST_P(EndToEndTest, End2EndTest_SingleFile_512B_OK)
 {
 	/* use this particular file because it is short and buffer size triggers lots of read operations */
-	EndToEndTest(url.BQShortFilePart(), url.RandomOutputFile(), sLocalFilePath, 512ULL);
+	EndToEndTest_(url.BQShortFilePart(), url.RandomOutputFile(), sLocalFilePath, 512ULL);
 }
 
-TEST_P(AdvancedStorageTest, End2EndTest_MultipartBQFile_512KB_OK)
+TEST_P(EndToEndTest, End2EndTest_MultipartBQFile_512KB_OK)
 {
-	EndToEndTest(url.BQFile(), url.RandomOutputFile(), sLocalFilePath, 512ULL * 1024);
+	EndToEndTest_(url.BQFile(), url.RandomOutputFile(), sLocalFilePath, 512ULL * 1024);
 }
 
-TEST_P(AdvancedStorageTest, End2EndTest_MultipartBQEmptyFile_512KB_OK)
+TEST_P(EndToEndTest, End2EndTest_MultipartBQEmptyFile_512KB_OK)
 {
-	EndToEndTest(url.BQEmptyFile(), url.RandomOutputFile(), sLocalFilePath, 512ULL * 1024);
+	EndToEndTest_(url.BQEmptyFile(), url.RandomOutputFile(), sLocalFilePath, 512ULL * 1024);
 }
 
-TEST_P(AdvancedStorageTest, End2EndTest_MultipartSplitFile_512KB_OK)
+TEST_P(EndToEndTest, End2EndTest_MultipartSplitFile_512KB_OK)
 {
-	EndToEndTest(url.SplitFile(), url.RandomOutputFile(), sLocalFilePath, 512ULL * 1024);
+	EndToEndTest_(url.SplitFile(), url.RandomOutputFile(), sLocalFilePath, 512ULL * 1024);
 }
 
-TEST_P(AdvancedStorageTest, End2EndTest_MultipartSubsplitFile_512KB_OK)
+TEST_P(EndToEndTest, End2EndTest_MultipartSubsplitFile_512KB_OK)
 {
-	EndToEndTest(url.MultisplitFile(), url.RandomOutputFile(), sLocalFilePath, 512ULL * 1024);
+	EndToEndTest_(url.MultisplitFile(), url.RandomOutputFile(), sLocalFilePath, 512ULL * 1024);
 }
 
-void EndToEndTest(string sInputUrl, string sOutputUrl, string sLocalFilePath, size_t nBufferSize)
+void EndToEndTest_(string sInputUrl, string sOutputUrl, string sLocalFilePath, size_t nBufferSize)
 {
 	cout << "Scheme: " << driver_getScheme() << endl;
 	cout << "Is read-only: " << driver_isReadOnly() << endl;

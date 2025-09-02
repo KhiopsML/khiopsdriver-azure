@@ -13,9 +13,22 @@ using namespace az;
 
 static bool IsEmulatedStorage();
 
-void CommonStorageTest::SetUpTestSuite()
+std::string CommonStorageTest::FormatParam(const testing::TestParamInfo<CommonStorageTest::ParamType>& testParamInfo)
 {
-    url = StorageTestUrlProvider(GetParam(), IsEmulatedStorage());
+    switch (testParamInfo.param)
+    {
+    case StorageType::BLOB:
+        return "BLOB";
+    case StorageType::SHARE:
+        return "SHARE";
+    default:
+        throw invalid_argument((ostringstream() << "invalid storage type" << (int)testParamInfo.param).str());
+    }
+}
+
+void CommonStorageTest::SetUp()
+{
+    url = EndToEndTestUrlProvider(GetParam(), IsEmulatedStorage());
 }
 
 StorageTestUrlProvider CommonStorageTest::url;
@@ -34,16 +47,12 @@ void ShareStorageTest::SetUpTestSuite()
 
 StorageTestUrlProvider ShareStorageTest::url;
 
-void AdvancedStorageTest::SetUpTestSuite()
-{
-    url = AdvancedStorageTestUrlProvider(GetParam(), IsEmulatedStorage());
-}
+EndToEndTestUrlProvider EndToEndTest::url;
+string EndToEndTest::sLocalFilePath;
 
-AdvancedStorageTestUrlProvider AdvancedStorageTest::url;
-string AdvancedStorageTest::sLocalFilePath;
-
-void AdvancedStorageTest::SetUp()
+void EndToEndTest::SetUp()
 {
+    url = EndToEndTestUrlProvider(GetParam(), IsEmulatedStorage());
 #ifdef _WIN32
     sLocalFilePath = (ostringstream() << std::getenv("TEMP") << "\\out-" << boost::uuids::random_generator()() << ".txt").str();
 #else
@@ -53,7 +62,7 @@ void AdvancedStorageTest::SetUp()
     ASSERT_EQ(driver_isConnected(), nTrue) << "after driver connected, it is disconnected";
 }
 
-void AdvancedStorageTest::TearDown()
+void EndToEndTest::TearDown()
 {
     driver_disconnect();
 }
@@ -142,16 +151,16 @@ const std::string StorageTestUrlProvider::MultisplitFile() const
     return sPrefix + "/data-test-khiops-driver-azure/khiops_data/split/Adult_subsplit/**/Adult-split-0*.txt";
 }
 
-AdvancedStorageTestUrlProvider::AdvancedStorageTestUrlProvider()
+EndToEndTestUrlProvider::EndToEndTestUrlProvider()
 {
 }
 
-AdvancedStorageTestUrlProvider::AdvancedStorageTestUrlProvider(StorageType storageType, bool bIsEmulatedStorage) :
+EndToEndTestUrlProvider::EndToEndTestUrlProvider(StorageType storageType, bool bIsEmulatedStorage) :
     StorageTestUrlProvider(storageType, bIsEmulatedStorage)
 {
 }
 
-const std::string AdvancedStorageTestUrlProvider::RandomOutputFile() const
+const std::string EndToEndTestUrlProvider::RandomOutputFile() const
 {
     return (ostringstream() << sPrefix << "/data-test-khiops-driver-azure/khiops_data/output/" << boost::uuids::random_generator()() << "/output.txt").str();
 }

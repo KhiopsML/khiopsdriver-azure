@@ -3,21 +3,23 @@
 class CommonStorageTest;
 class BlobStorageTest;
 class ShareStorageTest;
-class AdvancedStorageTest;
+class EndToEndTest;
 class StorageTestUrlProvider;
-class AdvancedStorageTestUrlProvider;
+class EndToEndTestUrlProvider;
 enum class StorageType;
 
 #include <string>
 #include <cstddef>
+#include <tuple>
 #include <gtest/gtest.h>
 
 class CommonStorageTest : public testing::TestWithParam<StorageType>
 {
 public:
-    static void SetUpTestSuite();
+    static std::string FormatParam(const testing::TestParamInfo<CommonStorageTest::ParamType>& storageType);
 
 protected:
+    void SetUp() override;
     static StorageTestUrlProvider url;
 };
 
@@ -39,16 +41,13 @@ protected:
     static StorageTestUrlProvider url;
 };
 
-class AdvancedStorageTest : public CommonStorageTest
+class EndToEndTest : public CommonStorageTest
 {
-public:
-    static void SetUpTestSuite();
-
 protected:
     void SetUp() override;
     void TearDown() override;
 
-    static AdvancedStorageTestUrlProvider url;
+    static EndToEndTestUrlProvider url;
     static std::string sLocalFilePath;
 };
 
@@ -74,11 +73,11 @@ protected:
     std::string sPrefix;
 };
 
-class AdvancedStorageTestUrlProvider : public StorageTestUrlProvider
+class EndToEndTestUrlProvider : public StorageTestUrlProvider
 {
 public:
-    AdvancedStorageTestUrlProvider();
-    AdvancedStorageTestUrlProvider(StorageType storageType, bool bIsEmulatedStorage);
+    EndToEndTestUrlProvider();
+    EndToEndTestUrlProvider(StorageType storageType, bool bIsEmulatedStorage);
 
     const std::string RandomOutputFile() const;
 };
