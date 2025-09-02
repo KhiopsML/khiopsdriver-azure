@@ -67,7 +67,7 @@ namespace az
 
 	vector<string> EmulatedBlobAccessor::UrlPathParts() const
 	{
-		return Split(GetUrl().GetPath(), '/', 2); // <account> / <container> / <object>
+		return Split(GetUrl().GetPath(), '/', 2, true); // <account> / <container> / <object>
 	}
 
 	void EmulatedBlobAccessor::CheckFileUrl() const

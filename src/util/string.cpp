@@ -6,16 +6,21 @@ using namespace std;
 
 namespace az
 {
-	vector<string> Split(const string& str, char delim, long long int nMaxSplits)
+	vector<string> Split(const string& str, char delim, long long int nMaxSplits, bool bRemoveEmpty)
 	{
 		size_t nStrLen = str.length();
 		vector<string> fragments;
 		size_t nOffset = 0;
 		size_t nDelimPos;
+		string sFragment;
 		for (size_t nSplits = 0; nMaxSplits == -1 || nSplits <= static_cast<size_t>(nMaxSplits); nSplits++)
 		{
 			nDelimPos = nSplits == static_cast<size_t>(nMaxSplits) ? string::npos : str.find(delim, nOffset);
-			fragments.push_back(move(nOffset == nStrLen ? "" : str.substr(nOffset, nDelimPos - nOffset)));
+			sFragment = nOffset == nStrLen ? "" : str.substr(nOffset, nDelimPos - nOffset);
+			if (!sFragment.empty() || !bRemoveEmpty)
+			{
+				fragments.push_back(move(sFragment));
+			}
 			if (nDelimPos == string::npos)
 			{
 				break;

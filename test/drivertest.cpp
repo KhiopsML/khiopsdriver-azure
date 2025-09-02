@@ -14,48 +14,50 @@
 using namespace std;
 using namespace az;
 
-int CopyFile(const char *file_name_input, const char *file_name_output, int nBufferSize);
-int CopyFileWithFseek(const char *file_name_input, const char *file_name_output, int nBufferSize);
-int CopyFileWithAppend(const char *file_name_input, const char *file_name_output, int nBufferSize);
+int CopyFile(const char *file_name_input, const char *file_name_output, size_t nBufferSize);
+int CopyFileWithFseek(const char *file_name_input, const char *file_name_output, size_t nBufferSize);
+int CopyFileWithAppend(const char *file_name_input, const char *file_name_output, size_t nBufferSize);
 int removeFile(const char *filename);
 int compareSize(const char *file_name_output, long long int filesize);
 
 void EndToEndTest(string sInputUrl, string sOutputUrl, string sLocalFilePath, size_t nBufferSize);
 
-TEST_F(AdvancedStorageTest, End2EndTest_SingleFile_512KB_OK)
+INSTANTIATE_TEST_SUITE_P(BlobAndShare, AdvancedStorageTest, testing::Values(StorageType::BLOB, StorageType::SHARE));
+
+TEST_P(AdvancedStorageTest, End2EndTest_SingleFile_512KB_OK)
 {
-	EndToEndTest(sBQSomePartFileUrl, sOutputUrl, sLocalFilePath, 512ULL * 1024);
+	EndToEndTest(url.BQSomeFilePart(), url.RandomOutputFile(), sLocalFilePath, 512ULL * 1024);
 }
 
-TEST_F(AdvancedStorageTest, End2EndTest_SingleFile_2MB_OK)
+TEST_P(AdvancedStorageTest, End2EndTest_SingleFile_2MB_OK)
 {
-	EndToEndTest(sBQSomePartFileUrl, sOutputUrl, sLocalFilePath, 2ULL * 1024 * 1024);
+	EndToEndTest(url.BQSomeFilePart(), url.RandomOutputFile(), sLocalFilePath, 2ULL * 1024 * 1024);
 }
 
-TEST_F(AdvancedStorageTest, End2EndTest_SingleFile_512B_OK)
+TEST_P(AdvancedStorageTest, End2EndTest_SingleFile_512B_OK)
 {
 	/* use this particular file because it is short and buffer size triggers lots of read operations */
-	EndToEndTest(sBQShortPartFileUrl, sOutputUrl, sLocalFilePath, 512ULL);
+	EndToEndTest(url.BQShortFilePart(), url.RandomOutputFile(), sLocalFilePath, 512ULL);
 }
 
-TEST_F(AdvancedStorageTest, End2EndTest_MultipartBQFile_512KB_OK)
+TEST_P(AdvancedStorageTest, End2EndTest_MultipartBQFile_512KB_OK)
 {
-	EndToEndTest(sBQFileUrl, sOutputUrl, sLocalFilePath, 512ULL * 1024);
+	EndToEndTest(url.BQFile(), url.RandomOutputFile(), sLocalFilePath, 512ULL * 1024);
 }
 
-TEST_F(AdvancedStorageTest, End2EndTest_MultipartBQEmptyFile_512KB_OK)
+TEST_P(AdvancedStorageTest, End2EndTest_MultipartBQEmptyFile_512KB_OK)
 {
-	EndToEndTest(sBQEmptyFileUrl, sOutputUrl, sLocalFilePath, 512ULL * 1024);
+	EndToEndTest(url.BQEmptyFile(), url.RandomOutputFile(), sLocalFilePath, 512ULL * 1024);
 }
 
-TEST_F(AdvancedStorageTest, End2EndTest_MultipartSplitFile_512KB_OK)
+TEST_P(AdvancedStorageTest, End2EndTest_MultipartSplitFile_512KB_OK)
 {
-	EndToEndTest(sSplitFileUrl, sOutputUrl, sLocalFilePath, 512ULL * 1024);
+	EndToEndTest(url.SplitFile(), url.RandomOutputFile(), sLocalFilePath, 512ULL * 1024);
 }
 
-TEST_F(AdvancedStorageTest, End2EndTest_MultipartSubsplitFile_512KB_OK)
+TEST_P(AdvancedStorageTest, End2EndTest_MultipartSubsplitFile_512KB_OK)
 {
-	EndToEndTest(sMultisplitFileUrl, sOutputUrl, sLocalFilePath, 512ULL * 1024);
+	EndToEndTest(url.MultisplitFile(), url.RandomOutputFile(), sLocalFilePath, 512ULL * 1024);
 }
 
 void EndToEndTest(string sInputUrl, string sOutputUrl, string sLocalFilePath, size_t nBufferSize)
@@ -66,7 +68,7 @@ void EndToEndTest(string sInputUrl, string sOutputUrl, string sLocalFilePath, si
 	size_t nInputFileSize = driver_getFileSize(sInputUrl.c_str());
 	cout << "Size of " << sInputUrl << " is " << nInputFileSize << endl;
 
-	for (const auto& Copy : {CopyFile, CopyFileWithFseek, CopyFileWithAppend})
+	for (const auto& Copy : { CopyFile, CopyFileWithFseek, CopyFileWithAppend })
 	{
 		ASSERT_EQ(Copy(sInputUrl.c_str(), sOutputUrl.c_str(), nBufferSize), nSuccess) << "failed to copy file";
 		ASSERT_EQ(compareSize(sOutputUrl.c_str(), nInputFileSize), nSuccess) << "input file and output file sizes are different";
@@ -85,7 +87,7 @@ void EndToEndTest(string sInputUrl, string sOutputUrl, string sLocalFilePath, si
 }
 
 // Copy file_name_input to file_name_output by steps of 1Kb
-int CopyFile(const char *sInputFileUrl, const char *sOutputFileUrl, int nBufferSize)
+int CopyFile(const char *sInputFileUrl, const char *sOutputFileUrl, size_t nBufferSize)
 {
 	cout << "Standard copy of " << sInputFileUrl << " to " << sOutputFileUrl << endl;
 	// Opens for read
@@ -111,7 +113,7 @@ int CopyFile(const char *sInputFileUrl, const char *sOutputFileUrl, int nBufferS
 		long long int sizeRead = nBufferSize;
 		long long int sizeWrite;
 		driver_fseek(fileinput, 0, SEEK_SET);
-		while (sizeRead == nBufferSize && copy_status == nSuccess)
+		while (sizeRead == (long long int)nBufferSize && copy_status == nSuccess)
 		{
 			sizeRead = driver_fread(buffer, sizeof(char), nBufferSize, fileinput);
 			if (sizeRead == -1)
@@ -137,7 +139,7 @@ int CopyFile(const char *sInputFileUrl, const char *sOutputFileUrl, int nBufferS
 }
 
 // Copy file_name_input to file_name_output by steps of 1Kb by using fseek before each read
-int CopyFileWithFseek(const char *sInputFileUrl, const char *sOutputFileUrl, int nBufferSize)
+int CopyFileWithFseek(const char *sInputFileUrl, const char *sOutputFileUrl, size_t nBufferSize)
 {
 	cout << "FSeek copy of " << sInputFileUrl << " to " << sOutputFileUrl << endl;
 	// Opens for read
@@ -162,9 +164,9 @@ int CopyFileWithFseek(const char *sInputFileUrl, const char *sOutputFileUrl, int
 		char *buffer = new char[nBufferSize+1]();
 		long long int sizeRead = nBufferSize;
 		long long int sizeWrite;
-		int cummulativeRead = 0;
+		long long int cummulativeRead = 0;
 		driver_fseek(fileinput, 0, SEEK_SET);
-		while (sizeRead == nBufferSize && copy_status == nSuccess)
+		while (sizeRead == (long long int)nBufferSize && copy_status == nSuccess)
 		{
 			driver_fseek(fileinput, cummulativeRead, SEEK_SET);
 			sizeRead = driver_fread(buffer, sizeof(char), nBufferSize, fileinput);
@@ -192,7 +194,7 @@ int CopyFileWithFseek(const char *sInputFileUrl, const char *sOutputFileUrl, int
 }
 
 // Copy file_name_input to file_name_output by steps of 1Kb
-int CopyFileWithAppend(const char *sInputFileUrl, const char *sOutputFileUrl, int nBufferSize)
+int CopyFileWithAppend(const char *sInputFileUrl, const char *sOutputFileUrl, size_t nBufferSize)
 {
 	cout << "Append copy of " << sInputFileUrl << " to " << sOutputFileUrl << endl;
 	// Make sure output file doesn't exist
@@ -215,7 +217,7 @@ int CopyFileWithAppend(const char *sInputFileUrl, const char *sOutputFileUrl, in
 		long long int sizeRead = nBufferSize;
 		long long int sizeWrite;
 		driver_fseek(fileinput, 0, SEEK_SET);
-		while (sizeRead == nBufferSize && copy_status == nSuccess)
+		while (sizeRead == (long long int)nBufferSize && copy_status == nSuccess)
 		{
 			sizeRead = driver_fread(buffer, sizeof(char), nBufferSize, fileinput);
 			if (sizeRead == -1)

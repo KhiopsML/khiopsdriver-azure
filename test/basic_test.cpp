@@ -43,6 +43,11 @@ TEST(BasicTest, IsReadOnly)
     ASSERT_EQ(driver_isReadOnly(), nFalse);
 }
 
+TEST(BasicTest, GetSystemPreferredBufferSize)
+{
+    ASSERT_EQ(driver_getSystemPreferredBufferSize(), 4 * 1024 * 1024);
+}
+
 TEST(BasicTest, Connect)
 {
     //check connection state before call to connect
@@ -64,53 +69,69 @@ TEST(BasicTest, Disconnect)
     ASSERT_EQ(driver_isConnected(), nFalse);
 }
 
-TEST_F(StorageTest, GetFileSize)
+INSTANTIATE_TEST_SUITE_P(BlobAndShare, CommonStorageTest, testing::Values(StorageType::BLOB, StorageType::SHARE));
+
+TEST_P(CommonStorageTest, GetFileSize)
 {
 	ASSERT_EQ(driver_connect(), nSuccess);
-	ASSERT_EQ(driver_getFileSize(sFileUrl.c_str()), 5585568);
+	ASSERT_EQ(driver_getFileSize(url.File().c_str()), 5585568);
 	ASSERT_EQ(driver_disconnect(), nSuccess);
 }
 
-TEST_F(StorageTest, GetMultipartFileSize)
+TEST_P(CommonStorageTest, GetMultipartFileSize)
 {
 	ASSERT_EQ(driver_connect(), nSuccess);
-	ASSERT_EQ(driver_getFileSize(sBQFileUrl.c_str()), 5585568);
+	ASSERT_EQ(driver_getFileSize(url.BQFile().c_str()), 5585568);
 	ASSERT_EQ(driver_disconnect(), nSuccess);
 }
 
-TEST_F(StorageTest, GetFileSizeNonexistentFailure)
+TEST_P(CommonStorageTest, GetFileSizeNonexistentFailure)
 {
 	ASSERT_EQ(driver_connect(), nSuccess);
-    ASSERT_EQ(driver_getFileSize(sInexistantFileUrl.c_str()), nSizeFailure);
+    ASSERT_EQ(driver_getFileSize(url.InexistantFile().c_str()), nSizeFailure);
     ASSERT_STRNE(driver_getlasterror(), NULL);
 	ASSERT_EQ(driver_disconnect(), nSuccess);
 }
 
-TEST_F(StorageTest, FileExists)
+TEST_P(CommonStorageTest, FileExists)
 {
 	ASSERT_EQ(driver_connect(), nSuccess);
-	ASSERT_EQ(driver_fileExists(sFileUrl.c_str()), nTrue);
+	ASSERT_EQ(driver_fileExists(url.File().c_str()), nTrue);
 	ASSERT_EQ(driver_disconnect(), nSuccess);
 }
 
-TEST_F(StorageTest, FileExistsNonExistentfile)
+TEST_P(CommonStorageTest, FileExistsNonExistentfile)
 {
     ASSERT_EQ(driver_connect(), nSuccess);
-    ASSERT_EQ(driver_fileExists(sInexistantFileUrl.c_str()), nFalse);
+    ASSERT_EQ(driver_fileExists(url.InexistantFile().c_str()), nFalse);
     ASSERT_EQ(driver_disconnect(), nSuccess);
 }
 
-TEST_F(StorageTest, DirExists)
+TEST_F(BlobStorageTest, DirExists)
 {
 	ASSERT_EQ(driver_connect(), nSuccess);
-	ASSERT_EQ(driver_dirExists(sDirUrl.c_str()), nTrue);
+	ASSERT_EQ(driver_dirExists(url.Dir().c_str()), nTrue); // there is no such concept as a directory when dealing with blobs
 	ASSERT_EQ(driver_disconnect(), nSuccess);
 }
 
-TEST_F(StorageTest, DirExistsNonExistentDir)
+TEST_F(ShareStorageTest, DirExists)
 {
     ASSERT_EQ(driver_connect(), nSuccess);
-    ASSERT_EQ(driver_dirExists(sInexistantDirUrl.c_str()), nTrue); // there is no such concept as a directory when dealing with blobs
+    ASSERT_EQ(driver_dirExists(url.Dir().c_str()), nTrue);
+    ASSERT_EQ(driver_disconnect(), nSuccess);
+}
+
+TEST_F(BlobStorageTest, DirExistsNonExistentDir)
+{
+    ASSERT_EQ(driver_connect(), nSuccess);
+    ASSERT_EQ(driver_dirExists(url.InexistantDir().c_str()), nTrue); // there is no such concept as a directory when dealing with blobs
+    ASSERT_EQ(driver_disconnect(), nSuccess);
+}
+
+TEST_F(ShareStorageTest, DirExistsNonExistentDir)
+{
+    ASSERT_EQ(driver_connect(), nSuccess);
+    ASSERT_EQ(driver_dirExists(url.InexistantDir().c_str()), nFalse);
     ASSERT_EQ(driver_disconnect(), nSuccess);
 }
 
@@ -144,21 +165,30 @@ TEST_F(StorageTest, GetFileSizeInvalidCredentialsFailure)
 }
 #endif
 
-TEST_F(StorageTest, RmDir)
-{
-    ASSERT_EQ(driver_connect(), nSuccess);
-	ASSERT_EQ(driver_rmdir(sCreatedDirUrl.c_str()), nSuccess);
-	ASSERT_EQ(driver_disconnect(), nSuccess);
-}
-
-TEST_F(StorageTest, MkDir)
+TEST_F(BlobStorageTest, MkDir)
 {
 	ASSERT_EQ(driver_connect(), nSuccess);
-	ASSERT_EQ(driver_mkdir(sCreatedDirUrl.c_str()), nSuccess);
+	ASSERT_EQ(driver_mkdir(url.CreatedDir().c_str()), nSuccess); // there is no such concept as a directory when dealing with blobs
 	ASSERT_EQ(driver_disconnect(), nSuccess);
 }
 
-TEST(BasicTest, GetSystemPreferredBufferSize)
+TEST_F(ShareStorageTest, MkDir)
 {
-	ASSERT_EQ(driver_getSystemPreferredBufferSize(), 4 * 1024 * 1024);
+    ASSERT_EQ(driver_connect(), nSuccess);
+    ASSERT_EQ(driver_mkdir(url.CreatedDir().c_str()), nSuccess);
+    ASSERT_EQ(driver_disconnect(), nSuccess);
+}
+
+TEST_F(BlobStorageTest, RmDir)
+{
+    ASSERT_EQ(driver_connect(), nSuccess);
+    ASSERT_EQ(driver_rmdir(url.CreatedDir().c_str()), nSuccess); // there is no such concept as a directory when dealing with blobs
+    ASSERT_EQ(driver_disconnect(), nSuccess);
+}
+
+TEST_F(ShareStorageTest, RmDir)
+{
+    ASSERT_EQ(driver_connect(), nSuccess);
+    ASSERT_EQ(driver_rmdir(url.CreatedDir().c_str()), nSuccess);
+    ASSERT_EQ(driver_disconnect(), nSuccess);
 }

@@ -66,7 +66,7 @@ namespace az
 
 	vector<string> CloudShareAccessor::UrlPathParts() const
 	{
-		return Split(GetUrl().GetPath(), '/');
+		return Split(GetUrl().GetPath(), '/', -1, true);
 	}
 
 	void CloudShareAccessor::CheckFileUrl() const

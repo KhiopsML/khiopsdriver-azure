@@ -57,7 +57,7 @@ namespace az
 
 	vector<string> CloudBlobAccessor::UrlPathParts() const
 	{
-		return Split(GetUrl().GetPath(), '/', 1); // <container> / <object>
+		return Split(GetUrl().GetPath(), '/', 1, true); // <container> / <object>
 	}
 
 	void CloudBlobAccessor::CheckFileUrl() const

@@ -1,43 +1,90 @@
 #pragma once
 
-class StorageTest;
+class CommonStorageTest;
+class BlobStorageTest;
+class ShareStorageTest;
 class AdvancedStorageTest;
+class StorageTestUrlProvider;
+class AdvancedStorageTestUrlProvider;
+enum class StorageType;
 
 #include <string>
 #include <cstddef>
 #include <gtest/gtest.h>
 
-class StorageTest : public testing::Test
+class CommonStorageTest : public testing::TestWithParam<StorageType>
 {
-protected:
+public:
     static void SetUpTestSuite();
 
-    static std::string sInexistantDirUrl;
-    static std::string sDirUrl;
-    static std::string sCreatedDirUrl;
-    static std::string sInexistantFileUrl;
-    static std::string sFileUrl;
-    static std::string sBQFileUrl;
-    static std::string sBQSomePartFileUrl;
-    static std::string sBQShortPartFileUrl;
-    static std::string sBQEmptyFileUrl;
-    static std::string sSplitFileUrl;
-    static std::string sMultisplitFileUrl;
-
-    static std::string sUrlPrefix;
+protected:
+    static StorageTestUrlProvider url;
 };
 
-class AdvancedStorageTest : public StorageTest
+class BlobStorageTest : public testing::Test
 {
-protected:
+public:
     static void SetUpTestSuite();
 
-    static std::string sOutputUrl;
-    static std::string sLocalFilePath;
+protected:
+    static StorageTestUrlProvider url;
+};
 
+class ShareStorageTest : public testing::Test
+{
+public:
+    static void SetUpTestSuite();
+
+protected:
+    static StorageTestUrlProvider url;
+};
+
+class AdvancedStorageTest : public CommonStorageTest
+{
+public:
+    static void SetUpTestSuite();
+
+protected:
     void SetUp() override;
     void TearDown() override;
 
-    std::string sInputUrl;
-    size_t nBufferSize;
+    static AdvancedStorageTestUrlProvider url;
+    static std::string sLocalFilePath;
+};
+
+class StorageTestUrlProvider
+{
+public:
+    StorageTestUrlProvider();
+    StorageTestUrlProvider(StorageType storageType, bool bIsEmulatedStorage);
+
+    const std::string InexistantDir() const;
+    const std::string Dir() const;
+    const std::string CreatedDir() const;
+    const std::string InexistantFile() const;
+    const std::string File() const;
+    const std::string BQFile() const;
+    const std::string BQSomeFilePart() const;
+    const std::string BQShortFilePart() const;
+    const std::string BQEmptyFile() const;
+    const std::string SplitFile() const;
+    const std::string MultisplitFile() const;
+
+protected:
+    std::string sPrefix;
+};
+
+class AdvancedStorageTestUrlProvider : public StorageTestUrlProvider
+{
+public:
+    AdvancedStorageTestUrlProvider();
+    AdvancedStorageTestUrlProvider(StorageType storageType, bool bIsEmulatedStorage);
+
+    const std::string RandomOutputFile() const;
+};
+
+enum class StorageType
+{
+    BLOB,
+    SHARE
 };

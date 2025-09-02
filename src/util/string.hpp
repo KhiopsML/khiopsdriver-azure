@@ -5,7 +5,7 @@
 
 namespace az
 {
-	std::vector<std::string> Split(const std::string& str, char delim, long long int nMaxSplits = -1);
+	std::vector<std::string> Split(const std::string& str, char delim, long long int nMaxSplits = -1, bool bRemoveEmpty = false);
 
 	bool StartsWith(const std::string& str, const std::string& prefix);
 	bool EndsWith(const std::string& str, const std::string& suffix);
