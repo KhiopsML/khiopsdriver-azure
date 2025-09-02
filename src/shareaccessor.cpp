@@ -4,7 +4,7 @@
 #include <numeric>
 #include "exception.hpp"
 #include "sharepathresolve.hpp"
-#include "sharefileinfo.hpp"
+#include "fileinfo.hpp"
 
 using namespace std;
 

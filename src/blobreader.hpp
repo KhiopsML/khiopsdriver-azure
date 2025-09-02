@@ -9,7 +9,7 @@ namespace az
 #include <vector>
 #include <azure/storage/blobs/blob_client.hpp>
 #include "filereader.hpp"
-#include "blobfileinfo.hpp"
+#include "fileinfo.hpp"
 
 namespace az
 {

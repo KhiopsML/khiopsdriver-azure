@@ -8,7 +8,7 @@
 #include "util/string.hpp"
 #include "util/env.hpp"
 #include "blobpathresolve.hpp"
-#include "blobfileinfo.hpp"
+#include "fileinfo.hpp"
 #include "blobreader.hpp"
 #include "blobwriter.hpp"
 #include "blobappender.hpp"
@@ -127,7 +127,7 @@ namespace az
 		for (;;)
 		{
 			ifs.read(buffer, nBufferSize);
-			nRead = ifs.gcount();
+			nRead = (size_t)ifs.gcount();
 			if (nRead == 0)
 			{
 				break;

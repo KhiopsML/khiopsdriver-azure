@@ -2,7 +2,7 @@
 #include <ios>
 #include <memory>
 #include <azure/core/io/body_stream.hpp>
-#include "blobfileinfo.hpp"
+#include "fileinfo.hpp"
 #include "exception.hpp"
 
 using namespace std;

@@ -99,9 +99,7 @@ set(SourceList
     filewriter.hpp filewriter.cpp
     fileappender.hpp fileappender.cpp
     fileinfo.hpp fileinfo.cpp
-    blobfileinfo.hpp blobfileinfo.cpp
     blobpathresolve.hpp blobpathresolve.cpp
-    sharefileinfo.hpp sharefileinfo.cpp
     sharepathresolve.hpp sharepathresolve.cpp
 )
 list(TRANSFORM SourceList PREPEND src/)
