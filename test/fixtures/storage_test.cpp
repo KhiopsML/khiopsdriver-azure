@@ -15,15 +15,9 @@ static bool IsEmulatedStorage();
 
 string CommonStorageTest::FormatParam(const testing::TestParamInfo<CommonStorageTest::ParamType>& testParamInfo)
 {
-    switch (testParamInfo.param)
-    {
-    case StorageType::BLOB:
-        return "Blob";
-    case StorageType::SHARE:
-        return "File";
-    default:
-        throw invalid_argument((ostringstream() << "invalid storage type" << (int)testParamInfo.param).str());
-    }
+    ostringstream oss;
+    PrintTo(testParamInfo.param, &oss);
+    return oss.str();
 }
 
 void CommonStorageTest::SetUp()
@@ -170,10 +164,10 @@ void PrintTo(const StorageType& storageType, std::ostream* os)
     switch (storageType)
     {
     case StorageType::BLOB:
-        *os << "BLOB";
+        *os << "Blob";
         break;
     case StorageType::SHARE:
-        *os << "FILE";
+        *os << "File";
         break;
     default:
         throw invalid_argument((ostringstream() << "invalid storage type" << (int)storageType).str());
