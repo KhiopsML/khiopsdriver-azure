@@ -13,14 +13,14 @@ using namespace az;
 
 static bool IsEmulatedStorage();
 
-std::string CommonStorageTest::FormatParam(const testing::TestParamInfo<CommonStorageTest::ParamType>& testParamInfo)
+string CommonStorageTest::FormatParam(const testing::TestParamInfo<CommonStorageTest::ParamType>& testParamInfo)
 {
     switch (testParamInfo.param)
     {
     case StorageType::BLOB:
-        return "BLOB";
+        return "Blob";
     case StorageType::SHARE:
-        return "SHARE";
+        return "File";
     default:
         throw invalid_argument((ostringstream() << "invalid storage type" << (int)testParamInfo.param).str());
     }
@@ -163,4 +163,19 @@ EndToEndTestUrlProvider::EndToEndTestUrlProvider(StorageType storageType, bool b
 const std::string EndToEndTestUrlProvider::RandomOutputFile() const
 {
     return (ostringstream() << sPrefix << "/data-test-khiops-driver-azure/khiops_data/output/" << boost::uuids::random_generator()() << "/output.txt").str();
+}
+
+void PrintTo(const StorageType& storageType, std::ostream* os)
+{
+    switch (storageType)
+    {
+    case StorageType::BLOB:
+        *os << "BLOB";
+        break;
+    case StorageType::SHARE:
+        *os << "FILE";
+        break;
+    default:
+        throw invalid_argument((ostringstream() << "invalid storage type" << (int)storageType).str());
+    }
 }

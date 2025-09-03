@@ -11,6 +11,7 @@ enum class StorageType;
 #include <string>
 #include <cstddef>
 #include <tuple>
+#include <ostream>
 #include <gtest/gtest.h>
 
 class CommonStorageTest : public testing::TestWithParam<StorageType>
@@ -87,3 +88,5 @@ enum class StorageType
     BLOB,
     SHARE
 };
+
+void PrintTo(const StorageType& storageType, std::ostream* os);
