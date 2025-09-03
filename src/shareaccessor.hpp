@@ -44,5 +44,8 @@ namespace az
 		
 		std::vector<Azure::Storage::Files::Shares::ShareDirectoryClient> ListDirs() const;
 		std::vector<Azure::Storage::Files::Shares::ShareFileClient> ListFiles() const;
+
+		Azure::Storage::Files::Shares::ShareDirectoryClient GetParentDir() const;
+		void CheckParentDirExists() const;
 	};
 }

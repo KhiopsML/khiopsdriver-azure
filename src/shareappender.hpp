@@ -2,7 +2,7 @@
 
 namespace az
 {
-	class ShareWriter;
+	class ShareAppender;
 }
 
 #include <cstddef>
@@ -13,10 +13,10 @@ namespace az
 
 namespace az
 {
-	class ShareWriter : public FileAppender
+	class ShareAppender : public FileAppender
 	{
 	public:
-		ShareWriter(Azure::Storage::Files::Shares::ShareFileClient&& client);
+		ShareAppender(Azure::Storage::Files::Shares::ShareFileClient&& client);
 
 		void Close() override;
 		size_t Write(const void* source, size_t nSize, size_t nCount) override;

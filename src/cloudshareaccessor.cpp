@@ -61,7 +61,9 @@ namespace az
 
 	Azure::Storage::Files::Shares::ShareFileClient CloudShareAccessor::GetFileClient() const
 	{
-		return Azure::Storage::Files::Shares::ShareFileClient(GetUrl().GetAbsoluteUrl(), GetCredential());
+		Azure::Storage::Files::Shares::ShareClientOptions opts;
+		opts.ShareTokenIntent = Azure::Storage::Files::Shares::Models::ShareTokenIntent::Backup;
+		return Azure::Storage::Files::Shares::ShareFileClient(GetUrl().GetAbsoluteUrl(), GetCredential(), opts);
 	}
 
 	vector<string> CloudShareAccessor::UrlPathParts() const

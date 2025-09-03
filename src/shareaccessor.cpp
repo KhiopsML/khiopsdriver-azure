@@ -73,6 +73,7 @@ namespace az
 		}
 		else
 		{
+			CheckParentDirExists();
 			return (const unique_ptr<FileOutputStream>&)RegisterWriter(make_unique<ShareWriter>(move(GetFileClient())));
 		}
 	}
@@ -85,6 +86,7 @@ namespace az
 		}
 		else
 		{
+			CheckParentDirExists();
 			return (const unique_ptr<FileOutputStream>&)RegisterAppender(make_unique<ShareAppender>(move(GetFileClient())));
 		}
 	}
@@ -121,43 +123,24 @@ namespace az
 		}
 		else
 		{
-			ShareDirectoryClient dirClient = GetDirClient();
-			vector<string> path = GetPath();
-			string sPathFragment;
+			string sNewDir = GetPath().back();
+			ShareDirectoryClient parentDirClient = GetParentDir();
 
-			for (size_t i = 0; i < path.size(); i++)
+			ListFilesAndDirectoriesOptions opts;
+			opts.Prefix = sNewDir;
+			for (auto pagedResponse = parentDirClient.ListFilesAndDirectories(opts); pagedResponse.HasPage(); pagedResponse.MoveToNextPage())
 			{
-				sPathFragment = path[i];
-				dirClient = dirClient.GetSubdirectoryClient(sPathFragment);
-				ListFilesAndDirectoriesOptions opts;
-				opts.Prefix = sPathFragment;
-
-				bool bAlreadyExisting = false;
-				for (auto pagedResponse = dirClient.ListFilesAndDirectories(opts); pagedResponse.HasPage(); pagedResponse.MoveToNextPage())
-				{
-					if (find_if(pagedResponse.Directories.begin(), pagedResponse.Directories.end(), [sPathFragment](const auto& dirItem)
-						{
-							return dirItem.Name == sPathFragment;
-						}) != pagedResponse.Directories.end()
-							)
+				if (find_if(pagedResponse.Directories.begin(), pagedResponse.Directories.end(), [sNewDir](const auto& dirItem)
 					{
-						bAlreadyExisting = true;
-						break;
-					}
-				}
-
-				if (i < path.size() - 1 && !bAlreadyExisting)
+						return dirItem.Name == sNewDir;
+					}) != pagedResponse.Directories.end()
+				)
 				{
-					throw IntermediateDirNotFoundError(dirClient.GetUrl());
-				}
-
-				if (i == path.size() - 1 && bAlreadyExisting)
-				{
-					throw DirAlreadyExistsError(dirClient.GetUrl());
+					throw DirAlreadyExistsError(GetUrl().GetAbsoluteUrl());
 				}
 			}
 
-			if (!dirClient.Create().Value.Created)
+			if (!parentDirClient.GetSubdirectoryClient(sNewDir).Create().Value.Created)
 			{
 				throw CreationError(GetUrl().GetAbsoluteUrl());
 			}
@@ -234,5 +217,46 @@ namespace az
 		{
 			throw NetworkError();
 		}
+	}
+
+	Azure::Storage::Files::Shares::ShareDirectoryClient ShareAccessor::GetParentDir() const
+	{
+		ShareDirectoryClient dirClient = GetDirClient();
+		vector<string> path = GetPath();
+		path.pop_back();
+
+		for (string sPathFragment : path)
+		{
+			ListFilesAndDirectoriesOptions opts;
+			opts.Prefix = sPathFragment;
+
+			bool bAlreadyExisting = false;
+			for (auto pagedResponse = dirClient.ListFilesAndDirectories(opts); pagedResponse.HasPage(); pagedResponse.MoveToNextPage())
+			{
+				if (find_if(pagedResponse.Directories.begin(), pagedResponse.Directories.end(), [sPathFragment](const auto& dirItem)
+					{
+						return dirItem.Name == sPathFragment;
+					}) != pagedResponse.Directories.end()
+				)
+				{
+					bAlreadyExisting = true;
+					break;
+				}
+			}
+
+			if (!bAlreadyExisting)
+			{
+				throw IntermediateDirNotFoundError(dirClient.GetUrl());
+			}
+
+			dirClient = dirClient.GetSubdirectoryClient(sPathFragment);
+		}
+
+		return dirClient;
+	}
+
+	void ShareAccessor::CheckParentDirExists() const
+	{
+		GetParentDir();
 	}
 }

@@ -14,6 +14,6 @@ namespace az
 	{
 	public:
 		FileAppender();
-		size_t Write(const void* source, size_t nSize, size_t nCount) override;
+		virtual size_t Write(const void* source, size_t nSize, size_t nCount) = 0;
 	};
 }
