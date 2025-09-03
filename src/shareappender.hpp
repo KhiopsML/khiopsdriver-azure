@@ -9,11 +9,11 @@ namespace az
 #include <memory>
 #include <azure/storage/files/shares/share_file_client.hpp>
 #include <azure/core/io/body_stream.hpp>
-#include "filewriter.hpp"
+#include "fileappender.hpp"
 
 namespace az
 {
-	class ShareWriter : public FileWriter
+	class ShareWriter : public FileAppender
 	{
 	public:
 		ShareWriter(Azure::Storage::Files::Shares::ShareFileClient&& client);

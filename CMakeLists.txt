@@ -93,8 +93,9 @@ set(SourceList
     blobreader.hpp blobreader.cpp
     blobwriter.hpp blobwriter.cpp
     blobappender.hpp blobappender.cpp
-    sharereader.hpp
-    sharewriter.hpp
+    sharereader.hpp sharereader.cpp
+    sharewriter.hpp sharewriter.cpp
+    shareappender.hpp shareappender.cpp
     fileoutputstream.hpp fileoutputstream.cpp
     filewriter.hpp filewriter.cpp
     fileappender.hpp fileappender.cpp

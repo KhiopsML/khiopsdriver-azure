@@ -6,6 +6,9 @@
 #include "exception.hpp"
 #include "sharepathresolve.hpp"
 #include "fileinfo.hpp"
+#include "sharereader.hpp"
+#include "sharewriter.hpp"
+#include "shareappender.hpp"
 
 using namespace std;
 using ShareFileClient = Azure::Storage::Files::Shares::ShareFileClient;
@@ -57,9 +60,8 @@ namespace az
 		}
 		else
 		{
-			// TODO: Implement
-			auto r = unique_ptr<FileReader>();
-			return r;
+			vector<ShareFileClient> files = ListFiles();
+			return RegisterReader(make_unique<ShareReader>(move(files)));
 		}
 	}
 
@@ -71,9 +73,7 @@ namespace az
 		}
 		else
 		{
-			// TODO: Implement
-			auto r = unique_ptr<FileOutputStream>();
-			return r;
+			return (const unique_ptr<FileOutputStream>&)RegisterWriter(make_unique<ShareWriter>(move(GetFileClient())));
 		}
 	}
 
@@ -85,9 +85,7 @@ namespace az
 		}
 		else
 		{
-			// TODO: Implement
-			auto r = unique_ptr<FileOutputStream>();
-			return r;
+			return (const unique_ptr<FileOutputStream>&)RegisterAppender(make_unique<ShareAppender>(move(GetFileClient())));
 		}
 	}
 
