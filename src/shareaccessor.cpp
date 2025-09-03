@@ -9,8 +9,6 @@
 using namespace std;
 using ShareFileClient = Azure::Storage::Files::Shares::ShareFileClient;
 using ShareDirectoryClient = Azure::Storage::Files::Shares::ShareDirectoryClient;
-using DeleteFileOptions = Azure::Storage::Files::Shares::DeleteFileOptions;
-using DeleteSnapshotsOption = Azure::Storage::Files::Shares::Models::DeleteSnapshotsOption;
 using Url = Azure::Core::Url;
 using TransportException = Azure::Core::Http::TransportException;
 
@@ -94,7 +92,19 @@ namespace az
 
 	void ShareAccessor::RmDir() const
 	{
-		// TODO: Implement
+		vector<ShareDirectoryClient> dirs = ListDirs();
+		if (dirs.empty())
+		{
+			throw NoFileError(GetUrl().GetAbsoluteUrl());
+		}
+		for (const ShareDirectoryClient& dir : dirs)
+		{
+			const string sDirUrl = dir.GetUrl();
+			if (!dir.Delete().Value.Deleted)
+			{
+				throw DeletionError(sDirUrl);
+			}
+		}
 	}
 
 	size_t ShareAccessor::GetFreeDiskSpace() const
