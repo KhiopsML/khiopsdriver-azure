@@ -42,7 +42,7 @@ namespace az
 	{
 		if (HasDirUrl())
 		{
-			throw GettingSizeOfDirError();
+			throw InvalidOperationForDirError(Operation::GET_SIZE);
 		}
 		else
 		{

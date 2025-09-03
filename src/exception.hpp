@@ -10,7 +10,8 @@ namespace az
 	class InvalidUrlError;
 	class InvalidFileUrlPathError;
 	class InvalidDirUrlPathError;
-	class GettingSizeOfDirError;
+	enum class Operation;
+	class InvalidOperationForDirError;
 	class NoFileError;
 	class DeletionError;
 	class InvalidFileStreamModeError;
@@ -105,10 +106,26 @@ namespace az
 		std::string sMessage;
 	};
 
-	class GettingSizeOfDirError : public Error
+	enum class Operation
+	{
+		GET_SIZE,
+		READ,
+		WRITE,
+		APPEND,
+		REMOVE
+	};
+
+	std::string FormatOperation(Operation operation);
+
+	class InvalidOperationForDirError : public Error
 	{
 	public:
+		InvalidOperationForDirError(Operation operation, std::string sDetails = std::string());
+
 		virtual const char* what() const noexcept override;
+
+	private:
+		std::string sMessage;
 	};
 
 	class NoFileError : public Error

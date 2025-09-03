@@ -72,9 +72,39 @@ namespace az
 		return sMessage.c_str();
 	}
 
-	const char* GettingSizeOfDirError::what() const noexcept
+	std::string FormatOperation(Operation operation)
 	{
-		return "trying to get size of directory (invalid operation)";
+		switch (operation)
+		{
+		case Operation::GET_SIZE:
+			return "getting size";
+		case Operation::READ:
+			return "reading";
+		case Operation::WRITE:
+			return "writing";
+		case Operation::APPEND:
+			return "appending";
+		case Operation::REMOVE:
+			return "removing";
+		default:
+			throw invalid_argument((ostringstream() << "invalid Operation: " << (int)operation).str());
+		}
+	}
+
+	InvalidOperationForDirError::InvalidOperationForDirError(Operation operation, std::string sDetails)
+	{
+		ostringstream oss;
+		oss << "directories do not support this operation: " << FormatOperation(operation);
+		if (!sDetails.empty())
+		{
+			oss << " (" << sDetails << ")";
+		}
+		sMessage = oss.str();
+	}
+
+	const char* InvalidOperationForDirError::what() const noexcept
+	{
+		return sMessage.c_str();
 	}
 
 	NoFileError::NoFileError(const string& sUrl) :
