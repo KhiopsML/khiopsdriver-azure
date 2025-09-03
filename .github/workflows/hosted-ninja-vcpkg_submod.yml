@@ -63,29 +63,29 @@ jobs:
         with:
           vcpkgJsonGlob: 'vcpkg.json'
 
-      - name: Install Azurite
-        id: azuright
-        uses: sgouache/azuright@v1.2
-        with:
-          skip-api-version-check: true
+      # - name: Install Azurite
+      #   id: azuright
+      #   uses: sgouache/azuright@v1.2
+      #   with:
+      #     skip-api-version-check: true
 
-      - name: Set Azurite env for later use
-        run: echo "AZURE_STORAGE_CONNECTION_STRING=${{ steps.azuright.outputs.connstring }}" >> $GITHUB_ENV
-        shell: bash
+      # - name: Set Azurite env for later use
+      #   run: echo "AZURE_STORAGE_CONNECTION_STRING=${{ steps.azuright.outputs.connstring }}" >> $GITHUB_ENV
+      #   shell: bash
 
-      # Populate storage emulator
-      - name:  Install test data in Azurite
-        run:   |
-            if [ "$RUNNER_OS" == "Linux" ]; then
-              curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
-            elif [ "$RUNNER_OS" == "Windows" ]; then
-              pwsh scripts\\install_azurecli.ps1
-            else
-              brew update && brew install azure-cli
-            fi
-            az storage container create -n data-test-khiops-driver-azure --connection-string "${{ steps.azuright.outputs.connstring }}"
-            az storage blob upload-batch --destination data-test-khiops-driver-azure/khiops_data --source $PWD/khiops_data --connection-string "${{ steps.azuright.outputs.connstring }}"
-        shell: bash
+      # # Populate storage emulator
+      # - name:  Install test data in Azurite
+      #   run:   |
+      #       if [ "$RUNNER_OS" == "Linux" ]; then
+      #         curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+      #       elif [ "$RUNNER_OS" == "Windows" ]; then
+      #         pwsh scripts\\install_azurecli.ps1
+      #       else
+      #         brew update && brew install azure-cli
+      #       fi
+      #       az storage container create -n data-test-khiops-driver-azure --connection-string "${{ steps.azuright.outputs.connstring }}"
+      #       az storage blob upload-batch --destination data-test-khiops-driver-azure/khiops_data --source $PWD/khiops_data --connection-string "${{ steps.azuright.outputs.connstring }}"
+      #   shell: bash
 
       # Retrieve azure credentials through WIF - needed to run tests
       - name: Azure CLI Login
