@@ -138,16 +138,24 @@ jobs:
           configurePreset: 'ninja-multi-vcpkg'
           configurePresetAdditionalArgs: "['-DCMAKE_BUILD_TYPE=Debug']"
           buildPreset: 'ninja-vcpkg-debug'
-          testPreset: 'test-debug'
-          testPresetAdditionalArgs: "['--output-on-failure']"
-        env:
-          AZURE_EMULATED_STORAGE: true
 
-      - name: Generate coverage report
+      - name: Run tests with emulated storage
         if: matrix.os == 'ubuntu-latest'
         run: |
-          cmake --build --preset ninja-vcpkg-debug
           AZURE_EMULATED_STORAGE=true ctest --preset test-debug --output-on-failure
+
+      # Retrieve azure credentials through WIF - needed to run tests
+      - name: Azure CLI Login
+        if: matrix.os == 'ubuntu-latest'
+        uses: azure/login@v2.3.0
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Run tests with cloud storage
+        if: matrix.os == 'ubuntu-latest'
+        run: |
           AZURE_EMULATED_STORAGE=false ctest --preset test-debug --output-on-failure
 
       # Disable coverage until we find how to fix the "line mismatch error"
@@ -169,8 +177,18 @@ jobs:
           configurePreset: 'ninja-multi-vcpkg'
           configurePresetAdditionalArgs: "['-DCMAKE_BUILD_TYPE=Release']"
           buildPreset: 'ninja-vcpkg-release'
-          testPreset: 'test-release'
-          testPresetAdditionalArgs: "['--output-on-failure']"
+
+      # Retrieve azure credentials through WIF - needed to run tests
+      - name: Azure CLI Login
+        uses: azure/login@v2.3.0
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Run tests with cloud storage
+        run: |
+          AZURE_EMULATED_STORAGE=false ctest --preset test-release --output-on-failure
   
       - name: Upload the packages as artifacts
         uses: actions/upload-artifact@v4
