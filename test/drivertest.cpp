@@ -27,37 +27,65 @@ INSTANTIATE_TEST_SUITE_P(BlobAndShare, EndToEndTest, testing::Values(StorageType
 
 TEST_P(EndToEndTest, End2EndTest_SingleFile_512KB_OK)
 {
+	if (GetParam() == StorageType::SHARE)
+	{
+		GTEST_SKIP() << "not operational for SHARE services";
+	}
 	EndToEndTest_(url.BQSomeFilePart(), url.RandomOutputFile(), sLocalFilePath, 512ULL * 1024);
 }
 
 TEST_P(EndToEndTest, End2EndTest_SingleFile_2MB_OK)
 {
+	if (GetParam() == StorageType::SHARE)
+	{
+		GTEST_SKIP() << "not operational for SHARE services";
+	}
 	EndToEndTest_(url.BQSomeFilePart(), url.RandomOutputFile(), sLocalFilePath, 2ULL * 1024 * 1024);
 }
 
 TEST_P(EndToEndTest, End2EndTest_SingleFile_512B_OK)
 {
+	if (GetParam() == StorageType::SHARE)
+	{
+		GTEST_SKIP() << "not operational for SHARE services";
+	}
 	/* use this particular file because it is short and buffer size triggers lots of read operations */
 	EndToEndTest_(url.BQShortFilePart(), url.RandomOutputFile(), sLocalFilePath, 512ULL);
 }
 
 TEST_P(EndToEndTest, End2EndTest_MultipartBQFile_512KB_OK)
 {
+	if (GetParam() == StorageType::SHARE)
+	{
+		GTEST_SKIP() << "not operational for SHARE services";
+	}
 	EndToEndTest_(url.BQFile(), url.RandomOutputFile(), sLocalFilePath, 512ULL * 1024);
 }
 
 TEST_P(EndToEndTest, End2EndTest_MultipartBQEmptyFile_512KB_OK)
 {
+	if (GetParam() == StorageType::SHARE)
+	{
+		GTEST_SKIP() << "not operational for SHARE services";
+	}
 	EndToEndTest_(url.BQEmptyFile(), url.RandomOutputFile(), sLocalFilePath, 512ULL * 1024);
 }
 
 TEST_P(EndToEndTest, End2EndTest_MultipartSplitFile_512KB_OK)
 {
+	if (GetParam() == StorageType::SHARE)
+	{
+		GTEST_SKIP() << "not operational for SHARE services";
+	}
 	EndToEndTest_(url.SplitFile(), url.RandomOutputFile(), sLocalFilePath, 512ULL * 1024);
 }
 
 TEST_P(EndToEndTest, End2EndTest_MultipartSubsplitFile_512KB_OK)
 {
+	if (GetParam() == StorageType::SHARE)
+	{
+		GTEST_SKIP() << "not operational for SHARE services";
+	}
 	EndToEndTest_(url.MultisplitFile(), url.RandomOutputFile(), sLocalFilePath, 512ULL * 1024);
 }
 
