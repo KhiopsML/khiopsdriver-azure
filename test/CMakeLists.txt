@@ -18,6 +18,8 @@ add_executable(basic_test
     drivertest.cpp
     fixtures/storage_test.hpp fixtures/storage_test.cpp
     ../src/returnval.hpp
+    storagetype.hpp storagetype.cpp
+    urls.hpp urls.cpp
 )
 
 target_compile_options(
