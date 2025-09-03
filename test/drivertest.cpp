@@ -25,7 +25,7 @@ void EndToEndTest_(string sInputUrl, string sOutputUrl, string sLocalFilePath, s
 
 INSTANTIATE_TEST_SUITE_P(BlobAndShare, EndToEndTest, testing::Values(StorageType::BLOB, StorageType::SHARE), EndToEndTest::FormatParam);
 
-TEST_P(EndToEndTest, End2EndTest_SingleFile_512KB_OK)
+TEST_P(EndToEndTest, SingleFile512KB)
 {
 	if (GetParam() == StorageType::SHARE)
 	{
@@ -34,7 +34,7 @@ TEST_P(EndToEndTest, End2EndTest_SingleFile_512KB_OK)
 	EndToEndTest_(url.BQSomeFilePart(), url.RandomOutputFile(), sLocalFilePath, 512ULL * 1024);
 }
 
-TEST_P(EndToEndTest, End2EndTest_SingleFile_2MB_OK)
+TEST_P(EndToEndTest, SingleFile2MB)
 {
 	if (GetParam() == StorageType::SHARE)
 	{
@@ -43,7 +43,7 @@ TEST_P(EndToEndTest, End2EndTest_SingleFile_2MB_OK)
 	EndToEndTest_(url.BQSomeFilePart(), url.RandomOutputFile(), sLocalFilePath, 2ULL * 1024 * 1024);
 }
 
-TEST_P(EndToEndTest, End2EndTest_SingleFile_512B_OK)
+TEST_P(EndToEndTest, SingleFile512B)
 {
 	if (GetParam() == StorageType::SHARE)
 	{
@@ -53,7 +53,7 @@ TEST_P(EndToEndTest, End2EndTest_SingleFile_512B_OK)
 	EndToEndTest_(url.BQShortFilePart(), url.RandomOutputFile(), sLocalFilePath, 512ULL);
 }
 
-TEST_P(EndToEndTest, End2EndTest_MultipartBQFile_512KB_OK)
+TEST_P(EndToEndTest, MultipartBQFile512KB)
 {
 	if (GetParam() == StorageType::SHARE)
 	{
@@ -62,7 +62,7 @@ TEST_P(EndToEndTest, End2EndTest_MultipartBQFile_512KB_OK)
 	EndToEndTest_(url.BQFile(), url.RandomOutputFile(), sLocalFilePath, 512ULL * 1024);
 }
 
-TEST_P(EndToEndTest, End2EndTest_MultipartBQEmptyFile_512KB_OK)
+TEST_P(EndToEndTest, MultipartBQEmptyFile512KB)
 {
 	if (GetParam() == StorageType::SHARE)
 	{
@@ -71,7 +71,7 @@ TEST_P(EndToEndTest, End2EndTest_MultipartBQEmptyFile_512KB_OK)
 	EndToEndTest_(url.BQEmptyFile(), url.RandomOutputFile(), sLocalFilePath, 512ULL * 1024);
 }
 
-TEST_P(EndToEndTest, End2EndTest_MultipartSplitFile_512KB_OK)
+TEST_P(EndToEndTest, MultipartSplitFile512KB)
 {
 	if (GetParam() == StorageType::SHARE)
 	{
@@ -80,7 +80,7 @@ TEST_P(EndToEndTest, End2EndTest_MultipartSplitFile_512KB_OK)
 	EndToEndTest_(url.SplitFile(), url.RandomOutputFile(), sLocalFilePath, 512ULL * 1024);
 }
 
-TEST_P(EndToEndTest, End2EndTest_MultipartSubsplitFile_512KB_OK)
+TEST_P(EndToEndTest, MultipartSubsplitFile512KB)
 {
 	if (GetParam() == StorageType::SHARE)
 	{
