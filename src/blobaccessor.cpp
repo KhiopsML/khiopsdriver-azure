@@ -14,6 +14,11 @@
 #include "blobappender.hpp"
 
 using namespace std;
+using BlobClient = Azure::Storage::Blobs::BlobClient;
+using DeleteBlobOptions = Azure::Storage::Blobs::DeleteBlobOptions;
+using DeleteSnapshotsOption = Azure::Storage::Blobs::Models::DeleteSnapshotsOption;
+using Url = Azure::Core::Url;
+using TransportException = Azure::Core::Http::TransportException;
 
 namespace az
 {
@@ -41,7 +46,7 @@ namespace az
 		}
 		else
 		{
-			vector<Azure::Storage::Blobs::BlobClient> blobs = ListBlobs();
+			vector<BlobClient> blobs = ListBlobs();
 			if (blobs.empty())
 			{
 				throw NoFileError(GetUrl().GetAbsoluteUrl());
@@ -52,7 +57,7 @@ namespace az
 
 	const unique_ptr<FileReader>& BlobAccessor::OpenForReading() const
 	{
-		vector<Azure::Storage::Blobs::BlobClient> blobs = ListBlobs();
+		vector<BlobClient> blobs = ListBlobs();
 		return RegisterReader(make_unique<BlobReader>(move(blobs)));
 	}
 
@@ -68,14 +73,14 @@ namespace az
 
 	void BlobAccessor::Remove() const
 	{
-		vector<Azure::Storage::Blobs::BlobClient> blobs = ListBlobs();
+		vector<BlobClient> blobs = ListBlobs();
 		if (blobs.empty())
 		{
 			throw NoFileError(GetUrl().GetAbsoluteUrl());
 		}
-		Azure::Storage::Blobs::DeleteBlobOptions opts;
-		opts.DeleteSnapshots = Azure::Storage::Blobs::Models::DeleteSnapshotsOption::IncludeSnapshots;
-		for (const Azure::Storage::Blobs::BlobClient& blob : blobs)
+		DeleteBlobOptions opts;
+		opts.DeleteSnapshots = DeleteSnapshotsOption::IncludeSnapshots;
+		for (const BlobClient& blob : blobs)
 		{
 			const string sBlobUrl = blob.GetUrl();
 			if (!blob.Delete(opts).Value.Deleted)
@@ -138,18 +143,18 @@ namespace az
 		delete[] buffer;
 	}
 
-	BlobAccessor::BlobAccessor(const Azure::Core::Url& url, const function<const unique_ptr<FileReader>& (unique_ptr<FileReader>)>& registerReader, const function<const unique_ptr<FileWriter>& (unique_ptr<FileWriter>)>& registerWriter, const function<const unique_ptr<FileAppender>& (unique_ptr<FileAppender>)>& registerAppender) :
+	BlobAccessor::BlobAccessor(const Url& url, const function<const unique_ptr<FileReader>& (unique_ptr<FileReader>)>& registerReader, const function<const unique_ptr<FileWriter>& (unique_ptr<FileWriter>)>& registerWriter, const function<const unique_ptr<FileAppender>& (unique_ptr<FileAppender>)>& registerAppender) :
 		FileAccessor(url, registerReader, registerWriter, registerAppender)
 	{
 	}
 
-	vector<Azure::Storage::Blobs::BlobClient> BlobAccessor::ListBlobs() const
+	vector<BlobClient> BlobAccessor::ListBlobs() const
 	{
 		try
 		{
 			return ResolveBlobsSearchString(GetContainerClient(), GetObjectName());
 		}
-		catch (const Azure::Core::Http::TransportException& exc)
+		catch (const TransportException& exc)
 		{
 			throw NetworkError();
 		}

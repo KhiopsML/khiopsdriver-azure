@@ -7,6 +7,12 @@
 #include "fileinfo.hpp"
 
 using namespace std;
+using ShareFileClient = Azure::Storage::Files::Shares::ShareFileClient;
+using ShareDirectoryClient = Azure::Storage::Files::Shares::ShareDirectoryClient;
+using DeleteFileOptions = Azure::Storage::Files::Shares::DeleteFileOptions;
+using DeleteSnapshotsOption = Azure::Storage::Files::Shares::Models::DeleteSnapshotsOption;
+using Url = Azure::Core::Url;
+using TransportException = Azure::Core::Http::TransportException;
 
 namespace az
 {
@@ -34,7 +40,7 @@ namespace az
 		}
 		else
 		{
-			vector<Azure::Storage::Files::Shares::ShareFileClient> files = ListFiles();
+			vector<ShareFileClient> files = ListFiles();
 			if (files.empty())
 			{
 				throw NoFileError(GetUrl().GetAbsoluteUrl());
@@ -66,7 +72,19 @@ namespace az
 
 	void ShareAccessor::Remove() const
 	{
-		// TODO: Implement
+		vector<ShareFileClient> files = ListFiles();
+		if (files.empty())
+		{
+			throw NoFileError(GetUrl().GetAbsoluteUrl());
+		}
+		for (const ShareFileClient& file : files)
+		{
+			const string sFileUrl = file.GetUrl();
+			if (!file.Delete().Value.Deleted)
+			{
+				throw DeletionError(sFileUrl);
+			}
+		}
 	}
 
 	void ShareAccessor::MkDir() const
@@ -95,12 +113,12 @@ namespace az
 		// TODO: Implement
 	}
 
-	ShareAccessor::ShareAccessor(const Azure::Core::Url& url, const function<const unique_ptr<FileReader>& (unique_ptr<FileReader>)>& registerReader, const function<const unique_ptr<FileWriter>& (unique_ptr<FileWriter>)>& registerWriter, const function<const unique_ptr<FileAppender>& (unique_ptr<FileAppender>)>& registerAppender) :
+	ShareAccessor::ShareAccessor(const Url& url, const function<const unique_ptr<FileReader>& (unique_ptr<FileReader>)>& registerReader, const function<const unique_ptr<FileWriter>& (unique_ptr<FileWriter>)>& registerWriter, const function<const unique_ptr<FileAppender>& (unique_ptr<FileAppender>)>& registerAppender) :
 		FileAccessor(url, registerReader, registerWriter, registerAppender)
 	{
 	}
 
-	vector<Azure::Storage::Files::Shares::ShareDirectoryClient> ShareAccessor::ListDirs() const
+	vector<ShareDirectoryClient> ShareAccessor::ListDirs() const
 	{
 		vector<string> path = GetPath();
 
@@ -108,13 +126,13 @@ namespace az
 		{
 			return ResolveDirsPathRecursively(GetDirClient(), queue<string, deque<string>>(deque<string>(path.begin(), path.end())));
 		}
-		catch (const Azure::Core::Http::TransportException& exc)
+		catch (const TransportException& exc)
 		{
 			throw NetworkError();
 		}
 	}
 
-	vector<Azure::Storage::Files::Shares::ShareFileClient> ShareAccessor::ListFiles() const
+	vector<ShareFileClient> ShareAccessor::ListFiles() const
 	{
 		vector<string> path = GetPath();
 
@@ -122,7 +140,7 @@ namespace az
 		{
 			return ResolveFilesPathRecursively(GetDirClient(), queue<string, deque<string>>(deque<string>(path.begin(), path.end())));
 		}
-		catch (const Azure::Core::Http::TransportException& exc)
+		catch (const TransportException& exc)
 		{
 			throw NetworkError();
 		}
