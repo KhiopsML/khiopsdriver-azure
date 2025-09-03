@@ -17,6 +17,9 @@ namespace az
 	class InvalidSeekOriginError;
 	class InvalidSeekOffsetError;
 	class FileStreamNotFoundError;
+	class IntermediateDirNotFoundError;
+	class DirAlreadyExistsError;
+	class CreationError;
 }
 
 #include <exception>
@@ -167,6 +170,39 @@ namespace az
 	{
 	public:
 		FileStreamNotFoundError(const FileStreamHandle& handle);
+
+		virtual const char* what() const noexcept override;
+
+	private:
+		std::string sMessage;
+	};
+
+	class IntermediateDirNotFoundError : public Error
+	{
+	public:
+		IntermediateDirNotFoundError(const std::string& sUrl);
+
+		virtual const char* what() const noexcept override;
+
+	private:
+		std::string sMessage;
+	};
+
+	class DirAlreadyExistsError : public Error
+	{
+	public:
+		DirAlreadyExistsError(const std::string& sUrl);
+
+		virtual const char* what() const noexcept override;
+
+	private:
+		std::string sMessage;
+	};
+
+	class CreationError : public Error
+	{
+	public:
+		CreationError(const std::string& sUrl);
 
 		virtual const char* what() const noexcept override;
 

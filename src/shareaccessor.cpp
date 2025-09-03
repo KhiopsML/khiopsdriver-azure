@@ -2,6 +2,7 @@
 #include <queue>
 #include <deque>
 #include <numeric>
+#include <algorithm>
 #include "exception.hpp"
 #include "sharepathresolve.hpp"
 #include "fileinfo.hpp"
@@ -11,6 +12,7 @@ using ShareFileClient = Azure::Storage::Files::Shares::ShareFileClient;
 using ShareDirectoryClient = Azure::Storage::Files::Shares::ShareDirectoryClient;
 using Url = Azure::Core::Url;
 using TransportException = Azure::Core::Http::TransportException;
+using ListFilesAndDirectoriesOptions = Azure::Storage::Files::Shares::ListFilesAndDirectoriesOptions;
 
 namespace az
 {
@@ -87,7 +89,46 @@ namespace az
 
 	void ShareAccessor::MkDir() const
 	{
-		// TODO: Implement
+		ShareDirectoryClient dirClient = GetDirClient();
+		vector<string> path = GetPath();
+		string sPathFragment;
+
+		for (size_t i = 0; i < path.size(); i++)
+		{
+			sPathFragment = path[i];
+			dirClient = dirClient.GetSubdirectoryClient(sPathFragment);
+			ListFilesAndDirectoriesOptions opts;
+			opts.Prefix = sPathFragment;
+
+			bool bAlreadyExisting = false;
+			for (auto pagedResponse = dirClient.ListFilesAndDirectories(opts); pagedResponse.HasPage(); pagedResponse.MoveToNextPage())
+			{
+				if (find_if(pagedResponse.Directories.begin(), pagedResponse.Directories.end(), [sPathFragment](const auto& dirItem)
+					{
+						return dirItem.Name == sPathFragment;
+					}) != pagedResponse.Directories.end()
+				)
+				{
+					bAlreadyExisting = true;
+					break;
+				}
+			}
+
+			if (i < path.size() - 1 && !bAlreadyExisting)
+			{
+				throw IntermediateDirNotFoundError(dirClient.GetUrl());
+			}
+
+			if (i == path.size() - 1 && bAlreadyExisting)
+			{
+				throw DirAlreadyExistsError(dirClient.GetUrl());
+			}
+		}
+
+		if (!dirClient.Create().Value.Created)
+		{
+			throw CreationError(GetUrl().GetAbsoluteUrl());
+		}
 	}
 
 	void ShareAccessor::RmDir() const
@@ -109,8 +150,7 @@ namespace az
 
 	size_t ShareAccessor::GetFreeDiskSpace() const
 	{
-		// TODO: Implement
-		return 0;
+		return 5LL * 1024LL * 1024LL * 1024LL * 1024LL;
 	}
 
 	void ShareAccessor::CopyTo(const string& destUrl) const

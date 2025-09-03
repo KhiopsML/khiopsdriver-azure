@@ -136,4 +136,34 @@ namespace az
 	{
 		return sMessage.c_str();
 	}
+
+	IntermediateDirNotFoundError::IntermediateDirNotFoundError(const string& sUrl) :
+		sMessage((ostringstream() << "intermediate directory '" << sUrl << "' not found").str())
+	{
+	}
+
+	const char* IntermediateDirNotFoundError::what() const noexcept
+	{
+		return sMessage.c_str();
+	}
+
+	DirAlreadyExistsError::DirAlreadyExistsError(const string& sUrl) :
+		sMessage((ostringstream() << "directory '" << sUrl << "' already exists").str())
+	{
+	}
+
+	const char* DirAlreadyExistsError::what() const noexcept
+	{
+		return sMessage.c_str();
+	}
+
+	CreationError::CreationError(const string& sUrl) :
+		sMessage((ostringstream() << "failed to create " << sUrl).str())
+	{
+	}
+
+	const char* CreationError::what() const noexcept
+	{
+		return sMessage.c_str();
+	}
 }
