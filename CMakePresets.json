@@ -53,12 +53,7 @@
         {
             "name": "test-ninja-vcpkg",
             "configurePreset": "ninja-multi-vcpkg",
-            "hidden": true,
-            "filter": {
-                "exclude": {
-                    "name": "StorageTest.GetFileSizeInvalidCredentialsFailure"
-                }
-            }
+            "hidden": true
         },
         {
             "name": "test-debug",
