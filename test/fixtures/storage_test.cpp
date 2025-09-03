@@ -167,7 +167,7 @@ void PrintTo(const StorageType& storageType, std::ostream* os)
         *os << "Blob";
         break;
     case StorageType::SHARE:
-        *os << "File";
+        *os << "Share";
         break;
     default:
         throw invalid_argument((ostringstream() << "invalid storage type" << (int)storageType).str());
