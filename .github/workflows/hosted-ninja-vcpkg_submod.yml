@@ -64,17 +64,20 @@ jobs:
           vcpkgJsonGlob: 'vcpkg.json'
 
       - name: Install Azurite
+        if: matrix.os == 'ubuntu-latest'
         id: azuright
         uses: sgouache/azuright@v1.2
         with:
           skip-api-version-check: true
 
       - name: Set Azurite env for later use
+        if: matrix.os == 'ubuntu-latest'
         run: echo "AZURE_STORAGE_CONNECTION_STRING=${{ steps.azuright.outputs.connstring }}" >> $GITHUB_ENV
         shell: bash
 
       # Populate storage emulator
       - name:  Install test data in Azurite
+        if: matrix.os == 'ubuntu-latest'
         run:   |
             if [ "$RUNNER_OS" == "Linux" ]; then
               curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
@@ -94,21 +97,8 @@ jobs:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          auth-type: oidc
           enable-AzPSSession: true
-
-      # Uncomment to debug login issues...
-      # - name: Azure CLI script
-      #   uses: azure/cli@v2
-      #   with:
-      #     azcliversion: latest
-      #     inlineScript: |
-      #       echo az account show
-      #       az account show
-      #       # You can write your Azure CLI inline scripts here.
-      #       echo az resource list
-      #       az resource list
-      #       echo az storage account list
-      #       az storage account list
 
       - name: Azure PowerShell script
         uses: azure/powershell@v2
@@ -125,12 +115,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install lcov gcovr
   
-      # Note: if the preset misses the "configuration", it is possible to explicitly select the
-      # configuration with the additional `--config` flag, e.g.:
-      #   buildPreset: 'ninja-vcpkg'
-      #   buildPresetAdditionalArgs: "[`--config`, `Release`]"
-      #   testPreset: 'ninja-vcpkg'
-      #   testPresetAdditionalArgs: "[`--config`, `Release`]"
       - name: Build debug version and run sanitizer checks.
         if: matrix.os == 'ubuntu-latest'
         uses: lukka/run-cmake@v10
@@ -152,6 +136,7 @@ jobs:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          auth-type: oidc
 
       - name: Run tests with cloud storage
         if: matrix.os == 'ubuntu-latest'
@@ -171,7 +156,7 @@ jobs:
       #       builds/ninja-multi-vcpkg/coverage.*
       #     if-no-files-found: ignore
 
-      - name: Run CMake+vcpkg+Ninja+CTest to build packages and generate/build/test the code.
+      - name: Run CMake+vcpkg+Ninja to build packages and generate/build the code.
         uses: lukka/run-cmake@v10
         with:
           configurePreset: 'ninja-multi-vcpkg'
@@ -185,6 +170,7 @@ jobs:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          auth-type: oidc
 
       - name: Run tests with cloud storage
         run: |
