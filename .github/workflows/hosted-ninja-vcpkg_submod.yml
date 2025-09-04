@@ -53,11 +53,11 @@ jobs:
     steps:
       - name: Get OIDC Token
         id: get_oidc_token
+        shell: pwsh
         run: |
-          OIDC_TOKEN=$(curl -sLS "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=api://AzureADTokenExchange" -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN")
-          echo "::set-output name=oidc_token::$OIDC_TOKEN"
-          echo $OIDC_TOKEN > /tmp/oidc_token.json
-          echo "AZURE_FEDERATED_TOKEN_FILE=/tmp/oidc_token.json" >> $GITHUB_ENV
+          $oidcToken = Invoke-RestMethod -Uri "$env:ACTIONS_ID_TOKEN_REQUEST_URL&audience=api://AzureADTokenExchange" -Headers @{Authorization = "Bearer $env:ACTIONS_ID_TOKEN_REQUEST_TOKEN"}
+          $oidcToken | ConvertTo-Json -Depth 100 | Out-File -FilePath "$env:RUNNER_TEMP\oidc_token.json" -Encoding utf8
+          echo "AZURE_FEDERATED_TOKEN_FILE=$env:RUNNER_TEMP\oidc_token.json" | Out-File -FilePath $env:GITHUB_ENV -Append
           
       - uses: actions/checkout@v4
         with:
