@@ -27,8 +27,7 @@ INSTANTIATE_TEST_SUITE_P(BlobAndShare, EndToEndTest, testing::Values(StorageType
 
 TEST_P(EndToEndTest, SingleFile512KB)
 {
-	//EndToEndTest_(url.BQSomeFilePart(), url.RandomOutputFile(), sLocalFilePath, 512ULL * 1024);
-	EndToEndTest_(url.BQSomeFilePart(), "https://khiopsdriverazure.file.core.windows.net/data-test-khiops-driver-azure/khiops_data/output/output.txt", sLocalFilePath, 512ULL * 1024);
+	EndToEndTest_(url.BQSomeFilePart(), url.RandomOutputFile(), sLocalFilePath, 512ULL * 1024);
 }
 
 TEST_P(EndToEndTest, SingleFile2MB)
@@ -94,7 +93,7 @@ void EndToEndTest_(string sInputUrl, string sOutputUrl, string sLocalFilePath, s
 	size_t nInputFileSize = driver_getFileSize(sInputUrl.c_str());
 	cout << "Size of " << sInputUrl << " is " << nInputFileSize << endl;
 
-	for (const auto& Copy : { CopyFile/*, CopyFileWithFseek, CopyFileWithAppend*/})
+	for (const auto& Copy : { CopyFile/*, CopyFileWithFseek, CopyFileWithAppend*/ })
 	{
 		ASSERT_EQ(Copy(sInputUrl.c_str(), sOutputUrl.c_str(), nBufferSize), nSuccess) << "failed to copy file";
 		ASSERT_EQ(compareSize(sOutputUrl.c_str(), nInputFileSize), nSuccess) << "input file and output file sizes are different";
