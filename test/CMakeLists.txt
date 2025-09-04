@@ -43,7 +43,10 @@ else ()
   target_link_libraries(basic_test PRIVATE GTest::gtest GTest::gmock GTest::gmock_main ${Boost_LIBRARIES} Azure::azure-identity Azure::azure-storage-blobs khiopsdriver_file_azure)
 endif ()
 
-gtest_discover_tests(basic_test)
+gtest_discover_tests(basic_test 
+  PROPERTIES
+    ENVIRONMENT "LSAN_OPTIONS=suppressions=${CMAKE_SOURCE_DIR}/lsan_suppressions.txt"
+)
 
 
 add_executable(plugin_test plugin_test.cpp path_helper.cpp)
