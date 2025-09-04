@@ -51,6 +51,14 @@ jobs:
       VCPKG_DEFAULT_TRIPLET: ${{ matrix.triplet }} 
 
     steps:
+      - name: Get OIDC Token
+        id: get_oidc_token
+        run: |
+          OIDC_TOKEN=$(curl -sLS "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=api://AzureADTokenExchange" -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN")
+          echo "::set-output name=oidc_token::$OIDC_TOKEN"
+          echo $OIDC_TOKEN > /tmp/oidc_token.json
+          echo "AZURE_FEDERATED_TOKEN_FILE=/tmp/oidc_token.json" >> $GITHUB_ENV
+          
       - uses: actions/checkout@v4
         with:
           submodules: true
@@ -97,7 +105,6 @@ jobs:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          auth-type: oidc
           enable-AzPSSession: true
 
       - name: Azure PowerShell script
@@ -136,7 +143,6 @@ jobs:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          auth-type: oidc
 
       - name: Run tests with cloud storage
         if: matrix.os == 'ubuntu-latest'
@@ -170,7 +176,6 @@ jobs:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          auth-type: oidc
 
       - name: Run tests with cloud storage
         run: |
