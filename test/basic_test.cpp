@@ -176,7 +176,10 @@ TEST_F(BlobStorageTest, MkDir)
 TEST_F(ShareStorageTest, MkDir)
 {
     ASSERT_EQ(driver_connect(), nSuccess);
+    ASSERT_EQ(driver_dirExists(url.CreatedDir().c_str()), nFalse);
     ASSERT_EQ(driver_mkdir(url.CreatedDir().c_str()), nSuccess);
+    ASSERT_EQ(driver_dirExists(url.CreatedDir().c_str()), nTrue);
+    ASSERT_EQ(driver_rmdir(url.CreatedDir().c_str()), nSuccess);
     ASSERT_EQ(driver_disconnect(), nSuccess);
 }
 
@@ -190,6 +193,9 @@ TEST_F(BlobStorageTest, RmDir)
 TEST_F(ShareStorageTest, RmDir)
 {
     ASSERT_EQ(driver_connect(), nSuccess);
+    ASSERT_EQ(driver_mkdir(url.CreatedDir().c_str()), nSuccess);
+    ASSERT_EQ(driver_dirExists(url.CreatedDir().c_str()), nTrue);
     ASSERT_EQ(driver_rmdir(url.CreatedDir().c_str()), nSuccess);
+    ASSERT_EQ(driver_dirExists(url.CreatedDir().c_str()), nFalse);
     ASSERT_EQ(driver_disconnect(), nSuccess);
 }
