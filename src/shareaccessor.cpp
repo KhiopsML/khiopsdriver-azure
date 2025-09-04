@@ -86,8 +86,28 @@ namespace az
 		}
 		else
 		{
-			CheckParentDirExists();
-			return (const unique_ptr<FileOutputStream>&)RegisterAppender(make_unique<ShareAppender>(move(GetFileClient())));
+			string sFilename = GetPath().back();
+			ListFilesAndDirectoriesOptions opts;
+			opts.Prefix = sFilename;
+			bool bAlreadyExisting = false;
+			for (auto pagedResponse = GetParentDir().ListFilesAndDirectories(opts); pagedResponse.HasPage(); pagedResponse.MoveToNextPage())
+			{
+				if (find_if(pagedResponse.Files.begin(), pagedResponse.Files.end(), [sFilename](const auto& fileItem)
+					{
+						return fileItem.Name == sFilename;
+					}) != pagedResponse.Files.end()
+				)
+				{
+					bAlreadyExisting = true;
+					break;
+				}
+			}
+			ShareFileClient client = GetFileClient();
+			if (!bAlreadyExisting)
+			{
+				client.Create(0);
+			}
+			return (const unique_ptr<FileOutputStream>&)RegisterAppender(make_unique<ShareAppender>(move(client)));
 		}
 	}
 

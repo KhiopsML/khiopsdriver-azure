@@ -13,17 +13,19 @@ namespace az
 	ShareAppender::ShareAppender(Azure::Storage::Files::Shares::ShareFileClient&& client) :
 		client(client)
 	{
-		this->client.Create(0);
 		nCurrentPos = client.GetProperties().Value.FileSize;
 	}
 
 	void ShareAppender::Close()
 	{
-		this->client.ForceCloseAllHandles();
+		client.ForceCloseAllHandles();
 	}
 
 	size_t ShareAppender::Write(const void* source, size_t nSize, size_t nCount)
 	{
+		Azure::Storage::Files::Shares::Models::FileHttpHeaders httpHeaders;
+		Azure::Storage::Files::Shares::Models::FileSmbProperties smbProperties;
+		Azure::Storage::Files::Shares::SetFilePropertiesOptions opts;
 		size_t nToWrite = nSize * nCount;
 		size_t nWritten = 0;
 		while (nToWrite > 0)
@@ -32,8 +34,10 @@ namespace az
 			Azure::Core::IO::MemoryBodyStream bodyStream(((const uint8_t*)source) + nWritten, n);
 			nToWrite -= n;
 			nWritten += n;
+			opts.Size = nCurrentPos + n;
+			client.SetProperties(httpHeaders, smbProperties, opts);
 			client.UploadRange(nCurrentPos, bodyStream);
-			nCurrentPos += nWritten;
+			nCurrentPos += n;
 		}
 		return nWritten;
 	}
