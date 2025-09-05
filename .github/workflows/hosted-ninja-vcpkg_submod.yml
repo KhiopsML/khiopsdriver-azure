@@ -90,8 +90,8 @@ jobs:
             az storage blob upload-batch --destination data-test-khiops-driver-azure/khiops_data --source $PWD/khiops_data --connection-string "${{ steps.azuright.outputs.connstring }}"
         shell: bash
 
-
       # Set AZURE_CONFIG_DIR before login
+      # this is needed for running tests on Windows, otherwise credentials retrieval won't work
       - name: Set Azure Config Directory
         if: runner.os == 'Windows'
         shell: pwsh
@@ -143,7 +143,7 @@ jobs:
           configurePresetAdditionalArgs: "['-DCMAKE_BUILD_TYPE=Debug']"
           buildPreset: 'ninja-vcpkg-debug'
 
-      - name: Run tests with emulated storage
+      - name: Run tests with emulated storage - debug mode
         if: matrix.os == 'ubuntu-latest'
         run: |
           AZURE_EMULATED_STORAGE=true ctest --preset test-debug --output-on-failure
@@ -157,7 +157,7 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
          
-      - name: Run tests with cloud storage
+      - name: Run tests with cloud storage - debug mode
         if: matrix.os == 'ubuntu-latest'
         run: |
           AZURE_EMULATED_STORAGE=false ctest --preset test-debug --output-on-failure
@@ -198,31 +198,10 @@ jobs:
           inlineScript: |
             # Ensure AZURE_CONFIG_DIR is still set correctly
             Write-Host "AZURE_CONFIG_DIR: $env:AZURE_CONFIG_DIR"
-            # Check if Azure CLI is using this directory
-            Write-Host "Azure CLI config path:"
-            az config get | findstr dir
-
-            # Get Azure information for tests
-            # Get the client ID of the currently authenticated service principal
-            $clientId = (az ad signed-in-user show --query id -o tsv 2>$null) 
-            
-            # If that doesn't work (e.g., for service principals), try this alternative
-            if (-not $clientId) {
-              $clientId = (az account show --query user.name -o tsv)
-            }
-
-            # Set as environment variable
-            $env:AZURE_CLIENT_ID = $clientId
-            Write-Host "AZURE_CLIENT_ID set to: $clientId"
-            
-            # Set tenant ID as well
-            $env:AZURE_TENANT_ID = (az account show --query tenantId -o tsv)
-            Write-Host "AZURE_TENANT_ID set to: $env:AZURE_TENANT_ID"
-            $env:AZURE_SUBSCRIPTION_ID = (az account show --query id -o tsv)
-            Write-Host "AZURE_SUBSCRIPTION_ID set to: $env:AZURE_SUBSCRIPTION_ID"
 
             cd $env:GITHUB_WORKSPACE
             ctest --preset test-release --output-on-failure
+            exit $LASTEXITCODE
   
       - name: Upload the packages as artifacts
         uses: actions/upload-artifact@v4
