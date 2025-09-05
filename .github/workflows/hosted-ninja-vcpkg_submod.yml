@@ -50,15 +50,7 @@ jobs:
     # e.g. x64-osx).
       VCPKG_DEFAULT_TRIPLET: ${{ matrix.triplet }} 
 
-    steps:
-      - name: Get OIDC Token
-        id: get_oidc_token
-        shell: pwsh
-        run: |
-          $oidcToken = Invoke-RestMethod -Uri "$env:ACTIONS_ID_TOKEN_REQUEST_URL&audience=api://AzureADTokenExchange" -Headers @{Authorization = "Bearer $env:ACTIONS_ID_TOKEN_REQUEST_TOKEN"}
-          $oidcToken | ConvertTo-Json -Depth 100 | Out-File -FilePath "$env:RUNNER_TEMP\oidc_token.json" -Encoding utf8
-          echo "AZURE_FEDERATED_TOKEN_FILE=$env:RUNNER_TEMP\oidc_token.json" | Out-File -FilePath $env:GITHUB_ENV -Append
-          
+    steps:        
       - uses: actions/checkout@v4
         with:
           submodules: true
@@ -136,15 +128,19 @@ jobs:
           AZURE_EMULATED_STORAGE=true ctest --preset test-debug --output-on-failure
 
       # Retrieve azure credentials through WIF - needed to run tests
-      - name: Azure CLI Login
-        if: matrix.os == 'ubuntu-latest'
-        uses: azure/login@v2.3.0
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      # - name: Azure CLI Login
+      #   if: matrix.os == 'ubuntu-latest'
+      #   uses: azure/login@v2.3.0
+      #   with:
+      #     client-id: ${{ secrets.AZURE_CLIENT_ID }}
+      #     tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+      #     subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Run tests with cloud storage
+        env:
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
         if: matrix.os == 'ubuntu-latest'
         run: |
           AZURE_EMULATED_STORAGE=false ctest --preset test-debug --output-on-failure
@@ -162,22 +158,26 @@ jobs:
       #       builds/ninja-multi-vcpkg/coverage.*
       #     if-no-files-found: ignore
 
-      - name: Run CMake+vcpkg+Ninja to build packages and generate/build the code.
+      - name: Run CMake+vcpkg+Ninja to generate/build the code.
         uses: lukka/run-cmake@v10
         with:
           configurePreset: 'ninja-multi-vcpkg'
           configurePresetAdditionalArgs: "['-DCMAKE_BUILD_TYPE=Release']"
           buildPreset: 'ninja-vcpkg-release'
 
-      # Retrieve azure credentials through WIF - needed to run tests
-      - name: Azure CLI Login
-        uses: azure/login@v2.3.0
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      # # Retrieve azure credentials through WIF - needed to run tests
+      # - name: Azure CLI Login
+      #   uses: azure/login@v2.3.0
+      #   with:
+      #     client-id: ${{ secrets.AZURE_CLIENT_ID }}
+      #     tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+      #     subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Run tests with cloud storage
+        env:
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
         run: |
           ctest --preset test-release --output-on-failure
   
