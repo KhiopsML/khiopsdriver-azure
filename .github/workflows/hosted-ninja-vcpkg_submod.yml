@@ -128,19 +128,15 @@ jobs:
           AZURE_EMULATED_STORAGE=true ctest --preset test-debug --output-on-failure
 
       # Retrieve azure credentials through WIF - needed to run tests
-      # - name: Azure CLI Login
-      #   if: matrix.os == 'ubuntu-latest'
-      #   uses: azure/login@v2.3.0
-      #   with:
-      #     client-id: ${{ secrets.AZURE_CLIENT_ID }}
-      #     tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-      #     subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
+      - name: Azure CLI Login
+        if: matrix.os == 'ubuntu-latest'
+        uses: azure/login@v2.3.0
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+         
       - name: Run tests with cloud storage
-        env:
-          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
         if: matrix.os == 'ubuntu-latest'
         run: |
           AZURE_EMULATED_STORAGE=false ctest --preset test-debug --output-on-failure
@@ -165,19 +161,29 @@ jobs:
           configurePresetAdditionalArgs: "['-DCMAKE_BUILD_TYPE=Release']"
           buildPreset: 'ninja-vcpkg-release'
 
-      # # Retrieve azure credentials through WIF - needed to run tests
-      # - name: Azure CLI Login
-      #   uses: azure/login@v2.3.0
-      #   with:
-      #     client-id: ${{ secrets.AZURE_CLIENT_ID }}
-      #     tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-      #     subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      # Retrieve azure credentials through WIF - needed to run tests
+      - name: Azure CLI Login
+        uses: azure/login@v2.3.0
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # Set AZURE_TOKEN for Linux runners
+      - name: Set Azure Token (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          echo "AZURE_TOKEN=$(az account get-access-token --query accessToken -o tsv)" >> $GITHUB_ENV
+      
+      # Set AZURE_TOKEN for Windows runners
+      - name: Set Azure Token (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $token = (az account get-access-token --query accessToken -o tsv)
+          echo "AZURE_TOKEN=$token" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
       - name: Run tests with cloud storage
-        env:
-          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
         run: |
           ctest --preset test-release --output-on-failure
   
