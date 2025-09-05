@@ -41,7 +41,7 @@ const string StorageTestUrlProvider::Dir() const
 
 const string StorageTestUrlProvider::CreatedDir() const
 {
-    return sPrefix + "/data-test-khiops-driver-azure/CREATED_BY_TESTS/";
+    return (ostringstream() << sPrefix + "/data-test-khiops-driver-azure/CREATED_BY_TESTS_" << boost::uuids::random_generator()() << "/").str();
 }
 
 const string StorageTestUrlProvider::InexistantFile() const
@@ -95,5 +95,5 @@ EndToEndTestUrlProvider::EndToEndTestUrlProvider(StorageType storageType, bool b
 
 const string EndToEndTestUrlProvider::RandomOutputFile() const
 {
-    return (ostringstream() << sPrefix << "/data-test-khiops-driver-azure/khiops_data/output/" << boost::uuids::random_generator()() << "/output.txt").str();
+    return (ostringstream() << sPrefix << "/data-test-khiops-driver-azure/khiops_data/output/CREATED_BY_TESTS_" << boost::uuids::random_generator()() << "/output.txt").str();
 }
