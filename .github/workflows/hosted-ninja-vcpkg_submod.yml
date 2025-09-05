@@ -175,6 +175,26 @@ jobs:
         with:
           azPSVersion: "latest"
           inlineScript: |
+
+            # Get Azure information for tests
+            # Get the client ID of the currently authenticated service principal
+            $clientId = (az ad signed-in-user show --query id -o tsv 2>$null) 
+            
+            # If that doesn't work (e.g., for service principals), try this alternative
+            if (-not $clientId) {
+              $clientId = (az account show --query user.name -o tsv)
+            }
+
+            # Set as environment variable
+            $env:AZURE_CLIENT_ID = $clientId
+            Write-Host "AZURE_CLIENT_ID set to: $clientId"
+            
+            # Set tenant ID as well
+            $env:AZURE_TENANT_ID = (az account show --query tenantId -o tsv)
+            Write-Host "AZURE_TENANT_ID set to: $env:AZURE_TENANT_ID"
+            $env:AZURE_SUBSCRIPTION_ID = (az account show --query id -o tsv)
+            Write-Host "AZURE_SUBSCRIPTION_ID set to: $env:AZURE_SUBSCRIPTION_ID"
+
             cd $env:GITHUB_WORKSPACE
             ctest --preset test-release --output-on-failure
   
