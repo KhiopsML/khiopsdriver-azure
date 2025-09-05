@@ -168,6 +168,7 @@ jobs:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          enable-AzPSSession: true
 
       # Set AZURE_TOKEN for Linux runners
       - name: Set Azure Token (Linux)
@@ -184,8 +185,12 @@ jobs:
           echo "AZURE_TOKEN=$token" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
       - name: Run tests with cloud storage
-        run: |
-          ctest --preset test-release --output-on-failure
+        uses: azure/powershell@v2
+        with:
+          azPSVersion: "latest"
+          inlineScript: |
+            cd $env:GITHUB_WORKSPACE/build
+            ctest --preset test-release --output-on-failure
   
       - name: Upload the packages as artifacts
         uses: actions/upload-artifact@v4
