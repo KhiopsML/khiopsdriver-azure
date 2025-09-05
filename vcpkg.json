@@ -10,21 +10,6 @@
         {"name": "azure-storage-blobs-cpp"},
         {"name": "azure-storage-files-shares-cpp"},
         {"name": "spdlog"}      
-    ],
-    "builtin-baseline": "ef7dbf94b9198bc58f45951adcf1f041fcbc5ea0",
-    "overrides": [
-        {
-            "name": "curl",
-            "version": "8.10.1"
-        },
-        {
-            "name": "azure-core-cpp",
-            "version": "1.15.0"
-        },
-        {
-            "name": "azure-identity-cpp",
-            "version": "1.11.0"
-        }
     ]
 }
 
