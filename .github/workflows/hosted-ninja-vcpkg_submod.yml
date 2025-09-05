@@ -170,26 +170,12 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           enable-AzPSSession: true
 
-      # Set AZURE_TOKEN for Linux runners
-      - name: Set Azure Token (Linux)
-        if: runner.os == 'Linux'
-        run: |
-          echo "AZURE_TOKEN=$(az account get-access-token --query accessToken -o tsv)" >> $GITHUB_ENV
-      
-      # Set AZURE_TOKEN for Windows runners
-      - name: Set Azure Token (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          $token = (az account get-access-token --query accessToken -o tsv)
-          echo "AZURE_TOKEN=$token" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-
       - name: Run tests with cloud storage
         uses: azure/powershell@v2
         with:
           azPSVersion: "latest"
           inlineScript: |
-            cd $env:GITHUB_WORKSPACE/build
+            cd $env:GITHUB_WORKSPACE
             ctest --preset test-release --output-on-failure
   
       - name: Upload the packages as artifacts
