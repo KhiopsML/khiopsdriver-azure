@@ -90,6 +90,27 @@ jobs:
             az storage blob upload-batch --destination data-test-khiops-driver-azure/khiops_data --source $PWD/khiops_data --connection-string "${{ steps.azuright.outputs.connstring }}"
         shell: bash
 
+
+      # Set AZURE_CONFIG_DIR before login
+      - name: Set Azure Config Directory
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          # Create the directory if it doesn't exist
+          $configDir = "$env:USERPROFILE\.azure"
+          if (-not (Test-Path $configDir)) {
+            New-Item -ItemType Directory -Path $configDir -Force
+            Write-Host "Created Azure config directory at: $configDir"
+          }
+          
+          # Set the environment variable
+          $env:AZURE_CONFIG_DIR = $configDir
+          Write-Host "AZURE_CONFIG_DIR set to: $env:AZURE_CONFIG_DIR"
+          
+          # Make it available to subsequent steps
+          echo "AZURE_CONFIG_DIR=$env:AZURE_CONFIG_DIR" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+            
       # Retrieve azure credentials through WIF - needed to run tests
       - name: Azure CLI Login
         uses: azure/login@v2.3.0
@@ -175,6 +196,11 @@ jobs:
         with:
           azPSVersion: "latest"
           inlineScript: |
+            # Ensure AZURE_CONFIG_DIR is still set correctly
+            Write-Host "AZURE_CONFIG_DIR: $env:AZURE_CONFIG_DIR"
+            # Check if Azure CLI is using this directory
+            Write-Host "Azure CLI config path:"
+            az config get | findstr dir
 
             # Get Azure information for tests
             # Get the client ID of the currently authenticated service principal
