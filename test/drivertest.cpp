@@ -32,56 +32,32 @@ TEST_P(EndToEndTest, SingleFile512KB)
 
 TEST_P(EndToEndTest, SingleFile2MB)
 {
-	if (GetParam() == StorageType::SHARE)
-	{
-		GTEST_SKIP() << "not yet operational for SHARE services";
-	}
 	EndToEndTest_(url.BQSomeFilePart(), url.RandomOutputFile(), sLocalFilePath, 2ULL * 1024 * 1024);
 }
 
 TEST_P(EndToEndTest, SingleFile512B)
 {
-	if (GetParam() == StorageType::SHARE)
-	{
-		GTEST_SKIP() << "not yet operational for SHARE services";
-	}
 	/* use this particular file because it is short and buffer size triggers lots of read operations */
 	EndToEndTest_(url.BQShortFilePart(), url.RandomOutputFile(), sLocalFilePath, 512ULL);
 }
 
 TEST_P(EndToEndTest, MultipartBQFile512KB)
 {
-	if (GetParam() == StorageType::SHARE)
-	{
-		GTEST_SKIP() << "not yet operational for SHARE services";
-	}
 	EndToEndTest_(url.BQFile(), url.RandomOutputFile(), sLocalFilePath, 512ULL * 1024);
 }
 
 TEST_P(EndToEndTest, MultipartBQEmptyFile512KB)
 {
-	if (GetParam() == StorageType::SHARE)
-	{
-		GTEST_SKIP() << "not yet operational for SHARE services";
-	}
 	EndToEndTest_(url.BQEmptyFile(), url.RandomOutputFile(), sLocalFilePath, 512ULL * 1024);
 }
 
 TEST_P(EndToEndTest, MultipartSplitFile512KB)
 {
-	if (GetParam() == StorageType::SHARE)
-	{
-		GTEST_SKIP() << "not yet operational for SHARE services";
-	}
 	EndToEndTest_(url.SplitFile(), url.RandomOutputFile(), sLocalFilePath, 512ULL * 1024);
 }
 
 TEST_P(EndToEndTest, MultipartSubsplitFile512KB)
 {
-	if (GetParam() == StorageType::SHARE)
-	{
-		GTEST_SKIP() << "not yet operational for SHARE services";
-	}
 	EndToEndTest_(url.MultisplitFile(), url.RandomOutputFile(), sLocalFilePath, 512ULL * 1024);
 }
 
@@ -93,7 +69,7 @@ void EndToEndTest_(string sInputUrl, string sOutputUrl, string sLocalFilePath, s
 	size_t nInputFileSize = driver_getFileSize(sInputUrl.c_str());
 	cout << "Size of " << sInputUrl << " is " << nInputFileSize << endl;
 
-	for (const auto& Copy : { CopyFile/*, CopyFileWithFseek, CopyFileWithAppend*/ })
+	for (const auto& Copy : { CopyFile, CopyFileWithFseek, CopyFileWithAppend })
 	{
 		ASSERT_EQ(Copy(sInputUrl.c_str(), sOutputUrl.c_str(), nBufferSize), nSuccess) << "failed to copy file";
 		ASSERT_EQ(compareSize(sOutputUrl.c_str(), nInputFileSize), nSuccess) << "input file and output file sizes are different";
