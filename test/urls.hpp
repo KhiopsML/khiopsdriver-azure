@@ -14,7 +14,7 @@ public:
 
     const std::string InexistantDir() const;
     const std::string Dir() const;
-    const std::string CreatedDir() const;
+    const std::string NewRandomDir() const;
     const std::string InexistantFile() const;
     const std::string File() const;
     const std::string BQFile() const;

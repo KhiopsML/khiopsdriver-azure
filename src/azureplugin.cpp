@@ -289,7 +289,6 @@ long long int driver_getFileSize(const char* sUrl)
 	}
 }
 
-// TODO: Implement driver functions from this point.
 void* driver_fopen(const char* sUrl, char mode)
 {
 	try

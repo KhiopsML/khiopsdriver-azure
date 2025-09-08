@@ -3,6 +3,7 @@
 #include <deque>
 #include <numeric>
 #include <algorithm>
+#include <fstream>
 #include "exception.hpp"
 #include "sharepathresolve.hpp"
 #include "fileinfo.hpp"
@@ -198,12 +199,40 @@ namespace az
 
 	void ShareAccessor::CopyTo(const string& destUrl) const
 	{
-		// TODO: Implement
+		const auto& reader = OpenForReading();
+		constexpr size_t nBufferSize = 4ULL * 1024 * 1024; // TODO
+		char* buffer = new char[nBufferSize];
+		size_t nRead;
+		ofstream ofs(destUrl, ios::binary);
+
+		while ((nRead = reader->Read(buffer, 1, nBufferSize)) > 0)
+		{
+			ofs.write(buffer, nRead);
+		}
+
+		delete[] buffer;
 	}
 
 	void ShareAccessor::CopyFrom(const string& sourceUrl) const
 	{
-		// TODO: Implement
+		const auto& writer = OpenForWriting();
+		constexpr size_t nBufferSize = 4ULL * 1024 * 1024; // TODO
+		char* buffer = new char[nBufferSize];
+		size_t nRead;
+		ifstream ifs(sourceUrl, ios::binary);
+
+		for (;;)
+		{
+			ifs.read(buffer, nBufferSize);
+			nRead = (size_t)ifs.gcount();
+			if (nRead == 0)
+			{
+				break;
+			}
+			writer->Write(buffer, 1, nRead);
+		}
+
+		delete[] buffer;
 	}
 
 	ShareAccessor::ShareAccessor(const Url& url, const function<const unique_ptr<FileReader>& (unique_ptr<FileReader>)>& registerReader, const function<const unique_ptr<FileWriter>& (unique_ptr<FileWriter>)>& registerWriter, const function<const unique_ptr<FileAppender>& (unique_ptr<FileAppender>)>& registerAppender) :

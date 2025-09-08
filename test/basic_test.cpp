@@ -169,33 +169,35 @@ TEST_P(CommonStorageTest, GetFileSizeInvalidCredentialsFailure)
 TEST_F(BlobStorageTest, MkDir)
 {
 	ASSERT_EQ(driver_connect(), nSuccess);
-	ASSERT_EQ(driver_mkdir(url.CreatedDir().c_str()), nSuccess); // there is no such concept as a directory when dealing with blobs
+	ASSERT_EQ(driver_mkdir(url.NewRandomDir().c_str()), nSuccess); // there is no such concept as a directory when dealing with blobs
 	ASSERT_EQ(driver_disconnect(), nSuccess);
 }
 
 TEST_F(ShareStorageTest, MkDir)
 {
+    std::string sNewDir = url.NewRandomDir();
     ASSERT_EQ(driver_connect(), nSuccess);
-    ASSERT_EQ(driver_dirExists(url.CreatedDir().c_str()), nFalse);
-    ASSERT_EQ(driver_mkdir(url.CreatedDir().c_str()), nSuccess);
-    ASSERT_EQ(driver_dirExists(url.CreatedDir().c_str()), nTrue);
-    ASSERT_EQ(driver_rmdir(url.CreatedDir().c_str()), nSuccess);
+    ASSERT_EQ(driver_dirExists(sNewDir.c_str()), nFalse);
+    ASSERT_EQ(driver_mkdir(sNewDir.c_str()), nSuccess);
+    ASSERT_EQ(driver_dirExists(sNewDir.c_str()), nTrue);
+    ASSERT_EQ(driver_rmdir(sNewDir.c_str()), nSuccess);
     ASSERT_EQ(driver_disconnect(), nSuccess);
 }
 
 TEST_F(BlobStorageTest, RmDir)
 {
     ASSERT_EQ(driver_connect(), nSuccess);
-    ASSERT_EQ(driver_rmdir(url.CreatedDir().c_str()), nSuccess); // there is no such concept as a directory when dealing with blobs
+    ASSERT_EQ(driver_rmdir(url.NewRandomDir().c_str()), nSuccess); // there is no such concept as a directory when dealing with blobs
     ASSERT_EQ(driver_disconnect(), nSuccess);
 }
 
 TEST_F(ShareStorageTest, RmDir)
 {
+    std::string sNewDir = url.NewRandomDir();
     ASSERT_EQ(driver_connect(), nSuccess);
-    ASSERT_EQ(driver_mkdir(url.CreatedDir().c_str()), nSuccess);
-    ASSERT_EQ(driver_dirExists(url.CreatedDir().c_str()), nTrue);
-    ASSERT_EQ(driver_rmdir(url.CreatedDir().c_str()), nSuccess);
-    ASSERT_EQ(driver_dirExists(url.CreatedDir().c_str()), nFalse);
+    ASSERT_EQ(driver_mkdir(sNewDir.c_str()), nSuccess);
+    ASSERT_EQ(driver_dirExists(sNewDir.c_str()), nTrue);
+    ASSERT_EQ(driver_rmdir(sNewDir.c_str()), nSuccess);
+    ASSERT_EQ(driver_dirExists(sNewDir.c_str()), nFalse);
     ASSERT_EQ(driver_disconnect(), nSuccess);
 }

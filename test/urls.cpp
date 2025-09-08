@@ -39,7 +39,7 @@ const string StorageTestUrlProvider::Dir() const
     return sPrefix + "/data-test-khiops-driver-azure/khiops_data/bq_export/Adult/";
 }
 
-const string StorageTestUrlProvider::CreatedDir() const
+const string StorageTestUrlProvider::NewRandomDir() const
 {
     return (ostringstream() << sPrefix + "/data-test-khiops-driver-azure/CREATED_BY_TESTS_" << boost::uuids::random_generator()() << "/").str();
 }
