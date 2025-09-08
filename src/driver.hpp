@@ -42,9 +42,9 @@ namespace az
 		bool IsConnected() const;
 
 		std::unique_ptr<FileAccessor> CreateFileAccessor(const std::string& url);
-		const std::unique_ptr<FileStream>& RetrieveFileStream(const FileStreamHandle& handle) const;
-		const std::unique_ptr<FileReader>& RetrieveFileReader(const FileStreamHandle& handle) const;
-		const std::unique_ptr<FileOutputStream>& RetrieveFileOutputStream(const FileStreamHandle& handle) const;
+		const std::unique_ptr<FileStream>& RetrieveFileStream(void* handle) const;
+		const std::unique_ptr<FileReader>& RetrieveFileReader(void* handle) const;
+		const std::unique_ptr<FileOutputStream>& RetrieveFileOutputStream(void* handle) const;
 
 	protected:
 		void CheckConnected() const;
@@ -54,12 +54,12 @@ namespace az
 		const std::unique_ptr<FileWriter>& RegisterWriter(std::unique_ptr<FileWriter> writerPtr);
 		const std::unique_ptr<FileAppender>& RegisterAppender(std::unique_ptr<FileAppender> appenderPtr);
 
-		const std::unique_ptr<FileStream>& RetrieveFileStream(const FileStreamHandle& handle, bool bSearchReaders, bool bSearchWriters, bool bSearchAppenders) const;
+		const std::unique_ptr<FileStream>& RetrieveFileStream(void* handle, bool bSearchReaders, bool bSearchWriters, bool bSearchAppenders) const;
 
 		bool bIsConnected;
 
-		std::unordered_map<FileStreamHandle, std::unique_ptr<FileReader>, FileStreamHandle::Hash> fileReaders;
-		std::unordered_map<FileStreamHandle, std::unique_ptr<FileWriter>, FileStreamHandle::Hash> fileWriters;
-		std::unordered_map<FileStreamHandle, std::unique_ptr<FileAppender>, FileStreamHandle::Hash> fileAppenders;
+		std::unordered_map<void*, std::unique_ptr<FileReader>> fileReaders;
+		std::unordered_map<void*, std::unique_ptr<FileWriter>> fileWriters;
+		std::unordered_map<void*, std::unique_ptr<FileAppender>> fileAppenders;
 	};
 }

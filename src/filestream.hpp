@@ -5,21 +5,20 @@ namespace az
 	class FileStream;
 }
 
-#include "filestreamhandle.hpp"
-
 namespace az
 {
 	class FileStream
 	{
 	public:
 		virtual ~FileStream();
-		const FileStreamHandle& GetHandle() const;
+		explicit operator void* () const;
+		friend bool operator==(const FileStream& a, const FileStream& b);
 		virtual void Close() = 0;
 
 	protected:
 		FileStream();
 
 	private:
-		FileStreamHandle handle;
+		void* handle;
 	};
 }

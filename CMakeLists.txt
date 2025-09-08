@@ -86,7 +86,6 @@ set(SourceList
     emulatedblobaccessor.hpp emulatedblobaccessor.cpp
     cloudshareaccessor.hpp cloudshareaccessor.cpp
     filestream.hpp filestream.cpp
-    filestreamhandle.hpp filestreamhandle.cpp
     filereader.hpp filereader.cpp
     filewriter.hpp filewriter.cpp
     fileappender.hpp fileappender.cpp

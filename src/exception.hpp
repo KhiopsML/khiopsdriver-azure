@@ -25,7 +25,6 @@ namespace az
 
 #include <exception>
 #include <string>
-#include "filestreamhandle.hpp"
 
 namespace az
 {
@@ -186,7 +185,7 @@ namespace az
 	class FileStreamNotFoundError : public Error
 	{
 	public:
-		FileStreamNotFoundError(const FileStreamHandle& handle);
+		FileStreamNotFoundError(const void* handle);
 
 		virtual const char* what() const noexcept override;
 

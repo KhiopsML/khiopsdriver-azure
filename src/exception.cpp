@@ -157,8 +157,8 @@ namespace az
 		return sMessage.c_str();
 	}
 
-	FileStreamNotFoundError::FileStreamNotFoundError(const FileStreamHandle& handle) :
-		sMessage((ostringstream() << "file stream with handle '" << (void*)handle << "' not found").str())
+	FileStreamNotFoundError::FileStreamNotFoundError(const void* handle) :
+		sMessage((ostringstream() << "file stream with handle '" << handle << "' not found").str())
 	{
 	}
 

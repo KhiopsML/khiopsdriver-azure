@@ -91,17 +91,17 @@ namespace az
 		}
 	}
 
-	const unique_ptr<FileStream>& Driver::RetrieveFileStream(const FileStreamHandle& handle) const
+	const unique_ptr<FileStream>& Driver::RetrieveFileStream(void* handle) const
 	{
 		return RetrieveFileStream(handle, true, true, true);
 	}
 
-	const unique_ptr<FileReader>& Driver::RetrieveFileReader(const FileStreamHandle& handle) const
+	const unique_ptr<FileReader>& Driver::RetrieveFileReader(void* handle) const
 	{
 		return (const unique_ptr<FileReader>&)RetrieveFileStream(handle, true, false, false);
 	}
 
-	const unique_ptr<FileOutputStream>& Driver::RetrieveFileOutputStream(const FileStreamHandle& handle) const
+	const unique_ptr<FileOutputStream>& Driver::RetrieveFileOutputStream(void* handle) const
 	{
 		return (const unique_ptr<FileOutputStream>&)RetrieveFileStream(handle, false, true, true);
 	}
@@ -121,20 +121,20 @@ namespace az
 
 	const unique_ptr<FileReader>& Driver::RegisterReader(unique_ptr<FileReader> readerPtr)
 	{
-		return fileReaders[readerPtr->GetHandle()] = move(readerPtr);
+		return fileReaders[(void*)*readerPtr] = move(readerPtr);
 	}
 
 	const unique_ptr<FileWriter>& Driver::RegisterWriter(unique_ptr<FileWriter> writerPtr)
 	{
-		return fileWriters[writerPtr->GetHandle()] = move(writerPtr);
+		return fileWriters[(void*)*writerPtr] = move(writerPtr);
 	}
 
 	const unique_ptr<FileAppender>& Driver::RegisterAppender(unique_ptr<FileAppender> appenderPtr)
 	{
-		return fileAppenders[appenderPtr->GetHandle()] = move(appenderPtr);
+		return fileAppenders[(void*)*appenderPtr] = move(appenderPtr);
 	}
 
-	const unique_ptr<FileStream>& Driver::RetrieveFileStream(const FileStreamHandle& handle, bool bSearchReaders, bool bSearchWriters, bool bSearchAppenders) const
+	const unique_ptr<FileStream>& Driver::RetrieveFileStream(void* handle, bool bSearchReaders, bool bSearchWriters, bool bSearchAppenders) const
 	{
 		if (bSearchReaders)
 		{

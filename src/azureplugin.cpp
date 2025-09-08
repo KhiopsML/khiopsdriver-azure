@@ -301,11 +301,11 @@ void* driver_fopen(const char* sUrl, char mode)
 		switch (mode)
 		{
 		case 'r':
-			return (void*)driver.CreateFileAccessor(sUrl)->OpenForReading()->GetHandle();
+			return (void*)*driver.CreateFileAccessor(sUrl)->OpenForReading();
 		case 'w':
-			return (void*)driver.CreateFileAccessor(sUrl)->OpenForWriting()->GetHandle();
+			return (void*)*driver.CreateFileAccessor(sUrl)->OpenForWriting();
 		case 'a':
-			return (void*)driver.CreateFileAccessor(sUrl)->OpenForAppending()->GetHandle();
+			return (void*)*driver.CreateFileAccessor(sUrl)->OpenForAppending();
 		default:
 			throw InvalidFileStreamModeError(sUrl, mode);
 		}
@@ -359,7 +359,7 @@ long long int driver_fread(void* dest, size_t size, size_t count, void* handle)
 		{
 			throw NullArgError(__func__, STRINGIFY(handle));
 		}
-		return driver.RetrieveFileReader(FileStreamHandle(handle))->Read(dest, size, count);
+		return driver.RetrieveFileReader(handle)->Read(dest, size, count);
 	}
 	catch (const exception& exc)
 	{
@@ -448,7 +448,7 @@ long long int driver_fwrite(const void* source, size_t size, size_t count, void*
 		{
 			throw NullArgError(__func__, STRINGIFY(handle));
 		}
-		return driver.RetrieveFileOutputStream(FileStreamHandle(handle))->Write(source, size, count);
+		return driver.RetrieveFileOutputStream(handle)->Write(source, size, count);
 	}
 	catch (const exception& exc)
 	{

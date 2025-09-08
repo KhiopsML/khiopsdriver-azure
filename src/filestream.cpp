@@ -1,4 +1,7 @@
 #include "filestream.hpp"
+#include <chrono>
+
+using namespace std;
 
 namespace az
 {
@@ -6,13 +9,13 @@ namespace az
 	{
 	}
 
-	const FileStreamHandle& FileStream::GetHandle() const
+	FileStream::operator void* () const
 	{
 		return handle;
 	}
 
 	FileStream::FileStream() :
-		handle(FileStreamHandle())
+		handle((void*)chrono::steady_clock::now().time_since_epoch().count())
 	{
 	}
 }
