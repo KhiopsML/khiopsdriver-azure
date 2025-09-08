@@ -12,7 +12,6 @@ namespace az
 	public:
 		virtual ~FileStream();
 		explicit operator void* () const;
-		friend bool operator==(const FileStream& a, const FileStream& b);
 		virtual void Close() = 0;
 
 	protected:
