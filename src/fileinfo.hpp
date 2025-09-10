@@ -39,10 +39,12 @@ namespace az
 		FileInfo(const std::vector<ObjectClient>& clients);
 		size_t GetSize() const;
 		size_t GetFilePartIndexOfUserOffset(size_t nUserOffset) const;
-
+		size_t GetHeaderLen() const;
+		const PartInfo& GetPartInfo(size_t nIndex) const;
+		
 	private:
 		StorageType storageType;
-		std::string sHeader;
+		size_t nHeaderLen;
 		size_t nSize;
 		std::vector<PartInfo> parts;
 	};
@@ -56,7 +58,6 @@ namespace az
 
 	struct PartInfo
 	{
-		size_t nRealOffset;
 		size_t nUserOffset;
 		size_t nContentSize;
 		ObjectClient client;

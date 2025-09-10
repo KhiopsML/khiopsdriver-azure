@@ -4,6 +4,8 @@ using namespace std;
 
 namespace az
 {
+	static unique_ptr<Azure::Core::IO::BodyStream> DownloadFilePart(const ObjectClient& client, size_t nOffset, size_t nLength);
+
 	FileReader::FileReader(vector<Azure::Storage::Blobs::BlobClient>&& clients) :
 		FileReader(vector<ObjectClient>(clients.begin(), clients.end()))
 	{}
@@ -39,7 +41,14 @@ namespace az
 
 		while (nToRead > 0 && nCurrentPos < nTotalFileSize)
 		{
-			unique_ptr<Azure::Core::IO::BodyStream>& bodyStream = fileInfo.GetBodyStreams().at(nFilePartIndex);
+			const PartInfo& partInfo = fileInfo.GetPartInfo(nFilePartIndex);
+			unique_ptr<Azure::Core::IO::BodyStream> bodyStream = move(
+				DownloadFilePart(
+					partInfo.client,
+					nFilePartIndex == 0 ? 0 : fileInfo.GetHeaderLen(),
+					nToRead < partInfo.nContentSize ? nToRead : partInfo.nContentSize
+				)
+			);
 			nToRead -= (nRead = bodyStream->ReadToCount((uint8_t*)dest, nToRead));
 			nTotalRead += nRead;
 			nCurrentPos += nRead;
@@ -95,5 +104,25 @@ namespace az
 			throw;
 		}
 		delete[] buffer;
+	}
+
+	static unique_ptr<Azure::Core::IO::BodyStream> DownloadFilePart(const ObjectClient& client, size_t nOffset, size_t nLength)
+	{
+		Azure::Core::Http::HttpRange range{ (int64_t)nOffset, (int64_t)nLength };
+
+		if (client.tag == StorageType::BLOB)
+		{
+			Azure::Storage::Blobs::DownloadBlobOptions opts;
+			opts.Range = range;
+			auto downloadResult = move(client.blob.Download(opts).Value);
+			return move(downloadResult.BodyStream);
+		}
+		else // SHARE storage
+		{
+			Azure::Storage::Files::Shares::DownloadFileOptions opts;
+			opts.Range = range;
+			auto downloadResult = move(client.shareFile.Download(opts).Value);
+			return move(downloadResult.BodyStream);
+		}
 	}
 }

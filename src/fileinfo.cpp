@@ -17,7 +17,6 @@ namespace az
 	static string ReadHeaderFromBodyStream(std::unique_ptr<BodyStream>&& bodyStream);
 	static string GetFileHeader(std::vector<const FilePartInfo&>&& filePartInfos);
 	static vector<PartInfo> GetFileParts(const vector<FilePartInfo>& filePartInfo, size_t nHeaderLen);
-	static unique_ptr<Azure::Core::IO::BodyStream> DownloadFilePart(const ObjectClient& client, size_t nOffset);
 
 	static constexpr size_t nMaxHeaderSize = 8ULL * 1024 * 1024;
 
@@ -99,14 +98,24 @@ namespace az
 			}
 		}
 
-		sHeader = GetFileHeader(move(filePartsWithHeaderToInspect));
-		parts = GetFileParts(filePartInfos, sHeader.size());
+		nHeaderLen = GetFileHeader(move(filePartsWithHeaderToInspect)).size();
+		parts = GetFileParts(filePartInfos, nHeaderLen);
 		nSize = accumulate(parts.begin(), parts.end(), 0ULL, [](size_t nTotal, const PartInfo& partInfo) { return nTotal + partInfo.nContentSize; });
 	}
 
 	size_t FileInfo::GetSize() const
 	{
 		return nSize;
+	}
+
+	size_t FileInfo::GetHeaderLen() const
+	{
+		return nHeaderLen;
+	}
+
+	const PartInfo& FileInfo::GetPartInfo(size_t nIndex) const
+	{
+		return parts.at(nIndex);
 	}
 
 	size_t FileInfo::GetFilePartIndexOfUserOffset(size_t nUserOffset) const
@@ -160,7 +169,6 @@ namespace az
 	static vector<PartInfo> GetFileParts(const vector<FilePartInfo>& filePartInfo, size_t nHeaderLen)
 	{
 		vector<PartInfo> result;
-		size_t nRealOffset = 0;
 		size_t nUserOffset = 0;
 		size_t nContentSize;
 		bool bFirstIter = true;
@@ -169,37 +177,11 @@ namespace az
 			nContentSize = bFirstIter ? partInfo.nSize : partInfo.nSize - nHeaderLen;
 			if (nContentSize != 0)
 			{
-				result.emplace_back(nRealOffset, nUserOffset, nContentSize, move(partInfo.client));
+				result.emplace_back(nUserOffset, nContentSize, move(partInfo.client));
 			}
-			if (bFirstIter)
-			{
-				nRealOffset += nHeaderLen;
-			}
-			nRealOffset += partInfo.nSize;
 			nUserOffset += nContentSize;
 			bFirstIter = false;
 		}
 		return result;
-	}
-
-	static unique_ptr<BodyStream> DownloadFilePart(const ObjectClient& client, size_t nOffset)
-	{
-		HttpRange range;
-		range.Offset = (int64_t)nOffset;
-
-		if (client.tag == StorageType::BLOB)
-		{
-			DownloadBlobOptions opts;
-			opts.Range = range;
-			auto downloadResult = move(client.blob.Download(opts).Value);
-			return move(downloadResult.BodyStream);
-		}
-		else // SHARE storage
-		{
-			DownloadFileOptions opts;
-			opts.Range = range;
-			auto downloadResult = move(client.shareFile.Download(opts).Value);
-			return move(downloadResult.BodyStream);
-		}
 	}
 }
