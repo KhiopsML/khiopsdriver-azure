@@ -23,7 +23,7 @@
 using namespace std;
 using namespace az;
 
-void TestFSeek(string sUrl);
+void TestFSeek(string sUrl, bool bCrLf = false);
 
 INSTANTIATE_TEST_SUITE_P(BlobAndShare, IoTest, testing::Values(StorageType::BLOB, StorageType::SHARE), IoTest::FormatParam);
 
@@ -34,17 +34,17 @@ TEST_P(IoTest, FSeekSingleFile)
 
 TEST_P(IoTest, FSeekMultipartFile)
 {
-	TestFSeek(url.MultisplitFile());
+	TestFSeek(url.MultisplitFile(), true);
 }
 
-void TestFSeek(string sUrl)
+void TestFSeek(string sUrl, bool bCrLf)
 {
 	char* buffer = new char[32];
 	ASSERT_EQ(driver_connect(), nSuccess);
 	void* handle = driver_fopen(sUrl.c_str(), 'r');
 	ASSERT_NE(handle, nullptr);
 
-	ASSERT_EQ(driver_fseek(handle, 922, 0), nSeekSuccess);
+	ASSERT_EQ(driver_fseek(handle, bCrLf ? 929 : 922, 0), nSeekSuccess);
 	ASSERT_EQ(driver_fread(buffer, 1, 7, handle), 7);
 	buffer[7] = 0;
 	ASSERT_STREQ(buffer, "Jamaica");
@@ -54,7 +54,7 @@ void TestFSeek(string sUrl)
 	buffer[13] = 0;
 	ASSERT_STREQ(buffer, "Other-service");
 
-	ASSERT_EQ(driver_fseek(handle, -658, 2), nSeekSuccess);
+	ASSERT_EQ(driver_fseek(handle, bCrLf ? -664 : -658, 2), nSeekSuccess);
 	ASSERT_EQ(driver_fread(buffer, 1, 13, handle), 13);
 	buffer[13] = 0;
 	ASSERT_STREQ(buffer, "Never-married");
