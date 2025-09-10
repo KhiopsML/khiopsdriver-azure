@@ -83,27 +83,7 @@ namespace az
 			throw InvalidSeekOffsetError(nOffset, nOrigin);
 		}
 
-		size_t nDest = (size_t)nSignedDest;
-		for (unique_ptr<Azure::Core::IO::BodyStream>& bodyStream : fileInfo.GetBodyStreams())
-		{
-			bodyStream->Rewind();
-		}
-		nCurrentPos = 0;
-		constexpr size_t nBufferSize = 1024 * 1024; // TODO
-		uint8_t* buffer = new uint8_t[nBufferSize];
-		try
-		{
-			while (nCurrentPos < nDest)
-			{
-				Read(buffer, 1, nDest - nCurrentPos > nBufferSize ? nBufferSize : nDest - nCurrentPos);
-			}
-		}
-		catch (...)
-		{
-			delete[] buffer;
-			throw;
-		}
-		delete[] buffer;
+		nCurrentPos = (size_t)nSignedDest;
 	}
 
 	static unique_ptr<Azure::Core::IO::BodyStream> DownloadFilePart(const ObjectClient& client, size_t nOffset, size_t nLength)
