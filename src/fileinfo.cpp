@@ -15,8 +15,8 @@ using DownloadFileOptions = Azure::Storage::Files::Shares::DownloadFileOptions;
 namespace az
 {
 	static string ReadHeaderFromBodyStream(std::unique_ptr<BodyStream>&& bodyStream);
-	static string GetFileHeader(std::vector<const FilePartInfo&>&& filePartInfos);
-	static vector<PartInfo> GetFileParts(const vector<FilePartInfo>& filePartInfo, size_t nHeaderLen);
+	static string GetFileHeader(std::vector<const FilePartInfo*>&& filePartInfos);
+	static vector<PartInfo> GetFileParts(vector<FilePartInfo>& filePartInfo, size_t nHeaderLen);
 
 	static constexpr size_t nMaxHeaderSize = 8ULL * 1024 * 1024;
 
@@ -24,15 +24,15 @@ namespace az
 		nSize(0)
 	{}
 
-	FileInfo::FileInfo(const vector<Azure::Storage::Blobs::BlobClient>& clients) :
+	FileInfo::FileInfo(vector<Azure::Storage::Blobs::BlobClient>&& clients) :
 		FileInfo(vector<ObjectClient>(clients.begin(), clients.end()))
 	{}
 
-	FileInfo::FileInfo(const vector<Azure::Storage::Files::Shares::ShareFileClient>& clients) :
+	FileInfo::FileInfo(vector<Azure::Storage::Files::Shares::ShareFileClient>&& clients) :
 		FileInfo(vector<ObjectClient>(clients.begin(), clients.end()))
 	{}
 
-	FileInfo::FileInfo(const vector<ObjectClient>& clients):
+	FileInfo::FileInfo(vector<ObjectClient>&& clients):
 		storageType(clients.front().tag)
 	{
 		if (clients.empty())
@@ -47,7 +47,7 @@ namespace az
 		size_t nRandomlyPicked = 0;
 		string sFilePartHeader;
 		size_t nFilePartSize;
-		vector<const FilePartInfo&> filePartsWithHeaderToInspect;
+		vector<const FilePartInfo*> filePartsWithHeaderToInspect;
 		for (size_t i = 0; i < nClients; i++)
 		{
 			sFilePartHeader = "";
@@ -94,7 +94,7 @@ namespace az
 			filePartInfos.emplace_back(move(sFilePartHeader), nFilePartSize, move(clients[i]));
 			if (bGetHeader)
 			{
-				filePartsWithHeaderToInspect.push_back(filePartInfos.at(i));
+				filePartsWithHeaderToInspect.push_back(&filePartInfos.at(i));
 			}
 		}
 
@@ -157,22 +157,22 @@ namespace az
 		return bFoundLineFeed ? sHeader : "";
 	}
 
-	static string GetFileHeader(vector<const FilePartInfo&>&& filePartInfos)
+	static string GetFileHeader(vector<const FilePartInfo*>&& filePartInfos)
 	{
-		string sFirstHeader = filePartInfos.front().sHeader;
+		string sFirstHeader = filePartInfos.front()->sHeader;
 		return sFirstHeader.empty()
-			|| any_of(filePartInfos.begin() + 1, filePartInfos.end(), [sFirstHeader](const auto& partInfo) { partInfo.sHeader != sFirstHeader; })
+			|| any_of(filePartInfos.begin() + 1, filePartInfos.end(), [sFirstHeader](auto partInfoPtr) { return partInfoPtr->sHeader != sFirstHeader; })
 			? string()
 			: sFirstHeader;
 	}
 
-	static vector<PartInfo> GetFileParts(const vector<FilePartInfo>& filePartInfo, size_t nHeaderLen)
+	static vector<PartInfo> GetFileParts(vector<FilePartInfo>& filePartInfo, size_t nHeaderLen)
 	{
 		vector<PartInfo> result;
 		size_t nUserOffset = 0;
 		size_t nContentSize;
 		bool bFirstIter = true;
-		for (const auto& partInfo : filePartInfo)
+		for (auto& partInfo : filePartInfo)
 		{
 			nContentSize = bFirstIter ? partInfo.nSize : partInfo.nSize - nHeaderLen;
 			if (nContentSize != 0)

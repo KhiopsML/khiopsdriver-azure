@@ -49,7 +49,7 @@ namespace az
 			{
 				throw NoFileError(GetUrl().GetAbsoluteUrl());
 			}
-			return FileInfo(blobs).GetSize();
+			return FileInfo(move(blobs)).GetSize();
 		}
 	}
 

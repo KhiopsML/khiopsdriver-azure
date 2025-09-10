@@ -46,7 +46,7 @@ namespace az
 			{
 				throw NoFileError(GetUrl().GetAbsoluteUrl());
 			}
-			return FileInfo(files).GetSize();
+			return FileInfo(move(files)).GetSize();
 		}
 	}
 

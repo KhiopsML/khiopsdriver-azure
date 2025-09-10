@@ -24,7 +24,7 @@ namespace az
 			throw invalid_argument("cannot instantiate a file reader with no clients");
 		}
 		storageType = clients.front().tag;
-		fileInfo = move(FileInfo(clients));
+		fileInfo = move(FileInfo(move(clients)));
 	}
 
 	void FileReader::Close()
