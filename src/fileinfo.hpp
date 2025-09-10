@@ -39,7 +39,6 @@ namespace az
 		FileInfo(const std::vector<ObjectClient>& clients);
 		size_t GetSize() const;
 		size_t GetFilePartIndexOfUserOffset(size_t nUserOffset) const;
-		std::vector<std::unique_ptr<Azure::Core::IO::BodyStream>>& GetBodyStreams();
 
 	private:
 		StorageType storageType;

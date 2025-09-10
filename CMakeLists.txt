@@ -72,6 +72,7 @@ set(SourceList
     util/env.hpp util/env.cpp
     util/connstring.hpp util/connstring.cpp
     util/glob.hpp util/glob.cpp
+    util/random.hpp util/random.cpp
     exception.hpp exception.cpp
     returnval.hpp
     errorlogger.hpp errorlogger.cpp

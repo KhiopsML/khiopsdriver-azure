@@ -4,6 +4,7 @@
 #include <azure/core/http/http.hpp>
 #include <azure/storage/blobs/rest_client.hpp>
 #include <azure/storage/files/shares/share_responses.hpp>
+#include "util/random.hpp"
 
 using namespace std;
 using HttpRange = Azure::Core::Http::HttpRange;
@@ -14,9 +15,11 @@ using DownloadFileOptions = Azure::Storage::Files::Shares::DownloadFileOptions;
 namespace az
 {
 	static string ReadHeaderFromBodyStream(std::unique_ptr<BodyStream>&& bodyStream);
-	static string GetFileHeader(const std::vector<FilePartInfo>& filePartInfo);
+	static string GetFileHeader(std::vector<const FilePartInfo&>&& filePartInfos);
 	static vector<PartInfo> GetFileParts(const vector<FilePartInfo>& filePartInfo, size_t nHeaderLen);
 	static unique_ptr<Azure::Core::IO::BodyStream> DownloadFilePart(const ObjectClient& client, size_t nOffset);
+
+	static constexpr size_t nMaxHeaderSize = 8ULL * 1024 * 1024;
 
 	FileInfo::FileInfo() :
 		nSize(0)
@@ -40,23 +43,63 @@ namespace az
 		}
 
 		vector<FilePartInfo> filePartInfos;
-		for (const auto& client : clients)
+		HttpRange range { 0, nMaxHeaderSize };
+		size_t nClients = clients.size();
+		size_t nRandomlyPicked = 0;
+		string sFilePartHeader;
+		size_t nFilePartSize;
+		vector<const FilePartInfo&> filePartsWithHeaderToInspect;
+		for (size_t i = 0; i < nClients; i++)
 		{
-			if (client.tag == StorageType::BLOB)
+			sFilePartHeader = "";
+			bool bGetHeader = false;
+			if (i < 5 || nClients <= 10 || i >= nClients - 5)
 			{
-				auto downloadResult = move(client.blob.Download().Value);
-				string sHeader_ = ReadHeaderFromBodyStream(move(downloadResult.BodyStream));
-				filePartInfos.emplace_back(move(sHeader_), (size_t)downloadResult.BlobSize, move(client));
+				bGetHeader = true;
+			}
+			else if (nRandomlyPicked < 10 && (i >= nClients - 15 + nRandomlyPicked || RandomBool()))
+			{
+				bGetHeader = true;
+				nRandomlyPicked++;
+			}
+			if (clients[i].tag == StorageType::BLOB)
+			{
+				if (bGetHeader)
+				{
+					DownloadBlobOptions opts;
+					opts.Range = move(range);
+					auto downloadResult = move(clients[i].blob.Download(opts).Value);
+					sFilePartHeader = ReadHeaderFromBodyStream(move(downloadResult.BodyStream));
+					nFilePartSize = downloadResult.BlobSize;
+				}
+				else
+				{
+					nFilePartSize = (size_t)clients[i].blob.GetProperties().Value.BlobSize;
+				}
 			}
 			else // SHARE storage
 			{
-				auto downloadResult = move(client.shareFile.Download().Value);
-				string sHeader_ = ReadHeaderFromBodyStream(move(downloadResult.BodyStream));
-				filePartInfos.emplace_back(move(sHeader_), (size_t)downloadResult.FileSize, move(client));
+				if (bGetHeader)
+				{
+					DownloadFileOptions opts;
+					opts.Range = move(range);
+					auto downloadResult = move(clients[i].shareFile.Download(opts).Value);
+					sFilePartHeader = ReadHeaderFromBodyStream(move(downloadResult.BodyStream));
+					nFilePartSize = downloadResult.FileSize;
+				}
+				else
+				{
+					nFilePartSize = (size_t)clients[i].shareFile.GetProperties().Value.FileSize;
+				}
+			}
+			filePartInfos.emplace_back(move(sFilePartHeader), nFilePartSize, move(clients[i]));
+			if (bGetHeader)
+			{
+				filePartsWithHeaderToInspect.push_back(filePartInfos.at(i));
 			}
 		}
 
-		sHeader = GetFileHeader(filePartInfos);
+		sHeader = GetFileHeader(move(filePartsWithHeaderToInspect));
 		parts = GetFileParts(filePartInfos, sHeader.size());
 		nSize = accumulate(parts.begin(), parts.end(), 0ULL, [](size_t nTotal, const PartInfo& partInfo) { return nTotal + partInfo.nContentSize; });
 	}
@@ -79,9 +122,7 @@ namespace az
 	{
 		string sHeader;
 		constexpr size_t nBufferSize = 4096; // TODO
-		constexpr size_t nMaxHeaderSize = 8ULL * 1024 * 1024;
 		size_t nBytesRead;
-		size_t nTotalBytesRead = 0;
 		uint8_t* bufferReadEnd;
 		uint8_t* foundLineFeed;
 		bool bFoundLineFeed;
@@ -91,11 +132,11 @@ namespace az
 		{
 			do
 			{
-				nTotalBytesRead += (nBytesRead = bodyStream->ReadToCount(buffer, nBufferSize));
+				nBytesRead = bodyStream->ReadToCount(buffer, nBufferSize);
 				bufferReadEnd = buffer + nBytesRead;
 				bFoundLineFeed = (foundLineFeed = find(buffer, bufferReadEnd, '\n')) < bufferReadEnd;
 				sHeader.append((const char*)buffer, bFoundLineFeed ? foundLineFeed + 1 - buffer : nBytesRead);
-			} while (!bFoundLineFeed && nBytesRead == nBufferSize && nTotalBytesRead < nMaxHeaderSize);
+			} while (!bFoundLineFeed && nBytesRead == nBufferSize);
 		}
 		catch (...)
 		{
@@ -107,11 +148,11 @@ namespace az
 		return bFoundLineFeed ? sHeader : "";
 	}
 
-	static string GetFileHeader(const vector<FilePartInfo>& filePartInfo)
+	static string GetFileHeader(vector<const FilePartInfo&>&& filePartInfos)
 	{
-		string sFirstHeader = filePartInfo.front().sHeader;
+		string sFirstHeader = filePartInfos.front().sHeader;
 		return sFirstHeader.empty()
-			|| any_of(filePartInfo.begin() + 1, filePartInfo.end(), [sFirstHeader](const auto& partInfo) { return partInfo.sHeader != sFirstHeader; })
+			|| any_of(filePartInfos.begin() + 1, filePartInfos.end(), [sFirstHeader](const auto& partInfo) { partInfo.sHeader != sFirstHeader; })
 			? string()
 			: sFirstHeader;
 	}
