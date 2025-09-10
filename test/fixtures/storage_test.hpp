@@ -46,6 +46,19 @@ protected:
     StorageTestUrlProvider url;
 };
 
+class IoTest : public EmulatableStorageUser, public testing::TestWithParam<StorageType>
+{
+public:
+    static std::string FormatParam(const testing::TestParamInfo<IoTest::ParamType>& testParamInfo);
+
+protected:
+    void SetUp() override;
+    void TearDown() override;
+
+    IoTestUrlProvider url;
+    std::string sLocalFilePath;
+};
+
 class EndToEndTest : public EmulatableStorageUser, public testing::TestWithParam<StorageType>
 {
 public:

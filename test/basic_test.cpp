@@ -1,5 +1,4 @@
 #include "azureplugin.hpp"
-#include "azureplugin_internal.hpp"
 #include "returnval.hpp"
 #include "driver.hpp"
 #include "fixtures/storage_test.hpp"
@@ -20,7 +19,6 @@
 
 #include <gtest/gtest.h>
 
-using namespace azureplugin;
 using namespace az;
 
 TEST(BasicTest, GetDriverName)

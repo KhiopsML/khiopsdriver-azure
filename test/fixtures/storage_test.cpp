@@ -71,6 +71,30 @@ void ShareStorageTest::SetUp()
     url = StorageTestUrlProvider(StorageType::SHARE, IsEmulatedStorage());
 }
 
+// I/O tests (common to blob and share)
+string IoTest::FormatParam(const testing::TestParamInfo<IoTest::ParamType>& testParamInfo)
+{
+    ostringstream oss;
+    PrintTo(testParamInfo.param, &oss);
+    return oss.str();
+}
+void IoTest::SetUp()
+{
+    SKIP_IF_EMULATED_SHARE_SERVICE();
+    url = IoTestUrlProvider(GetParam(), IsEmulatedStorage());
+#ifdef _WIN32
+    sLocalFilePath = (ostringstream() << std::getenv("TEMP") << "\\out-" << boost::uuids::random_generator()() << ".txt").str();
+#else
+    sLocalFilePath = (ostringstream() << "/tmp/out-" << boost::uuids::random_generator()() << ".txt").str();
+#endif
+    ASSERT_EQ(driver_connect(), nSuccess) << "driver failed to connect during test initialization";
+    ASSERT_EQ(driver_isConnected(), nTrue) << "after driver connected, it is disconnected";
+}
+void IoTest::TearDown()
+{
+    driver_disconnect();
+}
+
 // End-to-end tests (common to blob and share)
 string EndToEndTest::FormatParam(const testing::TestParamInfo<EndToEndTest::ParamType>& testParamInfo)
 {

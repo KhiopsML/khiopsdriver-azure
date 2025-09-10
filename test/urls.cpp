@@ -84,16 +84,16 @@ const string StorageTestUrlProvider::MultisplitFile() const
     return sPrefix + "/data-test-khiops-driver-azure/khiops_data/split/Adult_subsplit/**/Adult-split-0*.txt";
 }
 
-EndToEndTestUrlProvider::EndToEndTestUrlProvider()
+IoTestUrlProvider::IoTestUrlProvider()
 {
 }
 
-EndToEndTestUrlProvider::EndToEndTestUrlProvider(StorageType storageType, bool bIsEmulatedStorage) :
+IoTestUrlProvider::IoTestUrlProvider(StorageType storageType, bool bIsEmulatedStorage) :
     StorageTestUrlProvider(storageType, bIsEmulatedStorage)
 {
 }
 
-const string EndToEndTestUrlProvider::RandomOutputFile() const
+const string IoTestUrlProvider::RandomOutputFile() const
 {
     return (ostringstream() << sPrefix << "/data-test-khiops-driver-azure/khiops_data/output/CREATED_BY_TESTS_" << boost::uuids::random_generator()() << ".txt").str();
 }

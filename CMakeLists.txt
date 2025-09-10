@@ -64,7 +64,6 @@ endif()
 
 set(SourceList
     azureplugin.hpp
-    azureplugin_internal.hpp
     azureplugin.cpp
     driver.hpp driver.cpp
     contrib/globmatch.hpp contrib/globmatch.cpp

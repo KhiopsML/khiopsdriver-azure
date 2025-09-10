@@ -1,6 +1,7 @@
 #pragma once
 
 class StorageTestUrlProvider;
+class IoTestUrlProvider;
 class EndToEndTestUrlProvider;
 
 #include <string>
@@ -28,11 +29,16 @@ protected:
     std::string sPrefix;
 };
 
-class EndToEndTestUrlProvider : public StorageTestUrlProvider
+class IoTestUrlProvider : public StorageTestUrlProvider
 {
 public:
-    EndToEndTestUrlProvider();
-    EndToEndTestUrlProvider(StorageType storageType, bool bIsEmulatedStorage);
+    IoTestUrlProvider();
+    IoTestUrlProvider(StorageType storageType, bool bIsEmulatedStorage);
 
     const std::string RandomOutputFile() const;
+};
+
+class EndToEndTestUrlProvider : public IoTestUrlProvider
+{
+    using IoTestUrlProvider::IoTestUrlProvider;
 };

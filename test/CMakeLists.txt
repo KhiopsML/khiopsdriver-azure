@@ -15,6 +15,7 @@ find_package(Boost COMPONENTS process REQUIRED)
 
 add_executable(basic_test
     basic_test.cpp
+    io_test.cpp
     drivertest.cpp
     fixtures/storage_test.hpp fixtures/storage_test.cpp
     ../src/returnval.hpp

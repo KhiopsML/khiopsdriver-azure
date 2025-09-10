@@ -59,7 +59,7 @@ namespace az
 			nSignedDest = ((long long int)nCurrentPos) + nOffset;
 			break;
 		case ios::end:
-			nSignedDest = nTotalFileSize - nOffset;
+			nSignedDest = nTotalFileSize + nOffset;
 			break;
 		default:
 			throw InvalidSeekOriginError(nOrigin);

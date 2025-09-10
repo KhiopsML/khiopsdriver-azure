@@ -3,7 +3,6 @@
 #endif
 
 #include "azureplugin.hpp"
-#include "azureplugin_internal.hpp"
 #include "contrib/globmatch.hpp"
 
 #include <algorithm>
