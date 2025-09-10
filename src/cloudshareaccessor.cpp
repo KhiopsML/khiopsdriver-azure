@@ -9,7 +9,7 @@ using namespace std;
 
 namespace az
 {
-	CloudShareAccessor::CloudShareAccessor(const Azure::Core::Url& url, const function<unique_ptr<FileReader>& (unique_ptr<FileReader>&&)>& registerReader, const function<unique_ptr<FileOutputStream>& (unique_ptr<FileOutputStream>&&)>& registerWriter) :
+	CloudShareAccessor::CloudShareAccessor(const Azure::Core::Url& url, const function<FileReader& (FileReader&&)>& registerReader, const function<FileOutputStream& (FileOutputStream&&)>& registerWriter) :
 		ShareAccessor(url, registerReader, registerWriter),
 		CloudFileAccessor()
 	{

@@ -16,7 +16,7 @@ namespace az
 	class CloudBlobAccessor : public BlobAccessor, public CloudFileAccessor
 	{
 	public:
-		CloudBlobAccessor(const Azure::Core::Url& url, const std::function<std::unique_ptr<FileReader>& (std::unique_ptr<FileReader>&&)>& registerReader, const std::function<std::unique_ptr<FileOutputStream>& (std::unique_ptr<FileOutputStream>&&)>& registerWriter);
+		CloudBlobAccessor(const Azure::Core::Url& url, const std::function<FileReader& (FileReader&&)>& registerReader, const std::function<FileOutputStream& (FileOutputStream&&)>& registerWriter);
 		~CloudBlobAccessor();
 
 	protected:

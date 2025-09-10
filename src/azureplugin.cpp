@@ -311,11 +311,11 @@ void* driver_fopen(const char* sUrl, char mode)
 		switch (mode)
 		{
 		case 'r':
-			return driver.CreateFileAccessor(sUrl)->OpenForReading()->GetHandle();
+			return driver.CreateFileAccessor(sUrl)->OpenForReading().GetHandle();
 		case 'w':
-			return driver.CreateFileAccessor(sUrl)->OpenForWriting()->GetHandle();
+			return driver.CreateFileAccessor(sUrl)->OpenForWriting().GetHandle();
 		case 'a':
-			return driver.CreateFileAccessor(sUrl)->OpenForAppending()->GetHandle();
+			return driver.CreateFileAccessor(sUrl)->OpenForAppending().GetHandle();
 		default:
 			throw InvalidFileStreamModeError(sUrl, mode);
 		}
@@ -341,7 +341,7 @@ int driver_fclose(void* handle)
 		{
 			throw NullArgError(__func__, STRINGIFY(handle));
 		}
-		driver.RetrieveFileStream(handle)->Close();
+		driver.RetrieveFileStream(handle).Close();
 		return nCloseSuccess;
 	}
 	catch (const exception& exc)
@@ -369,7 +369,7 @@ long long int driver_fread(void* dest, size_t size, size_t count, void* handle)
 		{
 			throw NullArgError(__func__, STRINGIFY(handle));
 		}
-		return driver.RetrieveFileReader(handle)->Read(dest, size, count);
+		return driver.RetrieveFileReader(handle).Read(dest, size, count);
 	}
 	catch (const exception& exc)
 	{
@@ -407,7 +407,7 @@ int driver_fseek(void* handle, long long int offset, int whence)
 		default:
 			throw InvalidSeekOriginError(whence);
 		}
-		driver.RetrieveFileReader(handle)->Seek(offset, nOrigin);
+		driver.RetrieveFileReader(handle).Seek(offset, nOrigin);
 		return nSeekSuccess;
 	}
 	catch (const exception& exc)
@@ -458,7 +458,7 @@ long long int driver_fwrite(const void* source, size_t size, size_t count, void*
 		{
 			throw NullArgError(__func__, STRINGIFY(handle));
 		}
-		return driver.RetrieveFileOutputStream(handle)->Write(source, size, count);
+		return driver.RetrieveFileOutputStream(handle).Write(source, size, count);
 	}
 	catch (const exception& exc)
 	{
@@ -481,7 +481,7 @@ int driver_fflush(void* handle)
 		{
 			throw NullArgError(__func__, STRINGIFY(handle));
 		}
-		driver.RetrieveFileOutputStream(handle)->Flush();
+		driver.RetrieveFileOutputStream(handle).Flush();
 		return nFlushSuccess;
 	}
 	catch (const exception& exc)

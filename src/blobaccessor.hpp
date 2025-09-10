@@ -23,9 +23,9 @@ namespace az
 
 		bool Exists() const override;
 		size_t GetSize() const override;
-		std::unique_ptr<FileReader>& OpenForReading() const override;
-		std::unique_ptr<FileOutputStream>& OpenForWriting() const override;
-		std::unique_ptr<FileOutputStream>& OpenForAppending() const override;
+		FileReader& OpenForReading() const override;
+		FileOutputStream& OpenForWriting() const override;
+		FileOutputStream& OpenForAppending() const override;
 		void Remove() const override;
 		void MkDir() const override;
 		void RmDir() const override;
@@ -34,7 +34,7 @@ namespace az
 		void CopyFrom(const std::string& sourceUrl) const override;
 
 	protected:
-		BlobAccessor(const Azure::Core::Url& url, const std::function<std::unique_ptr<FileReader>& (std::unique_ptr<FileReader>&&)>& registerReader, const std::function<std::unique_ptr<FileOutputStream>& (std::unique_ptr<FileOutputStream>&&)>& registerWriter);
+		BlobAccessor(const Azure::Core::Url& url, const std::function<FileReader& (FileReader&&)>& registerReader, const std::function<FileOutputStream& (FileOutputStream&&)>& registerWriter);
 
 		virtual std::string GetContainerName() const = 0;
 		virtual std::string GetObjectName() const = 0;

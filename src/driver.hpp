@@ -42,22 +42,22 @@ namespace az
 		bool IsConnected() const;
 
 		std::unique_ptr<FileAccessor> CreateFileAccessor(const std::string& url);
-		std::unique_ptr<FileStream>& RetrieveFileStream(void* handle) const;
-		std::unique_ptr<FileReader>& RetrieveFileReader(void* handle) const;
-		std::unique_ptr<FileOutputStream>& RetrieveFileOutputStream(void* handle) const;
+		FileStream& RetrieveFileStream(void* handle) const;
+		FileReader& RetrieveFileReader(void* handle) const;
+		FileOutputStream& RetrieveFileOutputStream(void* handle) const;
 
 	protected:
 		void CheckConnected() const;
 		bool IsEmulatedStorage() const;
 
-		std::unique_ptr<FileReader>& RegisterReader(std::unique_ptr<FileReader>&& reader);
-		std::unique_ptr<FileOutputStream>& RegisterWriter(std::unique_ptr<FileOutputStream>&& writer);
+		FileReader& RegisterReader(FileReader&& reader);
+		FileOutputStream& RegisterWriter(FileOutputStream&& writer);
 
-		std::unique_ptr<FileStream>& RetrieveFileStream(void* handle, bool bSearchReaders, bool bSearchWriters) const;
+		FileStream& RetrieveFileStream(void* handle, bool bSearchReaders, bool bSearchWriters) const;
 
 		bool bIsConnected;
 
-		std::unordered_map<void*, std::unique_ptr<FileReader>> fileReaders;
-		std::unordered_map<void*, std::unique_ptr<FileOutputStream>> fileWriters;
+		std::unordered_map<void*, FileReader> fileReaders;
+		std::unordered_map<void*, FileOutputStream> fileWriters;
 	};
 }

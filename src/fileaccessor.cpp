@@ -9,7 +9,7 @@ namespace az
 	{
 	}
 
-	FileAccessor::FileAccessor(const Azure::Core::Url& url, const function<unique_ptr<FileReader>& (unique_ptr<FileReader>&&)>& registerReader, const function<unique_ptr<FileOutputStream>& (unique_ptr<FileOutputStream>&&)>& registerWriter) :
+	FileAccessor::FileAccessor(const Azure::Core::Url& url, const function<FileReader& (FileReader&&)>& registerReader, const function<FileOutputStream& (FileOutputStream&&)>& registerWriter) :
 		RegisterReader(registerReader),
 		RegisterWriter(registerWriter),
 		url(url),

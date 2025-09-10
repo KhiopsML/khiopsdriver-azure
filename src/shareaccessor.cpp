@@ -50,7 +50,7 @@ namespace az
 		}
 	}
 
-	unique_ptr<FileReader>& ShareAccessor::OpenForReading() const
+	FileReader& ShareAccessor::OpenForReading() const
 	{
 		if (HasDirUrl())
 		{
@@ -59,11 +59,11 @@ namespace az
 		else
 		{
 			vector<ShareFileClient> files = ListFiles();
-			return RegisterReader(make_unique<FileReader>(move(files)));
+			return RegisterReader(move(FileReader(move(files))));
 		}
 	}
 
-	unique_ptr<FileOutputStream>& ShareAccessor::OpenForWriting() const
+	FileOutputStream& ShareAccessor::OpenForWriting() const
 	{
 		if (HasDirUrl())
 		{
@@ -72,11 +72,11 @@ namespace az
 		else
 		{
 			CheckParentDirExists();
-			return RegisterWriter(make_unique<FileOutputStream>(FileOutputMode::WRITE, move(GetFileClient())));
+			return RegisterWriter(move(FileOutputStream(FileOutputMode::WRITE, move(GetFileClient()))));
 		}
 	}
 
-	unique_ptr<FileOutputStream>& ShareAccessor::OpenForAppending() const
+	FileOutputStream& ShareAccessor::OpenForAppending() const
 	{
 		if (HasDirUrl())
 		{
@@ -105,7 +105,7 @@ namespace az
 			{
 				client.Create(0);
 			}
-			return RegisterWriter(make_unique<FileOutputStream>(FileOutputMode::APPEND, move(client)));
+			return RegisterWriter(move(FileOutputStream(FileOutputMode::APPEND, move(client))));
 		}
 	}
 
@@ -202,7 +202,7 @@ namespace az
 		size_t nRead;
 		ofstream ofs(destUrl, ios::binary);
 
-		while ((nRead = reader->Read(buffer, 1, nBufferSize)) > 0)
+		while ((nRead = reader.Read(buffer, 1, nBufferSize)) > 0)
 		{
 			ofs.write(buffer, nRead);
 		}
@@ -226,13 +226,13 @@ namespace az
 			{
 				break;
 			}
-			writer->Write(buffer, 1, nRead);
+			writer.Write(buffer, 1, nRead);
 		}
 
 		delete[] buffer;
 	}
 
-	ShareAccessor::ShareAccessor(const Azure::Core::Url& url, const function<unique_ptr<FileReader>& (unique_ptr<FileReader>&&)>& registerReader, const function<unique_ptr<FileOutputStream>& (unique_ptr<FileOutputStream>&&)>& registerWriter) :
+	ShareAccessor::ShareAccessor(const Azure::Core::Url& url, const function<FileReader& (FileReader&&)>& registerReader, const function<FileOutputStream& (FileOutputStream&&)>& registerWriter) :
 		FileAccessor(url, registerReader, registerWriter)
 	{
 	}

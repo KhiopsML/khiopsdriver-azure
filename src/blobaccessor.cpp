@@ -53,20 +53,20 @@ namespace az
 		}
 	}
 
-	unique_ptr<FileReader>& BlobAccessor::OpenForReading() const
+	FileReader& BlobAccessor::OpenForReading() const
 	{
 		auto blobs = ListBlobs();
-		return RegisterReader(make_unique<FileReader>(move(blobs)));
+		return RegisterReader(move(FileReader(move(blobs))));
 	}
 
-	unique_ptr<FileOutputStream>& BlobAccessor::OpenForWriting() const
+	FileOutputStream& BlobAccessor::OpenForWriting() const
 	{
-		return RegisterWriter(make_unique<FileOutputStream>(FileOutputMode::WRITE, move(GetBlobClient())));
+		return RegisterWriter(move(FileOutputStream(FileOutputMode::WRITE, move(GetBlobClient()))));
 	}
 
-	unique_ptr<FileOutputStream>& BlobAccessor::OpenForAppending() const
+	FileOutputStream& BlobAccessor::OpenForAppending() const
 	{
-		return RegisterWriter(make_unique<FileOutputStream>(FileOutputMode::APPEND, move(GetBlobClient())));
+		return RegisterWriter(move(FileOutputStream(FileOutputMode::APPEND, move(GetBlobClient()))));
 	}
 
 	void BlobAccessor::Remove() const
@@ -111,7 +111,7 @@ namespace az
 		size_t nRead;
 		ofstream ofs(destUrl, ios::binary);
 
-		while ((nRead = reader->Read(buffer, 1, nBufferSize)) > 0)
+		while ((nRead = reader.Read(buffer, 1, nBufferSize)) > 0)
 		{
 			ofs.write(buffer, nRead);
 		}
@@ -135,13 +135,13 @@ namespace az
 			{
 				break;
 			}
-			writer->Write(buffer, 1, nRead);
+			writer.Write(buffer, 1, nRead);
 		}
 
 		delete[] buffer;
 	}
 
-	BlobAccessor::BlobAccessor(const Azure::Core::Url& url, const function<unique_ptr<FileReader>& (unique_ptr<FileReader>&&)>& registerReader, const function<unique_ptr<FileOutputStream>& (unique_ptr<FileOutputStream>&&)>& registerWriter) :
+	BlobAccessor::BlobAccessor(const Azure::Core::Url& url, const function<FileReader& (FileReader&&)>& registerReader, const function<FileOutputStream& (FileOutputStream&&)>& registerWriter) :
 		FileAccessor(url, registerReader, registerWriter)
 	{
 	}

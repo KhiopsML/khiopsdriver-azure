@@ -91,19 +91,19 @@ namespace az
 		}
 	}
 
-	unique_ptr<FileStream>& Driver::RetrieveFileStream(void* handle) const
+	FileStream& Driver::RetrieveFileStream(void* handle) const
 	{
 		return RetrieveFileStream(handle, true, true);
 	}
 
-	unique_ptr<FileReader>& Driver::RetrieveFileReader(void* handle) const
+	FileReader& Driver::RetrieveFileReader(void* handle) const
 	{
-		return (unique_ptr<FileReader>&)RetrieveFileStream(handle, true, false);
+		return (FileReader&)RetrieveFileStream(handle, true, false);
 	}
 
-	unique_ptr<FileOutputStream>& Driver::RetrieveFileOutputStream(void* handle) const
+	FileOutputStream& Driver::RetrieveFileOutputStream(void* handle) const
 	{
-		return (unique_ptr<FileOutputStream>&)RetrieveFileStream(handle, false, true);
+		return (FileOutputStream&)RetrieveFileStream(handle, false, true);
 	}
 
 	void Driver::CheckConnected() const
@@ -119,28 +119,28 @@ namespace az
 		return ToLower(GetEnvironmentVariableOrDefault("AZURE_EMULATED_STORAGE", "false")) != "false";
 	}
 
-	unique_ptr<FileReader>& Driver::RegisterReader(unique_ptr<FileReader>&& reader)
+	FileReader& Driver::RegisterReader(FileReader&& reader)
 	{
-		void* handle = reader->GetHandle();
-		fileReaders[handle] = move(reader);
+		void* handle = reader.GetHandle();
+		fileReaders.insert({ handle, move(reader) });
 		return fileReaders.at(handle);
 	}
 
-	unique_ptr<FileOutputStream>& Driver::RegisterWriter(unique_ptr<FileOutputStream>&& writer)
+	FileOutputStream& Driver::RegisterWriter(FileOutputStream&& writer)
 	{
-		void* handle = writer->GetHandle();
-		fileWriters[handle] = move(writer);
+		void* handle = writer.GetHandle();
+		fileWriters.insert({ handle, move(writer) });
 		return fileWriters.at(handle);
 	}
 
-	unique_ptr<FileStream>& Driver::RetrieveFileStream(void* handle, bool bSearchReaders, bool bSearchWriters) const
+	FileStream& Driver::RetrieveFileStream(void* handle, bool bSearchReaders, bool bSearchWriters) const
 	{
 		if (bSearchReaders)
 		{
 			auto rIt = fileReaders.find(handle);
 			if (rIt != fileReaders.end())
 			{
-				return (unique_ptr<FileStream>&)fileReaders.at(handle);
+				return (FileStream&)fileReaders.at(handle);
 			}
 		}
 		if (bSearchWriters)
@@ -148,7 +148,7 @@ namespace az
 			auto wIt = fileWriters.find(handle);
 			if (wIt != fileWriters.end())
 			{
-				return (unique_ptr<FileStream>&)fileWriters.at(handle);
+				return (FileStream&)fileWriters.at(handle);
 			}
 		}
 		throw FileStreamNotFoundError(handle);
