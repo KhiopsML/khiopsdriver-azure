@@ -46,13 +46,13 @@ namespace az
 		std::string sHeader;
 		size_t nSize;
 		std::vector<PartInfo> parts;
-		std::vector<std::unique_ptr<Azure::Core::IO::BodyStream>> bodyStreams;
 	};
 
 	struct FilePartInfo
 	{
 		std::string sHeader;
 		size_t nSize;
+		ObjectClient client;
 	};
 
 	struct PartInfo
@@ -60,5 +60,6 @@ namespace az
 		size_t nRealOffset;
 		size_t nUserOffset;
 		size_t nContentSize;
+		ObjectClient client;
 	};
 }

@@ -15,10 +15,14 @@ namespace az
 
 	FileReader::FileReader(vector<ObjectClient>&& clients) :
 		FileStream(),
-		storageType(clients.front().tag),
-		fileInfo(clients),
 		nCurrentPos(0)
 	{
+		if (clients.empty())
+		{
+			throw invalid_argument("cannot instantiate a file reader with no clients");
+		}
+		storageType = clients.front().tag;
+		fileInfo = move(FileInfo(clients));
 	}
 
 	void FileReader::Close()

@@ -55,8 +55,7 @@ namespace az
 
 	FileReader& BlobAccessor::OpenForReading() const
 	{
-		auto blobs = ListBlobs();
-		return RegisterReader(move(FileReader(move(blobs))));
+		return RegisterReader(move(FileReader(move(ListBlobs()))));
 	}
 
 	FileOutputStream& BlobAccessor::OpenForWriting() const

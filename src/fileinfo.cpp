@@ -19,10 +19,7 @@ namespace az
 	static unique_ptr<Azure::Core::IO::BodyStream> DownloadFilePart(const ObjectClient& client, size_t nOffset);
 
 	FileInfo::FileInfo() :
-		sHeader(),
-		nSize(0),
-		parts(),
-		bodyStreams()
+		nSize(0)
 	{}
 
 	FileInfo::FileInfo(const vector<Azure::Storage::Blobs::BlobClient>& clients) :
@@ -36,6 +33,12 @@ namespace az
 	FileInfo::FileInfo(const vector<ObjectClient>& clients):
 		storageType(clients.front().tag)
 	{
+		if (clients.empty())
+		{
+			FileInfo();
+			return;
+		}
+
 		vector<FilePartInfo> filePartInfos;
 		for (const auto& client : clients)
 		{
@@ -43,32 +46,19 @@ namespace az
 			{
 				auto downloadResult = move(client.blob.Download().Value);
 				string sHeader_ = ReadHeaderFromBodyStream(move(downloadResult.BodyStream));
-				filePartInfos.push_back(FilePartInfo{ sHeader_, (size_t)downloadResult.BlobSize });
+				filePartInfos.emplace_back(move(sHeader_), (size_t)downloadResult.BlobSize, move(client));
 			}
 			else // SHARE storage
 			{
 				auto downloadResult = move(client.shareFile.Download().Value);
 				string sHeader_ = ReadHeaderFromBodyStream(move(downloadResult.BodyStream));
-				filePartInfos.push_back(FilePartInfo{ sHeader_, (size_t)downloadResult.FileSize });
+				filePartInfos.emplace_back(move(sHeader_), (size_t)downloadResult.FileSize, move(client));
 			}
 		}
 
 		sHeader = GetFileHeader(filePartInfos);
-		parts = GetFileParts(filePartInfos, sHeader.length());
+		parts = GetFileParts(filePartInfos, sHeader.size());
 		nSize = accumulate(parts.begin(), parts.end(), 0ULL, [](size_t nTotal, const PartInfo& partInfo) { return nTotal + partInfo.nContentSize; });
-
-		const size_t nHeaderLen = sHeader.size();
-
-		for (size_t i = 0; i < clients.size(); i++)
-		{
-			if (parts.at(i).nContentSize != 0)
-			{
-				bodyStreams.push_back(DownloadFilePart(clients.at(i), i == 0 ? 0 : nHeaderLen));
-			}
-		}
-
-		auto it = remove_if(parts.begin(), parts.end(), [](const auto& part) { return part.nContentSize == 0; });
-		parts.erase(it, parts.end());
 	}
 
 	size_t FileInfo::GetSize() const
@@ -83,11 +73,6 @@ namespace az
 			throw NoFilePartInfoError();
 		}
 		return (size_t)(find_if(parts.begin(), parts.end(), [nUserOffset](const auto& part) { return nUserOffset < part.nUserOffset; }) - 1 - parts.begin());
-	}
-
-	vector<unique_ptr<BodyStream>>& FileInfo::GetBodyStreams()
-	{
-		return bodyStreams;
 	}
 
 	static string ReadHeaderFromBodyStream(unique_ptr<BodyStream>&& bodyStream)
@@ -133,7 +118,7 @@ namespace az
 
 	static vector<PartInfo> GetFileParts(const vector<FilePartInfo>& filePartInfo, size_t nHeaderLen)
 	{
-		vector<PartInfo> parts;
+		vector<PartInfo> result;
 		size_t nRealOffset = 0;
 		size_t nUserOffset = 0;
 		size_t nContentSize;
@@ -141,6 +126,10 @@ namespace az
 		for (const auto& partInfo : filePartInfo)
 		{
 			nContentSize = bFirstIter ? partInfo.nSize : partInfo.nSize - nHeaderLen;
+			if (nContentSize != 0)
+			{
+				result.emplace_back(nRealOffset, nUserOffset, nContentSize, move(partInfo.client));
+			}
 			if (bFirstIter)
 			{
 				nRealOffset += nHeaderLen;
@@ -149,7 +138,7 @@ namespace az
 			nUserOffset += nContentSize;
 			bFirstIter = false;
 		}
-		return parts;
+		return result;
 	}
 
 	static unique_ptr<BodyStream> DownloadFilePart(const ObjectClient& client, size_t nOffset)
