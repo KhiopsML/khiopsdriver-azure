@@ -49,7 +49,7 @@ void TestFSeek(string sUrl)
 	buffer[7] = 0;
 	ASSERT_STREQ(buffer, "Jamaica");
 
-	ASSERT_EQ(driver_fseek(handle, -48, 1), nSeekSuccess);
+	ASSERT_EQ(driver_fseek(handle, -55, 1), nSeekSuccess);
 	ASSERT_EQ(driver_fread(buffer, 1, 13, handle), 13);
 	buffer[13] = 0;
 	ASSERT_STREQ(buffer, "Other-service");
