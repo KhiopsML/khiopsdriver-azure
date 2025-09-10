@@ -48,6 +48,7 @@ namespace az
 		string sFilePartHeader;
 		size_t nFilePartSize;
 		vector<size_t> filePartsWithHeadersToInspect;
+		size_t nFirstPartHeaderLen;
 		for (size_t i = 0; i < nClients; i++)
 		{
 			sFilePartHeader = "";
@@ -69,6 +70,14 @@ namespace az
 					opts.Range = move(range);
 					auto downloadResult = move(clients[i].blob.Download(opts).Value);
 					sFilePartHeader = ReadHeaderFromBodyStream(move(downloadResult.BodyStream));
+					if (i == 0)
+					{
+						nFirstPartHeaderLen = sFilePartHeader.length();
+					}
+					else
+					{
+						opts.Range->Length = nFirstPartHeaderLen;
+					}
 					nFilePartSize = downloadResult.BlobSize;
 				}
 				else
@@ -84,6 +93,15 @@ namespace az
 					opts.Range = move(range);
 					auto downloadResult = move(clients[i].shareFile.Download(opts).Value);
 					sFilePartHeader = ReadHeaderFromBodyStream(move(downloadResult.BodyStream));
+					if (i == 0)
+					{
+						nFirstPartHeaderLen = sFilePartHeader.length();
+					}
+					else
+					{
+						opts.Range->Length = nFirstPartHeaderLen;
+					}
+					opts.Range->Length = nFirstPartHeaderLen;
 					nFilePartSize = downloadResult.FileSize;
 				}
 				else
