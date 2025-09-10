@@ -13,7 +13,7 @@ using DownloadFileOptions = Azure::Storage::Files::Shares::DownloadFileOptions;
 
 namespace az
 {
-	static string ReadHeaderFromBodyStream(std::unique_ptr<BodyStream>& bodyStream);
+	static string ReadHeaderFromBodyStream(std::unique_ptr<BodyStream>&& bodyStream);
 	static string GetFileHeader(const std::vector<FilePartInfo>& filePartInfo);
 	static vector<PartInfo> GetFileParts(const vector<FilePartInfo>& filePartInfo, size_t nHeaderLen);
 	static unique_ptr<Azure::Core::IO::BodyStream> DownloadFilePart(const ObjectClient& client, size_t nOffset);
@@ -42,13 +42,13 @@ namespace az
 			if (client.tag == StorageType::BLOB)
 			{
 				auto downloadResult = move(client.blob.Download().Value);
-				string sHeader_ = ReadHeaderFromBodyStream(downloadResult.BodyStream);
+				string sHeader_ = ReadHeaderFromBodyStream(move(downloadResult.BodyStream));
 				filePartInfos.push_back(FilePartInfo{ sHeader_, (size_t)downloadResult.BlobSize });
 			}
 			else // SHARE storage
 			{
 				auto downloadResult = move(client.shareFile.Download().Value);
-				string sHeader_ = ReadHeaderFromBodyStream(downloadResult.BodyStream);
+				string sHeader_ = ReadHeaderFromBodyStream(move(downloadResult.BodyStream));
 				filePartInfos.push_back(FilePartInfo{ sHeader_, (size_t)downloadResult.FileSize });
 			}
 		}
@@ -90,23 +90,34 @@ namespace az
 		return bodyStreams;
 	}
 
-	static string ReadHeaderFromBodyStream(unique_ptr<BodyStream>& bodyStream)
+	static string ReadHeaderFromBodyStream(unique_ptr<BodyStream>&& bodyStream)
 	{
-		string sHeader = "";
-		constexpr size_t nBufferSize = 4096;
-		uint8_t buffer[nBufferSize];
+		string sHeader;
+		constexpr size_t nBufferSize = 4096; // TODO
+		constexpr size_t nMaxHeaderSize = 8ULL * 1024 * 1024;
 		size_t nBytesRead;
+		size_t nTotalBytesRead = 0;
 		uint8_t* bufferReadEnd;
 		uint8_t* foundLineFeed;
 		bool bFoundLineFeed;
 
-		do
+		uint8_t* buffer = new uint8_t[nBufferSize];
+		try
 		{
-			nBytesRead = bodyStream->ReadToCount(buffer, nBufferSize);
-			bufferReadEnd = buffer + nBytesRead;
-			bFoundLineFeed = (foundLineFeed = find(buffer, bufferReadEnd, '\n')) < bufferReadEnd;
-			sHeader.append((const char*)buffer, bFoundLineFeed ? foundLineFeed + 1 - buffer : nBytesRead);
-		} while (!bFoundLineFeed && nBytesRead == nBufferSize);
+			do
+			{
+				nTotalBytesRead += (nBytesRead = bodyStream->ReadToCount(buffer, nBufferSize));
+				bufferReadEnd = buffer + nBytesRead;
+				bFoundLineFeed = (foundLineFeed = find(buffer, bufferReadEnd, '\n')) < bufferReadEnd;
+				sHeader.append((const char*)buffer, bFoundLineFeed ? foundLineFeed + 1 - buffer : nBytesRead);
+			} while (!bFoundLineFeed && nBytesRead == nBufferSize && nTotalBytesRead < nMaxHeaderSize);
+		}
+		catch (...)
+		{
+			delete[] buffer;
+			throw;
+		}
+		delete[] buffer;
 
 		return bFoundLineFeed ? sHeader : "";
 	}
@@ -130,7 +141,6 @@ namespace az
 		for (const auto& partInfo : filePartInfo)
 		{
 			nContentSize = bFirstIter ? partInfo.nSize : partInfo.nSize - nHeaderLen;
-			parts.push_back(PartInfo{ nRealOffset, nUserOffset, nContentSize });
 			if (bFirstIter)
 			{
 				nRealOffset += nHeaderLen;
