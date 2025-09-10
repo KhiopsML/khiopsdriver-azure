@@ -45,7 +45,7 @@ namespace az
 			unique_ptr<Azure::Core::IO::BodyStream> bodyStream = move(
 				DownloadFilePart(
 					partInfo.client,
-					nFilePartIndex == 0 ? 0 : fileInfo.GetHeaderLen(),
+					(nFilePartIndex == 0 ? 0 : fileInfo.GetHeaderLen()) + nCurrentPos - partInfo.nUserOffset,
 					nToRead < partInfo.nContentSize ? nToRead : partInfo.nContentSize
 				)
 			);
