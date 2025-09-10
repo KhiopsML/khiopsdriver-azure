@@ -3,6 +3,7 @@
 #include "driver.hpp"
 #include "fixtures/storage_test.hpp"
 
+#include <string>
 #include <cstring>
 #include <functional>
 #include <iostream>
@@ -19,15 +20,28 @@
 
 #include <gtest/gtest.h>
 
+using namespace std;
 using namespace az;
+
+void TestFSeek(string sUrl);
 
 INSTANTIATE_TEST_SUITE_P(BlobAndShare, IoTest, testing::Values(StorageType::BLOB, StorageType::SHARE), IoTest::FormatParam);
 
 TEST_P(IoTest, FSeekSingleFile)
 {
+	TestFSeek(url.File());
+}
+
+TEST_P(IoTest, FSeekMultipartFile)
+{
+	TestFSeek(url.MultisplitFile());
+}
+
+void TestFSeek(string sUrl)
+{
 	char* buffer = new char[32];
 	ASSERT_EQ(driver_connect(), nSuccess);
-	void* handle = driver_fopen(url.File().c_str(), 'r');
+	void* handle = driver_fopen(sUrl.c_str(), 'r');
 	ASSERT_NE(handle, nullptr);
 
 	ASSERT_EQ(driver_fseek(handle, 922, 0), nSeekSuccess);
