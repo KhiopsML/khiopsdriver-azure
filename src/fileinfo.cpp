@@ -15,7 +15,7 @@ using DownloadFileOptions = Azure::Storage::Files::Shares::DownloadFileOptions;
 namespace az
 {
 	static string ReadHeaderFromBodyStream(std::unique_ptr<BodyStream>&& bodyStream);
-	static string GetFileHeader(std::vector<const FilePartInfo*>&& filePartInfos);
+	static string GetFileHeader(const vector<FilePartInfo>& filePartInfos, vector<size_t>&& partsWithHeadersToInspect);
 	static vector<PartInfo> GetFileParts(vector<FilePartInfo>& filePartInfo, size_t nHeaderLen);
 
 	static constexpr size_t nMaxHeaderSize = 8ULL * 1024 * 1024;
@@ -47,7 +47,7 @@ namespace az
 		size_t nRandomlyPicked = 0;
 		string sFilePartHeader;
 		size_t nFilePartSize;
-		vector<const FilePartInfo*> filePartsWithHeaderToInspect;
+		vector<size_t> filePartsWithHeadersToInspect;
 		for (size_t i = 0; i < nClients; i++)
 		{
 			sFilePartHeader = "";
@@ -94,11 +94,11 @@ namespace az
 			filePartInfos.emplace_back(move(sFilePartHeader), nFilePartSize, move(clients[i]));
 			if (bGetHeader)
 			{
-				filePartsWithHeaderToInspect.push_back(&filePartInfos.at(i));
+				filePartsWithHeadersToInspect.push_back(i);
 			}
 		}
 
-		nHeaderLen = GetFileHeader(move(filePartsWithHeaderToInspect)).size();
+		nHeaderLen = GetFileHeader(filePartInfos, move(filePartsWithHeadersToInspect)).size();
 		parts = GetFileParts(filePartInfos, nHeaderLen);
 		nSize = accumulate(parts.begin(), parts.end(), 0ULL, [](size_t nTotal, const PartInfo& partInfo) { return nTotal + partInfo.nContentSize; });
 	}
@@ -157,11 +157,11 @@ namespace az
 		return bFoundLineFeed ? sHeader : "";
 	}
 
-	static string GetFileHeader(vector<const FilePartInfo*>&& filePartInfos)
+	static string GetFileHeader(const vector<FilePartInfo>& filePartInfos, vector<size_t>&& partsWithHeadersToInspect)
 	{
-		string sFirstHeader = filePartInfos.front()->sHeader;
+		string sFirstHeader = filePartInfos.at(partsWithHeadersToInspect.front()).sHeader;
 		return sFirstHeader.empty()
-			|| any_of(filePartInfos.begin() + 1, filePartInfos.end(), [sFirstHeader](auto partInfoPtr) { return partInfoPtr->sHeader != sFirstHeader; })
+			|| any_of(partsWithHeadersToInspect.begin() + 1, partsWithHeadersToInspect.end(), [sFirstHeader, &filePartInfos](auto partIndex) { return filePartInfos[partIndex].sHeader != sFirstHeader; })
 			? string()
 			: sFirstHeader;
 	}
