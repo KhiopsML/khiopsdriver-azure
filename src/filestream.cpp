@@ -9,7 +9,7 @@ namespace az
 	{
 	}
 
-	FileStream::operator void* () const
+	void* FileStream::GetHandle() const
 	{
 		return handle;
 	}

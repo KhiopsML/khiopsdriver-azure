@@ -24,7 +24,7 @@ namespace az
 	static const std::string sName = "Azure driver";
 	static const std::string sVersion = DRIVER_VERSION;
 	static const std::string sScheme = "https";
-	static const size_t sPreferredBufferSize = 4 * 1024 * 1024;
+	static const size_t nPreferredBufferSize = 4 * 1024 * 1024;
 
 	class Driver
 	{
@@ -42,24 +42,22 @@ namespace az
 		bool IsConnected() const;
 
 		std::unique_ptr<FileAccessor> CreateFileAccessor(const std::string& url);
-		const std::unique_ptr<FileStream>& RetrieveFileStream(void* handle) const;
-		const std::unique_ptr<FileReader>& RetrieveFileReader(void* handle) const;
-		const std::unique_ptr<FileOutputStream>& RetrieveFileOutputStream(void* handle) const;
+		std::unique_ptr<FileStream>& RetrieveFileStream(void* handle) const;
+		std::unique_ptr<FileReader>& RetrieveFileReader(void* handle) const;
+		std::unique_ptr<FileOutputStream>& RetrieveFileOutputStream(void* handle) const;
 
 	protected:
 		void CheckConnected() const;
 		bool IsEmulatedStorage() const;
 
-		const std::unique_ptr<FileReader>& RegisterReader(std::unique_ptr<FileReader> readerPtr);
-		const std::unique_ptr<FileWriter>& RegisterWriter(std::unique_ptr<FileWriter> writerPtr);
-		const std::unique_ptr<FileAppender>& RegisterAppender(std::unique_ptr<FileAppender> appenderPtr);
+		std::unique_ptr<FileReader>& RegisterReader(std::unique_ptr<FileReader>&& reader);
+		std::unique_ptr<FileOutputStream>& RegisterWriter(std::unique_ptr<FileOutputStream>&& writer);
 
-		const std::unique_ptr<FileStream>& RetrieveFileStream(void* handle, bool bSearchReaders, bool bSearchWriters, bool bSearchAppenders) const;
+		std::unique_ptr<FileStream>& RetrieveFileStream(void* handle, bool bSearchReaders, bool bSearchWriters) const;
 
 		bool bIsConnected;
 
 		std::unordered_map<void*, std::unique_ptr<FileReader>> fileReaders;
-		std::unordered_map<void*, std::unique_ptr<FileWriter>> fileWriters;
-		std::unordered_map<void*, std::unique_ptr<FileAppender>> fileAppenders;
+		std::unordered_map<void*, std::unique_ptr<FileOutputStream>> fileWriters;
 	};
 }

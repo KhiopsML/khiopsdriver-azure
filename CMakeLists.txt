@@ -75,7 +75,6 @@ set(SourceList
     util/glob.hpp util/glob.cpp
     exception.hpp exception.cpp
     returnval.hpp
-    logging.hpp logging.cpp
     errorlogger.hpp errorlogger.cpp
     fileaccessor.hpp fileaccessor.cpp
     cloudfileaccessor.hpp cloudfileaccessor.cpp
@@ -85,19 +84,11 @@ set(SourceList
     cloudblobaccessor.hpp cloudblobaccessor.cpp
     emulatedblobaccessor.hpp emulatedblobaccessor.cpp
     cloudshareaccessor.hpp cloudshareaccessor.cpp
+    objectclient.hpp
+    storagetype.hpp
     filestream.hpp filestream.cpp
     filereader.hpp filereader.cpp
-    filewriter.hpp filewriter.cpp
-    fileappender.hpp fileappender.cpp
-    blobreader.hpp blobreader.cpp
-    blobwriter.hpp blobwriter.cpp
-    blobappender.hpp blobappender.cpp
-    sharereader.hpp sharereader.cpp
-    sharewriter.hpp sharewriter.cpp
-    shareappender.hpp shareappender.cpp
     fileoutputstream.hpp fileoutputstream.cpp
-    filewriter.hpp filewriter.cpp
-    fileappender.hpp fileappender.cpp
     fileinfo.hpp fileinfo.cpp
     blobpathresolve.hpp blobpathresolve.cpp
     sharepathresolve.hpp sharepathresolve.cpp

@@ -3,9 +3,9 @@
 namespace az
 {
 	class NoFilePartInfoError;
-	class FileInfoBase;
-	class BlobFileInfo;
-	class ShareFileInfo;
+	class FileInfo;
+	struct FilePartInfo;
+	struct PartInfo;
 }
 
 #include <string>
@@ -16,72 +16,49 @@ namespace az
 #include <azure/storage/files/shares/share_file_client.hpp>
 #include <azure/core/io/body_stream.hpp>
 #include "exception.hpp"
+#include "storagetype.hpp"
+#include "objectclient.hpp"
 
 namespace az
 {
 	class NoFilePartInfoError : public Error
 	{
 	public:
-		virtual const char* what() const noexcept override;
+		inline virtual const char* what() const noexcept override
+		{
+			return "no part info found in file info";
+		}
 	};
 
-	class FileInfoBase
+	class FileInfo
 	{
 	public:
+		FileInfo();
+		FileInfo(const std::vector<Azure::Storage::Blobs::BlobClient>& clients);
+		FileInfo(const std::vector<Azure::Storage::Files::Shares::ShareFileClient>& clients);
+		FileInfo(const std::vector<ObjectClient>& clients);
 		size_t GetSize() const;
-
 		size_t GetFilePartIndexOfUserOffset(size_t nUserOffset) const;
-
 		std::vector<std::unique_ptr<Azure::Core::IO::BodyStream>>& GetBodyStreams();
 
-	protected:
-		struct FilePartInfo;
-		struct PartInfo;
-
-		FileInfoBase();
-
+	private:
+		StorageType storageType;
 		std::string sHeader;
 		size_t nSize;
 		std::vector<PartInfo> parts;
 		std::vector<std::unique_ptr<Azure::Core::IO::BodyStream>> bodyStreams;
-
-		struct FilePartInfo
-		{
-			std::string sHeader;
-			size_t nSize;
-		};
-
-		struct PartInfo
-		{
-			size_t nRealOffset;
-			size_t nUserOffset;
-			size_t nContentSize;
-		};
-
-		static std::string ReadHeaderFromBodyStream(std::unique_ptr<Azure::Core::IO::BodyStream>& bodyStream);
-		static std::string GetFileHeader(const std::vector<FilePartInfo>& filePartInfo);
-		static std::vector<PartInfo> GetFileParts(const std::vector<FilePartInfo>& filePartInfo, size_t nHeaderLen);
 	};
 
-	class BlobFileInfo : public FileInfoBase
+	struct FilePartInfo
 	{
-	public:
-		BlobFileInfo();
-
-		BlobFileInfo(const std::vector<Azure::Storage::Blobs::BlobClient>& clients);
-
-	private:
-		static std::unique_ptr<Azure::Core::IO::BodyStream> DownloadFilePart(const Azure::Storage::Blobs::BlobClient& client, size_t nOffset);
+		std::string sHeader;
+		size_t nSize;
 	};
 
-	class ShareFileInfo : public FileInfoBase
+	struct PartInfo
 	{
-	public:
-		ShareFileInfo();
-
-		ShareFileInfo(const std::vector<Azure::Storage::Files::Shares::ShareFileClient>& clients);
-
-	private:
-		static std::unique_ptr<Azure::Core::IO::BodyStream> DownloadFilePart(const Azure::Storage::Files::Shares::ShareFileClient& client, size_t nOffset);
+		size_t nRealOffset;
+		size_t nUserOffset;
+		size_t nContentSize;
 	};
 }

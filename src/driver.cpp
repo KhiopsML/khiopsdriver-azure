@@ -39,7 +39,7 @@ namespace az
 
 	size_t Driver::GetPreferredBufferSize() const
 	{
-		return sPreferredBufferSize;
+		return nPreferredBufferSize;
 	}
 
 	void Driver::Connect()
@@ -75,15 +75,15 @@ namespace az
 		const string& sHost = url.GetHost();
 		if (IsEmulatedStorage())
 		{
-			return make_unique<EmulatedBlobAccessor>(url, bind(&Driver::RegisterReader, this, placeholders::_1), bind(&Driver::RegisterWriter, this, placeholders::_1), bind(&Driver::RegisterAppender, this, placeholders::_1));
+			return make_unique<EmulatedBlobAccessor>(url, bind(&Driver::RegisterReader, this, placeholders::_1), bind(&Driver::RegisterWriter, this, placeholders::_1));
 		}
 		else if (EndsWith(sHost, sBlobDomain))
 		{
-			return make_unique<CloudBlobAccessor>(url, bind(&Driver::RegisterReader, this, placeholders::_1), bind(&Driver::RegisterWriter, this, placeholders::_1), bind(&Driver::RegisterAppender, this, placeholders::_1));
+			return make_unique<CloudBlobAccessor>(url, bind(&Driver::RegisterReader, this, placeholders::_1), bind(&Driver::RegisterWriter, this, placeholders::_1));
 		}
 		else if (EndsWith(sHost, sFileDomain))
 		{
-			return make_unique<CloudShareAccessor>(url, bind(&Driver::RegisterReader, this, placeholders::_1), bind(&Driver::RegisterWriter, this, placeholders::_1), bind(&Driver::RegisterAppender, this, placeholders::_1));
+			return make_unique<CloudShareAccessor>(url, bind(&Driver::RegisterReader, this, placeholders::_1), bind(&Driver::RegisterWriter, this, placeholders::_1));
 		}
 		else
 		{
@@ -91,19 +91,19 @@ namespace az
 		}
 	}
 
-	const unique_ptr<FileStream>& Driver::RetrieveFileStream(void* handle) const
+	unique_ptr<FileStream>& Driver::RetrieveFileStream(void* handle) const
 	{
-		return RetrieveFileStream(handle, true, true, true);
+		return RetrieveFileStream(handle, true, true);
 	}
 
-	const unique_ptr<FileReader>& Driver::RetrieveFileReader(void* handle) const
+	unique_ptr<FileReader>& Driver::RetrieveFileReader(void* handle) const
 	{
-		return (const unique_ptr<FileReader>&)RetrieveFileStream(handle, true, false, false);
+		return (unique_ptr<FileReader>&)RetrieveFileStream(handle, true, false);
 	}
 
-	const unique_ptr<FileOutputStream>& Driver::RetrieveFileOutputStream(void* handle) const
+	unique_ptr<FileOutputStream>& Driver::RetrieveFileOutputStream(void* handle) const
 	{
-		return (const unique_ptr<FileOutputStream>&)RetrieveFileStream(handle, false, true, true);
+		return (unique_ptr<FileOutputStream>&)RetrieveFileStream(handle, false, true);
 	}
 
 	void Driver::CheckConnected() const
@@ -119,29 +119,28 @@ namespace az
 		return ToLower(GetEnvironmentVariableOrDefault("AZURE_EMULATED_STORAGE", "false")) != "false";
 	}
 
-	const unique_ptr<FileReader>& Driver::RegisterReader(unique_ptr<FileReader> readerPtr)
+	unique_ptr<FileReader>& Driver::RegisterReader(unique_ptr<FileReader>&& reader)
 	{
-		return fileReaders[(void*)*readerPtr] = move(readerPtr);
+		void* handle = reader->GetHandle();
+		fileReaders[handle] = move(reader);
+		return fileReaders.at(handle);
 	}
 
-	const unique_ptr<FileWriter>& Driver::RegisterWriter(unique_ptr<FileWriter> writerPtr)
+	unique_ptr<FileOutputStream>& Driver::RegisterWriter(unique_ptr<FileOutputStream>&& writer)
 	{
-		return fileWriters[(void*)*writerPtr] = move(writerPtr);
+		void* handle = writer->GetHandle();
+		fileWriters[handle] = move(writer);
+		return fileWriters.at(handle);
 	}
 
-	const unique_ptr<FileAppender>& Driver::RegisterAppender(unique_ptr<FileAppender> appenderPtr)
-	{
-		return fileAppenders[(void*)*appenderPtr] = move(appenderPtr);
-	}
-
-	const unique_ptr<FileStream>& Driver::RetrieveFileStream(void* handle, bool bSearchReaders, bool bSearchWriters, bool bSearchAppenders) const
+	unique_ptr<FileStream>& Driver::RetrieveFileStream(void* handle, bool bSearchReaders, bool bSearchWriters) const
 	{
 		if (bSearchReaders)
 		{
 			auto rIt = fileReaders.find(handle);
 			if (rIt != fileReaders.end())
 			{
-				return (const unique_ptr<FileStream>&)rIt->second;
+				return (unique_ptr<FileStream>&)fileReaders.at(handle);
 			}
 		}
 		if (bSearchWriters)
@@ -149,15 +148,7 @@ namespace az
 			auto wIt = fileWriters.find(handle);
 			if (wIt != fileWriters.end())
 			{
-				return (const unique_ptr<FileStream>&)wIt->second;
-			}
-		}
-		if (bSearchAppenders)
-		{
-			auto aIt = fileAppenders.find(handle);
-			if (aIt != fileAppenders.end())
-			{
-				return (const unique_ptr<FileStream>&)aIt->second;
+				return (unique_ptr<FileStream>&)fileWriters.at(handle);
 			}
 		}
 		throw FileStreamNotFoundError(handle);

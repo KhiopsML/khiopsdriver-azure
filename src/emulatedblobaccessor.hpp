@@ -16,7 +16,7 @@ namespace az
 	class EmulatedBlobAccessor : public BlobAccessor, public EmulatedFileAccessor
 	{
 	public:
-		EmulatedBlobAccessor(const Azure::Core::Url& url, const std::function<const std::unique_ptr<FileReader>& (std::unique_ptr<FileReader>)>& registerReader, const std::function<const std::unique_ptr<FileWriter>& (std::unique_ptr<FileWriter>)>& registerWriter, const std::function<const std::unique_ptr<FileAppender>& (std::unique_ptr<FileAppender>)>& registerAppender);
+		EmulatedBlobAccessor(const Azure::Core::Url& url, const std::function<std::unique_ptr<FileReader>& (std::unique_ptr<FileReader>&&)>& registerReader, const std::function<std::unique_ptr<FileOutputStream>& (std::unique_ptr<FileOutputStream>&&)>& registerWriter);
 		~EmulatedBlobAccessor();
 
 	protected:

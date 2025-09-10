@@ -2,6 +2,7 @@
 #include <memory>
 #include <numeric>
 #include <algorithm>
+#include <iterator>
 #include <fstream>
 #include <azure/core/http/transport.hpp>
 #include "util/connstring.hpp"
@@ -9,9 +10,6 @@
 #include "util/env.hpp"
 #include "blobpathresolve.hpp"
 #include "fileinfo.hpp"
-#include "blobreader.hpp"
-#include "blobwriter.hpp"
-#include "blobappender.hpp"
 
 using namespace std;
 using BlobClient = Azure::Storage::Blobs::BlobClient;
@@ -46,41 +44,41 @@ namespace az
 		}
 		else
 		{
-			vector<BlobClient> blobs = ListBlobs();
+			auto blobs = ListBlobs();
 			if (blobs.empty())
 			{
 				throw NoFileError(GetUrl().GetAbsoluteUrl());
 			}
-			return BlobFileInfo(blobs).GetSize();
+			return FileInfo(blobs).GetSize();
 		}
 	}
 
-	const unique_ptr<FileReader>& BlobAccessor::OpenForReading() const
+	unique_ptr<FileReader>& BlobAccessor::OpenForReading() const
 	{
-		vector<BlobClient> blobs = ListBlobs();
-		return RegisterReader(make_unique<BlobReader>(move(blobs)));
+		auto blobs = ListBlobs();
+		return RegisterReader(make_unique<FileReader>(move(blobs)));
 	}
 
-	const unique_ptr<FileOutputStream>& BlobAccessor::OpenForWriting() const
+	unique_ptr<FileOutputStream>& BlobAccessor::OpenForWriting() const
 	{
-		return (const unique_ptr<FileOutputStream>&)RegisterWriter(make_unique<BlobWriter>(move(GetBlobClient())));
+		return RegisterWriter(make_unique<FileOutputStream>(FileOutputMode::WRITE, move(GetBlobClient())));
 	}
 
-	const unique_ptr<FileOutputStream>& BlobAccessor::OpenForAppending() const
+	unique_ptr<FileOutputStream>& BlobAccessor::OpenForAppending() const
 	{
-		return (const unique_ptr<FileOutputStream>&)RegisterAppender(make_unique<BlobAppender>(move(GetBlobClient())));
+		return RegisterWriter(make_unique<FileOutputStream>(FileOutputMode::APPEND, move(GetBlobClient())));
 	}
 
 	void BlobAccessor::Remove() const
 	{
-		vector<BlobClient> blobs = ListBlobs();
+		auto blobs = ListBlobs();
 		if (blobs.empty())
 		{
 			throw NoFileError(GetUrl().GetAbsoluteUrl());
 		}
 		DeleteBlobOptions opts;
 		opts.DeleteSnapshots = DeleteSnapshotsOption::IncludeSnapshots;
-		for (const BlobClient& blob : blobs)
+		for (const auto& blob : blobs)
 		{
 			const string sBlobUrl = blob.GetUrl();
 			if (!blob.Delete(opts).Value.Deleted)
@@ -107,7 +105,7 @@ namespace az
 
 	void BlobAccessor::CopyTo(const string& destUrl) const
 	{
-		const auto& reader = OpenForReading();
+		auto& reader = OpenForReading();
 		constexpr size_t nBufferSize = 4ULL * 1024 * 1024; // TODO
 		char* buffer = new char[nBufferSize];
 		size_t nRead;
@@ -123,7 +121,7 @@ namespace az
 
 	void BlobAccessor::CopyFrom(const string& sourceUrl) const
 	{
-		const auto& writer = OpenForWriting();
+		auto& writer = OpenForWriting();
 		constexpr size_t nBufferSize = 4ULL * 1024 * 1024; // TODO
 		char* buffer = new char[nBufferSize];
 		size_t nRead;
@@ -143,12 +141,12 @@ namespace az
 		delete[] buffer;
 	}
 
-	BlobAccessor::BlobAccessor(const Url& url, const function<const unique_ptr<FileReader>& (unique_ptr<FileReader>)>& registerReader, const function<const unique_ptr<FileWriter>& (unique_ptr<FileWriter>)>& registerWriter, const function<const unique_ptr<FileAppender>& (unique_ptr<FileAppender>)>& registerAppender) :
-		FileAccessor(url, registerReader, registerWriter, registerAppender)
+	BlobAccessor::BlobAccessor(const Azure::Core::Url& url, const function<unique_ptr<FileReader>& (unique_ptr<FileReader>&&)>& registerReader, const function<unique_ptr<FileOutputStream>& (unique_ptr<FileOutputStream>&&)>& registerWriter) :
+		FileAccessor(url, registerReader, registerWriter)
 	{
 	}
 
-	vector<BlobClient> BlobAccessor::ListBlobs() const
+	vector<Azure::Storage::Blobs::BlobClient> BlobAccessor::ListBlobs() const
 	{
 		try
 		{

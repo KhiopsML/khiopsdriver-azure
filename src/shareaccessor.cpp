@@ -7,9 +7,6 @@
 #include "exception.hpp"
 #include "sharepathresolve.hpp"
 #include "fileinfo.hpp"
-#include "sharereader.hpp"
-#include "sharewriter.hpp"
-#include "shareappender.hpp"
 
 using namespace std;
 using ShareFileClient = Azure::Storage::Files::Shares::ShareFileClient;
@@ -49,11 +46,11 @@ namespace az
 			{
 				throw NoFileError(GetUrl().GetAbsoluteUrl());
 			}
-			return ShareFileInfo(files).GetSize();
+			return FileInfo(files).GetSize();
 		}
 	}
 
-	const unique_ptr<FileReader>& ShareAccessor::OpenForReading() const
+	unique_ptr<FileReader>& ShareAccessor::OpenForReading() const
 	{
 		if (HasDirUrl())
 		{
@@ -62,11 +59,11 @@ namespace az
 		else
 		{
 			vector<ShareFileClient> files = ListFiles();
-			return RegisterReader(make_unique<ShareReader>(move(files)));
+			return RegisterReader(make_unique<FileReader>(move(files)));
 		}
 	}
 
-	const unique_ptr<FileOutputStream>& ShareAccessor::OpenForWriting() const
+	unique_ptr<FileOutputStream>& ShareAccessor::OpenForWriting() const
 	{
 		if (HasDirUrl())
 		{
@@ -75,11 +72,11 @@ namespace az
 		else
 		{
 			CheckParentDirExists();
-			return (const unique_ptr<FileOutputStream>&)RegisterWriter(make_unique<ShareWriter>(move(GetFileClient())));
+			return RegisterWriter(make_unique<FileOutputStream>(FileOutputMode::WRITE, move(GetFileClient())));
 		}
 	}
 
-	const unique_ptr<FileOutputStream>& ShareAccessor::OpenForAppending() const
+	unique_ptr<FileOutputStream>& ShareAccessor::OpenForAppending() const
 	{
 		if (HasDirUrl())
 		{
@@ -108,7 +105,7 @@ namespace az
 			{
 				client.Create(0);
 			}
-			return (const unique_ptr<FileOutputStream>&)RegisterAppender(make_unique<ShareAppender>(move(client)));
+			return RegisterWriter(make_unique<FileOutputStream>(FileOutputMode::APPEND, move(client)));
 		}
 	}
 
@@ -199,7 +196,7 @@ namespace az
 
 	void ShareAccessor::CopyTo(const string& destUrl) const
 	{
-		const auto& reader = OpenForReading();
+		auto& reader = OpenForReading();
 		constexpr size_t nBufferSize = 4ULL * 1024 * 1024; // TODO
 		char* buffer = new char[nBufferSize];
 		size_t nRead;
@@ -215,7 +212,7 @@ namespace az
 
 	void ShareAccessor::CopyFrom(const string& sourceUrl) const
 	{
-		const auto& writer = OpenForWriting();
+		auto& writer = OpenForWriting();
 		constexpr size_t nBufferSize = 4ULL * 1024 * 1024; // TODO
 		char* buffer = new char[nBufferSize];
 		size_t nRead;
@@ -235,8 +232,8 @@ namespace az
 		delete[] buffer;
 	}
 
-	ShareAccessor::ShareAccessor(const Url& url, const function<const unique_ptr<FileReader>& (unique_ptr<FileReader>)>& registerReader, const function<const unique_ptr<FileWriter>& (unique_ptr<FileWriter>)>& registerWriter, const function<const unique_ptr<FileAppender>& (unique_ptr<FileAppender>)>& registerAppender) :
-		FileAccessor(url, registerReader, registerWriter, registerAppender)
+	ShareAccessor::ShareAccessor(const Azure::Core::Url& url, const function<unique_ptr<FileReader>& (unique_ptr<FileReader>&&)>& registerReader, const function<unique_ptr<FileOutputStream>& (unique_ptr<FileOutputStream>&&)>& registerWriter) :
+		FileAccessor(url, registerReader, registerWriter)
 	{
 	}
 

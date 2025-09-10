@@ -33,10 +33,10 @@
 #include <azure/identity/managed_identity_credential.hpp>
 
 #include "util/macro.hpp"
+#include "util/env.hpp"
 #include "driver.hpp"
 #include "returnval.hpp"
 #include "errorlogger.hpp"
-#include "logging.hpp"
 #include "exception.hpp"
 
 using namespace std;
@@ -61,9 +61,6 @@ using namespace Azure::Identity;
 
 
 static int FileOrDirExists(const char* sUrl);
-
-//StreamVec<Reader> active_reader_handles;
-//StreamVec<Writer> active_writer_handles;
 
 const char* driver_getDriverName()
 {
@@ -145,7 +142,20 @@ int driver_connect()
 {
 	try
 	{
-		ConfigureLogLevel();
+		const string loglevel = GetEnvironmentVariableOrDefault("AZURE_DRIVER_LOGLEVEL", "info");
+		if (loglevel == "debug")
+		{
+			spdlog::set_level(spdlog::level::debug);
+		}
+		else if (loglevel == "trace")
+		{
+			spdlog::set_level(spdlog::level::trace);
+		}
+		else
+		{
+			spdlog::set_level(spdlog::level::info);
+		}
+
 		spdlog::debug("Connecting");
 		driver.Connect();
 		return nSuccess;
@@ -301,11 +311,11 @@ void* driver_fopen(const char* sUrl, char mode)
 		switch (mode)
 		{
 		case 'r':
-			return (void*)*driver.CreateFileAccessor(sUrl)->OpenForReading();
+			return driver.CreateFileAccessor(sUrl)->OpenForReading()->GetHandle();
 		case 'w':
-			return (void*)*driver.CreateFileAccessor(sUrl)->OpenForWriting();
+			return driver.CreateFileAccessor(sUrl)->OpenForWriting()->GetHandle();
 		case 'a':
-			return (void*)*driver.CreateFileAccessor(sUrl)->OpenForAppending();
+			return driver.CreateFileAccessor(sUrl)->OpenForAppending()->GetHandle();
 		default:
 			throw InvalidFileStreamModeError(sUrl, mode);
 		}

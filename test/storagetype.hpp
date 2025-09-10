@@ -1,13 +1,8 @@
 #pragma once
 
-enum class StorageType;
-
 #include <ostream>
+#include "../src/storagetype.hpp"
 
-enum class StorageType
-{
-    BLOB,
-    SHARE
-};
+using StorageType = az::StorageType;
 
 void PrintTo(const StorageType& storageType, std::ostream* os);

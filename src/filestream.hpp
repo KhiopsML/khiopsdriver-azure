@@ -11,7 +11,7 @@ namespace az
 	{
 	public:
 		virtual ~FileStream();
-		explicit operator void* () const;
+		void* GetHandle() const;
 		virtual void Close() = 0;
 
 	protected:
