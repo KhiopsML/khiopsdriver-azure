@@ -41,7 +41,7 @@ const string StorageTestUrlProvider::Dir() const
 
 const string StorageTestUrlProvider::NewRandomDir() const
 {
-    return (ostringstream() << sPrefix + "/data-test-khiops-driver-azure/output/CREATED_BY_TESTS_" << boost::uuids::random_generator()() << "/").str();
+    return (ostringstream() << sPrefix + "/data-test-khiops-driver-azure/khiops_data/output/CREATED_BY_TESTS_" << boost::uuids::random_generator()() << "/").str();
 }
 
 const string StorageTestUrlProvider::InexistantFile() const
