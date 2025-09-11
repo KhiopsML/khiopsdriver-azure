@@ -26,12 +26,18 @@ namespace az
 		client(move(client)),
 		nCurrentPos(0)
 	{
-		if (storageType == StorageType::BLOB && mode == FileOutputMode::WRITE)
-			this->client.blob.AsBlockBlobClient().CommitBlockList({});
-		else if (mode == FileOutputMode::WRITE) // SHARE storage
-			this->client.shareFile.Create(0);
-		else // APPEND mode
-			nCurrentPos = this->client.shareFile.GetProperties().Value.FileSize;
+		if (storageType == StorageType::BLOB)
+		{
+			if (mode == FileOutputMode::WRITE)
+				this->client.blob.AsBlockBlobClient().CommitBlockList({});
+		}
+		else // SHARE storage
+		{
+			if (mode == FileOutputMode::WRITE)
+				this->client.shareFile.Create(0);
+			else  // APPEND mode
+				nCurrentPos = this->client.shareFile.GetProperties().Value.FileSize;
+		}
 	}
 
 	void FileOutputStream::Close()
