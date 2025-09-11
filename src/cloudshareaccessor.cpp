@@ -3,7 +3,7 @@
 #include <regex>
 #include <azure/storage/files/shares/share_options.hpp>
 #include "exception.hpp"
-#include "util/string.hpp"
+#include "util.hpp"
 
 using namespace std;
 
@@ -68,7 +68,7 @@ namespace az
 
 	vector<string> CloudShareAccessor::UrlPathParts() const
 	{
-		return Split(GetUrl().GetPath(), '/', -1, true);
+		return util::str::Split(GetUrl().GetPath(), '/', -1, true);
 	}
 
 	void CloudShareAccessor::CheckFileUrl() const

@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 #include <azure/core/url.hpp>
-#include "../../src/util/connstring.hpp"
+#include "../../src/util.hpp"
 
 const char* sValidConnString =
 	"AccountName=devstoreaccount1;"
@@ -41,8 +41,8 @@ const char* sConnStringMissingBlobEndpoint =
 
 TEST(ConnectionStringTest, ParseValidConnString)
 {
-	az::ConnectionString actual = az::ParseConnectionString(sValidConnString);
-	az::ConnectionString expected
+	az::util::connstr::ConnectionString actual = az::util::connstr::ConnectionString::ParseConnectionString(sValidConnString);
+	az::util::connstr::ConnectionString expected
 	{
 		"devstoreaccount1",
 		"Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==",
@@ -57,15 +57,15 @@ TEST(ConnectionStringTest, ParseIllFormedConnString)
 		{
 			try
 			{
-				az::ParseConnectionString(sIllFormedConnString);
+				az::util::connstr::ConnectionString::ParseConnectionString(sIllFormedConnString);
 			}
-			catch (const az::ParsingError& exc)
+			catch (const az::util::connstr::ParsingError& exc)
 			{
 				ASSERT_STREQ(exc.what(), "ill-formed connection string");
 				throw;
 			}
 		},
-		az::ParsingError
+		az::util::connstr::ParsingError
 	);
 }
 
@@ -75,15 +75,15 @@ TEST(ConnectionStringTest, ParseConnStringMissingAccountName)
 		{
 			try
 			{
-				az::ParseConnectionString(sConnStringMissingAccountName);
+				az::util::connstr::ConnectionString::ParseConnectionString(sConnStringMissingAccountName);
 			}
-			catch (const az::ParsingError& exc)
+			catch (const az::util::connstr::ParsingError& exc)
 			{
 				ASSERT_STREQ(exc.what(), "connection string is missing AccountName");
 				throw;
 			}
 		},
-		az::ParsingError
+		az::util::connstr::ParsingError
 	);
 }
 
@@ -93,15 +93,15 @@ TEST(ConnectionStringTest, ParseConnStringMissingAccountKey)
 		{
 			try
 			{
-				az::ParseConnectionString(sConnStringMissingAccountKey);
+				az::util::connstr::ConnectionString::ParseConnectionString(sConnStringMissingAccountKey);
 			}
-			catch (const az::ParsingError& exc)
+			catch (const az::util::connstr::ParsingError& exc)
 			{
 				ASSERT_STREQ(exc.what(), "connection string is missing AccountKey");
 				throw;
 			}
 		},
-		az::ParsingError
+		az::util::connstr::ParsingError
 	);
 }
 
@@ -111,14 +111,14 @@ TEST(ConnectionStringTest, ParseConnStringMissingBlobEndpoint)
 		{
 			try
 			{
-				az::ParseConnectionString(sConnStringMissingBlobEndpoint);
+				az::util::connstr::ConnectionString::ParseConnectionString(sConnStringMissingBlobEndpoint);
 			}
-			catch (const az::ParsingError& exc)
+			catch (const az::util::connstr::ParsingError& exc)
 			{
 				ASSERT_STREQ(exc.what(), "connection string is missing BlobEndpoint");
 				throw;
 			}
 		},
-		az::ParsingError
+		az::util::connstr::ParsingError
 	);
 }

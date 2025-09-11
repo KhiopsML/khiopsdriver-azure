@@ -1,11 +1,10 @@
 #include "driver.hpp"
 #include <spdlog/spdlog.h>
 #include <azure/core.hpp>
-#include "util/string.hpp"
+#include "util.hpp"
 #include "cloudblobaccessor.hpp"
 #include "cloudshareaccessor.hpp"
 #include "emulatedblobaccessor.hpp"
-#include "util/env.hpp"
 #include "exception.hpp"
 
 using namespace std;
@@ -77,11 +76,11 @@ namespace az
 		{
 			return make_unique<EmulatedBlobAccessor>(url, bind(&Driver::RegisterReader, this, placeholders::_1), bind(&Driver::RegisterWriter, this, placeholders::_1));
 		}
-		else if (EndsWith(sHost, sBlobDomain))
+		else if (util::str::EndsWith(sHost, sBlobDomain))
 		{
 			return make_unique<CloudBlobAccessor>(url, bind(&Driver::RegisterReader, this, placeholders::_1), bind(&Driver::RegisterWriter, this, placeholders::_1));
 		}
-		else if (EndsWith(sHost, sFileDomain))
+		else if (util::str::EndsWith(sHost, sFileDomain))
 		{
 			return make_unique<CloudShareAccessor>(url, bind(&Driver::RegisterReader, this, placeholders::_1), bind(&Driver::RegisterWriter, this, placeholders::_1));
 		}
@@ -116,7 +115,7 @@ namespace az
 
 	bool Driver::IsEmulatedStorage() const
 	{
-		return ToLower(GetEnvironmentVariableOrDefault("AZURE_EMULATED_STORAGE", "false")) != "false";
+		return util::str::ToLower(util::env::GetEnvironmentVariableOrDefault("AZURE_EMULATED_STORAGE", "false")) != "false";
 	}
 
 	FileReader& Driver::RegisterReader(FileReader&& reader)

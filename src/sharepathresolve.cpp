@@ -1,7 +1,7 @@
 #include "sharepathresolve.hpp"
 #include <functional>
-#include "util/glob.hpp"
-#include "contrib/globmatch.hpp"
+#include "util.hpp"
+#include "contrib.hpp"
 
 using namespace std;
 
@@ -97,7 +97,7 @@ namespace az
             return ResolveDoubleStar<ShareDirectoryClient, ResolveDirsPathRecursively>(dirClient, pathSegments);
         }
 
-        if (globbing::FindGlobbingChar(sUrlPathSegment) != string::npos)
+        if (util::glob::FindGlobbingChar(sUrlPathSegment) != string::npos)
         {
             return ResolveDirsGlobbing(dirClient, pathSegments, sUrlPathSegment);
         }
@@ -125,7 +125,7 @@ namespace az
             return ResolveDoubleStar<ShareFileClient, ResolveFilesPathRecursively>(dirClient, pathSegments);
         }
             
-        if (globbing::FindGlobbingChar(sUrlPathSegment) != string::npos)
+        if (util::glob::FindGlobbingChar(sUrlPathSegment) != string::npos)
         {
             return ResolveFilesGlobbing(dirClient, pathSegments, sUrlPathSegment);
         }
@@ -311,7 +311,7 @@ namespace az
     template<typename ItemT>
     static bool ItemNameMatches(const ItemT& item, const string& sGlob)
     {
-        return globbing::GitignoreGlobMatch(item.Name, sGlob);
+        return util::glob::GitignoreGlobMatch(item.Name, sGlob);
     }
 
     static string PrefixFromName(const string& sName)
@@ -321,6 +321,6 @@ namespace az
 
     static string PrefixFromGlob(const string& sGlob)
     {
-        return sGlob.substr(0, globbing::FindGlobbingChar(sGlob));
+        return sGlob.substr(0, util::glob::FindGlobbingChar(sGlob));
     }
 }

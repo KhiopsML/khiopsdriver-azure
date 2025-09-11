@@ -5,9 +5,6 @@
 #include <iterator>
 #include <fstream>
 #include <azure/core/http/transport.hpp>
-#include "util/connstring.hpp"
-#include "util/string.hpp"
-#include "util/env.hpp"
 #include "blobpathresolve.hpp"
 #include "fileinfo.hpp"
 

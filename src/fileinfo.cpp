@@ -4,7 +4,7 @@
 #include <azure/core/http/http.hpp>
 #include <azure/storage/blobs/rest_client.hpp>
 #include <azure/storage/files/shares/share_responses.hpp>
-#include "util/random.hpp"
+#include "util.hpp"
 
 using namespace std;
 using HttpRange = Azure::Core::Http::HttpRange;
@@ -57,7 +57,7 @@ namespace az
 			{
 				bGetHeader = true;
 			}
-			else if (nRandomlyPicked < 10 && (i >= nClients - 15 + nRandomlyPicked || RandomBool()))
+			else if (nRandomlyPicked < 10 && (i >= nClients - 15 + nRandomlyPicked || util::random::RandomBool()))
 			{
 				bGetHeader = true;
 				nRandomlyPicked++;

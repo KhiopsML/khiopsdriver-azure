@@ -66,13 +66,9 @@ set(SourceList
     azureplugin.hpp
     azureplugin.cpp
     driver.hpp driver.cpp
-    contrib/globmatch.hpp contrib/globmatch.cpp
-    util/macro.hpp
-    util/string.hpp util/string.cpp
-    util/env.hpp util/env.cpp
-    util/connstring.hpp util/connstring.cpp
-    util/glob.hpp util/glob.cpp
-    util/random.hpp util/random.cpp
+    contrib.hpp contrib.cpp
+    macro.hpp
+    util.hpp util.cpp
     exception.hpp exception.cpp
     returnval.hpp
     errorlogger.hpp errorlogger.cpp

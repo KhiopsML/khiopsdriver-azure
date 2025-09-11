@@ -3,7 +3,6 @@
 #endif
 
 #include "azureplugin.hpp"
-#include "contrib/globmatch.hpp"
 
 #include <algorithm>
 #include <assert.h>
@@ -31,8 +30,7 @@
 #include <azure/identity/azure_cli_credential.hpp>
 #include <azure/identity/managed_identity_credential.hpp>
 
-#include "util/macro.hpp"
-#include "util/env.hpp"
+#include "util.hpp"
 #include "driver.hpp"
 #include "returnval.hpp"
 #include "errorlogger.hpp"
@@ -141,7 +139,7 @@ int driver_connect()
 {
 	try
 	{
-		const string loglevel = GetEnvironmentVariableOrDefault("AZURE_DRIVER_LOGLEVEL", "info");
+		const string loglevel = util::env::GetEnvironmentVariableOrDefault("AZURE_DRIVER_LOGLEVEL", "info");
 		if (loglevel == "debug")
 		{
 			spdlog::set_level(spdlog::level::debug);

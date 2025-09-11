@@ -10,7 +10,7 @@ namespace az
 #include <unordered_map>
 #include "fileaccessor.hpp"
 #include "filestream.hpp"
-#include "util/macro.hpp"
+#include "macro.hpp"
 
 // Release versions must have 3 digits, for example STRINGIFY(1.2.0)
 // Alpha, beta ou release candidates have an extra suffix, for example :

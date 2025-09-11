@@ -1,5 +1,5 @@
 #include "fileaccessor.hpp"
-#include "util/string.hpp"
+#include "util.hpp"
 
 using namespace std;
 
@@ -13,7 +13,7 @@ namespace az
 		RegisterReader(registerReader),
 		RegisterWriter(registerWriter),
 		url(url),
-		bHasDirUrl(EndsWith(url.GetPath(), "/"))
+		bHasDirUrl(util::str::EndsWith(url.GetPath(), "/"))
 	{
 	}
 

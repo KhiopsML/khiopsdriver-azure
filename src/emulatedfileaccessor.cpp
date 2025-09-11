@@ -1,7 +1,5 @@
 #include "emulatedfileaccessor.hpp"
-#include "util/connstring.hpp"
-#include "util/env.hpp"
-#include "util/string.hpp"
+#include "util.hpp"
 
 using namespace std;
 
@@ -17,14 +15,14 @@ namespace az
 	{
 	}
 
-	const ConnectionString& EmulatedFileAccessor::GetConnectionString() const
+	const util::connstr::ConnectionString& EmulatedFileAccessor::GetConnectionString() const
 	{
 		return connectionString;
 	}
 
 	bool EmulatedFileAccessor::IsConnectionStringCompatibleWithUrl(const Azure::Core::Url& url) const
 	{
-		return StartsWith(url.GetAbsoluteUrl(), GetConnectionString().blobEndpoint.GetAbsoluteUrl());
+		return util::str::StartsWith(url.GetAbsoluteUrl(), GetConnectionString().blobEndpoint.GetAbsoluteUrl());
 	}
 
 	shared_ptr<Azure::Storage::StorageSharedKeyCredential> EmulatedFileAccessor::GetCredential() const
@@ -32,14 +30,14 @@ namespace az
 		return credential;
 	}
 
-	ConnectionString EmulatedFileAccessor::GetConnectionStringFromEnv()
+	util::connstr::ConnectionString EmulatedFileAccessor::GetConnectionStringFromEnv()
 	{
-		return ParseConnectionString(GetEnvironmentVariableOrThrow("AZURE_STORAGE_CONNECTION_STRING"));
+		return util::connstr::ConnectionString::ParseConnectionString(util::env::GetEnvironmentVariableOrThrow("AZURE_STORAGE_CONNECTION_STRING"));
 	}
 
 	shared_ptr<Azure::Storage::StorageSharedKeyCredential> EmulatedFileAccessor::BuildCredential()
 	{
-		const ConnectionString& connStr = GetConnectionString();
+		const util::connstr::ConnectionString& connStr = GetConnectionString();
 		return make_shared<Azure::Storage::StorageSharedKeyCredential>(connStr.sAccountName, connStr.sAccountKey);
 	}
 }

@@ -1,7 +1,7 @@
 #include "blobpathresolve.hpp"
 #include <functional>
-#include "util/glob.hpp"
-#include "contrib/globmatch.hpp"
+#include "contrib.hpp"
+#include "util.hpp"
 
 using namespace std;
 
@@ -24,7 +24,7 @@ namespace az
 
 	vector<BlobClient> ResolveBlobsSearchString(const BlobContainerClient& containerClient, const string& sSearchString)
 	{
-		return globbing::FindGlobbingChar(sSearchString) != string::npos
+		return util::glob::FindGlobbingChar(sSearchString) != string::npos
 			? FindBlobsByGlob(containerClient, sSearchString)
 			: FindBlobsByName(containerClient, sSearchString);
 	}
@@ -36,7 +36,7 @@ namespace az
 
 	static vector<BlobClient> FindBlobsByGlob(const BlobContainerClient& containerClient, const string& sGlob)
 	{
-		return FindBlobs(containerClient, [sGlob](const BlobItem& item) { return !item.IsDeleted && globbing::GitignoreGlobMatch(item.Name, sGlob); }, PrefixFromGlob(sGlob));
+		return FindBlobs(containerClient, [sGlob](const BlobItem& item) { return !item.IsDeleted && util::glob::GitignoreGlobMatch(item.Name, sGlob); }, PrefixFromGlob(sGlob));
 	}
 
 	static vector<BlobClient> FindBlobs(const BlobContainerClient& containerClient, const function<bool(const BlobItem& item)>& Predicate, const string& sPrefix)
@@ -65,6 +65,6 @@ namespace az
 
 	static string PrefixFromGlob(const string& sGlob)
 	{
-		return sGlob.substr(0, globbing::FindGlobbingChar(sGlob));
+		return sGlob.substr(0, util::glob::FindGlobbingChar(sGlob));
 	}
 }

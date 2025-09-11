@@ -2,8 +2,7 @@
 #include <sstream>
 #include <regex>
 #include "exception.hpp"
-#include "util/connstring.hpp"
-#include "util/string.hpp"
+#include "util.hpp"
 
 using namespace std;
 
@@ -67,7 +66,7 @@ namespace az
 
 	vector<string> EmulatedBlobAccessor::UrlPathParts() const
 	{
-		return Split(GetUrl().GetPath(), '/', 2, true); // <account> / <container> / <object>
+		return util::str::Split(GetUrl().GetPath(), '/', 2, true); // <account> / <container> / <object>
 	}
 
 	void EmulatedBlobAccessor::CheckFileUrl() const
