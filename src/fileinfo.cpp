@@ -22,8 +22,8 @@ namespace az
 	static constexpr size_t nMaxHeaderSize = 8ULL * 1024 * 1024;
 
 	FileInfo::FileInfo() :
-		nSize(0),
-		nHeaderLen(0)
+		nHeaderLen(0),
+		nSize(0)
 	{}
 
 	FileInfo::FileInfo(vector<Azure::Storage::Blobs::BlobClient>&& clients) :
@@ -39,8 +39,8 @@ namespace az
 	{
 		if (clients.empty())
 		{
-			nSize = 0;
 			nHeaderLen = 0;
+			nSize = 0;
 			return;
 		}
 
@@ -81,7 +81,7 @@ namespace az
 					{
 						opts.Range->Length = nFirstPartHeaderLen;
 					}
-					nFilePartSize = downloadResult.BlobSize;
+					nFilePartSize = (size_t)downloadResult.BlobSize;
 				}
 				else
 				{
@@ -105,7 +105,7 @@ namespace az
 						opts.Range->Length = nFirstPartHeaderLen;
 					}
 					opts.Range->Length = nFirstPartHeaderLen;
-					nFilePartSize = downloadResult.FileSize;
+					nFilePartSize = (size_t)downloadResult.FileSize;
 				}
 				else
 				{
