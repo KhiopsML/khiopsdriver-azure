@@ -57,7 +57,7 @@ namespace az
             string ToLower(const string& str)
             {
                 string lower(str.length(), '\0');
-                transform(str.begin(), str.end(), lower.begin(), [](char ch) { return tolower(ch); });
+                transform(str.begin(), str.end(), lower.begin(), [](char ch) { return (char)tolower((int)ch); });
                 return lower;
             }
         }
@@ -104,7 +104,7 @@ namespace az
             {
                 char* sValue = getenv(sVarName.c_str());
 
-                if (sValue && strlen(sValue) > 0)
+                if (sValue && strlen(sValue) > 0ULL)
                 {
                     return sValue;
                 }
