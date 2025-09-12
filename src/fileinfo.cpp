@@ -1,6 +1,7 @@
 #include "fileinfo.hpp"
 #include <algorithm>
 #include <numeric>
+#include <memory>
 #include <azure/core/http/http.hpp>
 #include <azure/storage/blobs/rest_client.hpp>
 #include <azure/storage/files/shares/share_responses.hpp>
@@ -145,6 +146,20 @@ namespace az
 			throw NoFilePartInfoError();
 		}
 		return (size_t)(find_if(parts.begin(), parts.end(), [nUserOffset](const auto& part) { return nUserOffset < part.nUserOffset; }) - 1 - parts.begin());
+	}
+
+	FilePartInfo::FilePartInfo(string&& sHeader, size_t nSize, ObjectClient&& client) :
+		sHeader(sHeader),
+		nSize(nSize),
+		client(move(client))
+	{
+	}
+
+	PartInfo::PartInfo(size_t nUserOffset, size_t nContentSize, ObjectClient&& client) :
+		nUserOffset(nUserOffset),
+		nContentSize(nContentSize),
+		client(move(client))
+	{
 	}
 
 	static string ReadHeaderFromBodyStream(unique_ptr<BodyStream>&& bodyStream)

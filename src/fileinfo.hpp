@@ -11,7 +11,6 @@ namespace az
 #include <string>
 #include <cstddef>
 #include <vector>
-#include <memory>
 #include <azure/storage/blobs/blob_client.hpp>
 #include <azure/storage/files/shares/share_file_client.hpp>
 #include <azure/core/io/body_stream.hpp>
@@ -55,11 +54,7 @@ namespace az
 		size_t nSize;
 		ObjectClient client;
 
-		FilePartInfo(std::string&& sHeader, size_t nSize, ObjectClient&& client) :
-			sHeader(sHeader),
-			nSize(nSize),
-			client(std::move(client))
-		{}
+		FilePartInfo(std::string&& sHeader, size_t nSize, ObjectClient&& client);
 	};
 
 	struct PartInfo
@@ -68,10 +63,6 @@ namespace az
 		size_t nContentSize;
 		ObjectClient client;
 
-		PartInfo(size_t nUserOffset, size_t nContentSize, ObjectClient&& client):
-			nUserOffset(nUserOffset),
-			nContentSize(nContentSize),
-			client(std::move(client))
-		{}
+		PartInfo(size_t nUserOffset, size_t nContentSize, ObjectClient&& client);
 	};
 }

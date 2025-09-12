@@ -80,7 +80,7 @@ set(SourceList
     cloudblobaccessor.hpp cloudblobaccessor.cpp
     emulatedblobaccessor.hpp emulatedblobaccessor.cpp
     cloudshareaccessor.hpp cloudshareaccessor.cpp
-    objectclient.hpp
+    objectclient.hpp objectclient.cpp
     storagetype.hpp
     filestream.hpp filestream.cpp
     filereader.hpp filereader.cpp
