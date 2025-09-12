@@ -24,7 +24,7 @@ namespace az
 		FileStream(),
 		storageType(client.tag),
 		mode(mode),
-		client(move(client)),
+		client(client),
 		nCurrentPos(0)
 	{
 		if (storageType == StorageType::BLOB)

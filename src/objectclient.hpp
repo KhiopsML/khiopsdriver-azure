@@ -2,7 +2,6 @@
 
 #include <azure/storage/blobs/blob_client.hpp>
 #include <azure/storage/files/shares/share_file_client.hpp>
-#include <memory>
 #include "storagetype.hpp"
 
 namespace az
@@ -15,8 +14,8 @@ namespace az
 			Azure::Storage::Blobs::BlobClient blob;
 			Azure::Storage::Files::Shares::ShareFileClient shareFile;
 		};
-		ObjectClient(ObjectClient&& source) :
-			tag(std::move(source.tag))
+		ObjectClient(const ObjectClient& source) :
+			tag(source.tag)
 		{
 			if (tag == StorageType::BLOB)
 				new(&blob) Azure::Storage::Blobs::BlobClient(source.blob);
