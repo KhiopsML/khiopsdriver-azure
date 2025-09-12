@@ -38,9 +38,9 @@ namespace az
 		FileInfo(std::vector<Azure::Storage::Files::Shares::ShareFileClient>&& clients);
 		FileInfo(std::vector<ObjectClient>&& clients);
 		size_t GetSize() const;
-		size_t GetFilePartIndexOfUserOffset(size_t nUserOffset) const;
 		size_t GetHeaderLen() const;
 		const PartInfo& GetPartInfo(size_t nIndex) const;
+		size_t GetFilePartIndexOfUserOffset(size_t nUserOffset) const;
 		
 	private:
 		StorageType storageType;
