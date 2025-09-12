@@ -148,7 +148,7 @@ namespace az
 		{
 			return ResolveBlobsSearchString(GetContainerClient(), GetObjectName());
 		}
-		catch (const TransportException& exc)
+		catch (const TransportException&)
 		{
 			throw NetworkError();
 		}
