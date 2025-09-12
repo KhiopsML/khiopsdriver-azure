@@ -155,6 +155,20 @@ namespace az
 	{
 	}
 
+	FilePartInfo::FilePartInfo(const FilePartInfo& other):
+		sHeader(other.sHeader),
+		nSize(other.nSize),
+		client(other.client)
+	{}
+
+	FilePartInfo& FilePartInfo::operator=(FilePartInfo&& source)
+	{
+		sHeader = move(source.sHeader);
+		nSize = move(source.nSize);
+		client = move(source.client);
+		return *this;
+	}
+
 	PartInfo::PartInfo(size_t nUserOffset, size_t nContentSize, ObjectClient&& client) :
 		nUserOffset(nUserOffset),
 		nContentSize(nContentSize),

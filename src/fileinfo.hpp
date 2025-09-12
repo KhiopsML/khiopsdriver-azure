@@ -55,6 +55,8 @@ namespace az
 		ObjectClient client;
 
 		FilePartInfo(std::string&& sHeader, size_t nSize, ObjectClient&& client);
+		FilePartInfo(const FilePartInfo& other);
+		FilePartInfo& operator=(FilePartInfo&& source);
 	};
 
 	struct PartInfo

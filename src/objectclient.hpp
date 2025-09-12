@@ -18,5 +18,6 @@ namespace az
 		ObjectClient(const Azure::Storage::Blobs::BlobClient& client);
 		ObjectClient(const Azure::Storage::Files::Shares::ShareFileClient& client);
 		~ObjectClient();
+		ObjectClient& operator=(const ObjectClient& source);
 	};
 }
