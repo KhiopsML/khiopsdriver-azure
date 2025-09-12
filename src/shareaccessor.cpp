@@ -202,9 +202,9 @@ namespace az
 		size_t nRead;
 		ofstream ofs(destUrl, ios::binary);
 
-		while ((nRead = reader.Read(buffer, 1, nBufferSize)) > 0)
+		while ((nRead = reader.Read(buffer, 1, nBufferSize)) != 0ULL)
 		{
-			ofs.write(buffer, nRead);
+			ofs.write(buffer, (streamsize)nRead);
 		}
 
 		delete[] buffer;
@@ -245,7 +245,7 @@ namespace az
 		{
 			return ResolveDirsPathRecursively(GetDirClient(), queue<string, deque<string>>(deque<string>(path.begin(), path.end())));
 		}
-		catch (const TransportException& exc)
+		catch (const TransportException&)
 		{
 			throw NetworkError();
 		}
@@ -259,7 +259,7 @@ namespace az
 		{
 			return ResolveFilesPathRecursively(GetDirClient(), queue<string, deque<string>>(deque<string>(path.begin(), path.end())));
 		}
-		catch (const TransportException& exc)
+		catch (const TransportException&)
 		{
 			throw NetworkError();
 		}

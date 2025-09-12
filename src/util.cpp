@@ -1,8 +1,10 @@
+#define _CRT_SECURE_NO_WARNINGS // getenv would be more secure in C++ than in C and getenv_s in not available in C++?
 #include "util.hpp"
 #include <sstream>
 #include <regex>
 #include <unordered_map>
 #include <chrono>
+#include <cstdlib>
 #include <random>
 #include <spdlog/spdlog.h>
 

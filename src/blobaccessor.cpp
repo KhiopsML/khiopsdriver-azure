@@ -107,9 +107,9 @@ namespace az
 		size_t nRead;
 		ofstream ofs(destUrl, ios::binary);
 
-		while ((nRead = reader.Read(buffer, 1, nBufferSize)) > 0ULL)
+		while ((nRead = reader.Read(buffer, 1, nBufferSize)) != 0ULL)
 		{
-			ofs.write(buffer, (std::streamsize)nRead);
+			ofs.write(buffer, (streamsize)nRead);
 		}
 
 		delete[] buffer;
