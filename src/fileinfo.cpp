@@ -21,7 +21,8 @@ namespace az
 	static constexpr size_t nMaxHeaderSize = 8ULL * 1024 * 1024;
 
 	FileInfo::FileInfo() :
-		nSize(0)
+		nSize(0),
+		nHeaderLen(0)
 	{}
 
 	FileInfo::FileInfo(vector<Azure::Storage::Blobs::BlobClient>&& clients) :
@@ -37,7 +38,8 @@ namespace az
 	{
 		if (clients.empty())
 		{
-			FileInfo();
+			nSize = 0;
+			nHeaderLen = 0;
 			return;
 		}
 
