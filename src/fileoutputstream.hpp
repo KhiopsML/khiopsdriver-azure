@@ -21,23 +21,6 @@ namespace az
 		APPEND
 	};
 
-	class UnknownFileOutputModeError : public Error
-	{
-	public:
-		inline UnknownFileOutputModeError(FileOutputMode fileOutputMode) :
-			sMessage((std::ostringstream() << "unknown file output mode '" << (int)fileOutputMode << "'").str())
-		{
-		}
-
-		inline virtual const char* what() const noexcept override
-		{
-			return sMessage.c_str();
-		}
-
-	private:
-		std::string sMessage;
-	};
-
 	class FileOutputStream : public FileStream
 	{
 	public:

@@ -1,6 +1,7 @@
 #include "fileoutputstream.hpp"
 #include <memory>
 #include <iomanip>
+#include <sstream>
 #include <azure/storage/blobs/block_blob_client.hpp>
 #include <azure/core/base64.hpp>
 #include <azure/storage/common/storage_exception.hpp>
