@@ -109,7 +109,7 @@ namespace az
 
 		while ((nRead = reader.Read(buffer, 1, nBufferSize)) > 0)
 		{
-			ofs.write(buffer, nRead);
+			ofs.write(buffer, (std::streamsize)nRead);
 		}
 
 		delete[] buffer;
