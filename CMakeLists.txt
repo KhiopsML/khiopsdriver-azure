@@ -69,22 +69,11 @@ set(SourceList
     contrib.hpp contrib.cpp
     macro.hpp
     util.hpp util.cpp
-    exception.hpp exception.cpp
     returnval.hpp
-    errorlogger.hpp errorlogger.cpp
-    fileaccessor.hpp fileaccessor.cpp
-    cloudfileaccessor.hpp cloudfileaccessor.cpp
-    emulatedfileaccessor.hpp emulatedfileaccessor.cpp
-    blobaccessor.hpp blobaccessor.cpp
-    shareaccessor.hpp shareaccessor.cpp
-    cloudblobaccessor.hpp cloudblobaccessor.cpp
-    emulatedblobaccessor.hpp emulatedblobaccessor.cpp
-    cloudshareaccessor.hpp cloudshareaccessor.cpp
+    exception.hpp exception.cpp
     objectclient.hpp objectclient.cpp
     storagetype.hpp
     filestream.hpp filestream.cpp
-    filereader.hpp filereader.cpp
-    fileoutputstream.hpp fileoutputstream.cpp
     fileinfo.hpp fileinfo.cpp
     blobpathresolve.hpp blobpathresolve.cpp
     sharepathresolve.hpp sharepathresolve.cpp

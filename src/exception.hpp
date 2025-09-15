@@ -11,6 +11,7 @@ namespace az
 	class InvalidFileUrlPathError;
 	class InvalidDirUrlPathError;
 	enum class Operation;
+	class InvalidOperationForFileError;
 	class InvalidOperationForDirError;
 	class NoFileError;
 	class DeletionError;
@@ -83,10 +84,10 @@ namespace az
 		std::string sMessage;
 	};
 
-	class InvalidFileUrlPathError : public Error
+	class InvalidObjectPathError : public Error
 	{
 	public:
-		InvalidFileUrlPathError(const std::string& sPath);
+		InvalidObjectPathError(const std::string& sPath);
 
 		virtual const char* what() const noexcept override;
 
@@ -94,10 +95,18 @@ namespace az
 		std::string sMessage;
 	};
 
-	class InvalidDirUrlPathError : public Error
+	enum class FileOperation
+	{
+		MKDIR,
+		RMDIR
+	};
+
+	std::string FormatOperation(FileOperation operation);
+
+	class InvalidOperationForFileError : public Error
 	{
 	public:
-		InvalidDirUrlPathError(const std::string& sPath);
+		InvalidOperationForFileError(FileOperation operation);
 
 		virtual const char* what() const noexcept override;
 
@@ -105,21 +114,22 @@ namespace az
 		std::string sMessage;
 	};
 
-	enum class Operation
+	enum class DirOperation
 	{
 		GET_SIZE,
 		READ,
 		WRITE,
 		APPEND,
-		REMOVE
+		REMOVE,
+		COPY
 	};
 
-	std::string FormatOperation(Operation operation);
+	std::string FormatOperation(DirOperation operation);
 
 	class InvalidOperationForDirError : public Error
 	{
 	public:
-		InvalidOperationForDirError(Operation operation, std::string sDetails = std::string());
+		InvalidOperationForDirError(DirOperation operation);
 
 		virtual const char* what() const noexcept override;
 

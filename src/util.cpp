@@ -123,6 +123,29 @@ namespace az
             }
         }
 
+        namespace errlog
+        {
+            ErrorLogger::ErrorLogger() :
+                sLastError("")
+            {
+            }
+
+            const string& ErrorLogger::GetLastError() const
+            {
+                return sLastError;
+            }
+
+            void ErrorLogger::LogError(const string& error)
+            {
+                spdlog::error(sLastError = error);
+            }
+
+            void ErrorLogger::LogException(const exception& exc)
+            {
+                LogError(exc.what());
+            }
+        }
+
         namespace connstr
         {
             ParsingError::ParsingError(const string& sMessage) :

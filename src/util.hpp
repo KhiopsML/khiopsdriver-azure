@@ -38,6 +38,22 @@ namespace az
             std::string GetEnvironmentVariableOrDefault(const std::string& sVarName, const std::string& sDefaultValue);
         }
 
+        namespace errlog
+        {
+            class ErrorLogger
+            {
+            public:
+                ErrorLogger();
+
+                const std::string& GetLastError() const;
+                void LogError(const std::string& error);
+                void LogException(const std::exception& exc);
+
+            protected:
+                std::string sLastError;
+            };
+        }
+
         namespace connstr
         {
             class ParsingError : public Error

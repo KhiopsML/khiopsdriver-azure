@@ -52,55 +52,63 @@ namespace az
 		return sMessage.c_str();
 	}
 
-	InvalidFileUrlPathError::InvalidFileUrlPathError(const string& sPath) :
-		sMessage((ostringstream() << "invalid file URL path: " << sPath).str())
+	InvalidObjectPathError::InvalidObjectPathError(const string& sPath) :
+		sMessage((ostringstream() << "invalid object path: " << sPath).str())
 	{
 	}
 
-	const char* InvalidFileUrlPathError::what() const noexcept
-	{
-		return sMessage.c_str();
-	}
-
-	InvalidDirUrlPathError::InvalidDirUrlPathError(const string& sPath) :
-		sMessage((ostringstream() << "invalid directory URL path: " << sPath).str())
-	{
-	}
-
-	const char* InvalidDirUrlPathError::what() const noexcept
+	const char* InvalidObjectPathError::what() const noexcept
 	{
 		return sMessage.c_str();
 	}
 
-	std::string FormatOperation(Operation operation)
+	string FormatOperation(FileOperation operation)
 	{
 		switch (operation)
 		{
-		case Operation::GET_SIZE:
-			return "getting size";
-		case Operation::READ:
-			return "reading";
-		case Operation::WRITE:
-			return "writing";
-		case Operation::APPEND:
-			return "appending";
-		case Operation::REMOVE:
-			return "removing";
+		case FileOperation::MKDIR:
+			return "making directory";
+		case FileOperation::RMDIR:
+			return "removing directory";
 		default:
-			throw invalid_argument((ostringstream() << "invalid Operation: " << (int)operation).str());
+			throw invalid_argument((ostringstream() << "invalid FileOperation: " << (int)operation).str());
 		}
 	}
 
-	InvalidOperationForDirError::InvalidOperationForDirError(Operation operation, std::string sDetails)
+	InvalidOperationForFileError::InvalidOperationForFileError(FileOperation operation) :
+		sMessage((ostringstream() << "files do not support this operation: " << FormatOperation(operation)).str())
 	{
-		ostringstream oss;
-		oss << "directories do not support this operation: " << FormatOperation(operation);
-		if (!sDetails.empty())
-		{
-			oss << " (" << sDetails << ")";
-		}
-		sMessage = oss.str();
 	}
+
+	const char* InvalidOperationForFileError::what() const noexcept
+	{
+		return sMessage.c_str();
+	}
+
+	string FormatOperation(DirOperation operation)
+	{
+		switch (operation)
+		{
+		case DirOperation::GET_SIZE:
+			return "getting size";
+		case DirOperation::READ:
+			return "reading";
+		case DirOperation::WRITE:
+			return "writing";
+		case DirOperation::APPEND:
+			return "appending";
+		case DirOperation::REMOVE:
+			return "removing (use driver_rmdir instead)";
+		case DirOperation::COPY:
+			return "copying";
+		default:
+			throw invalid_argument((ostringstream() << "invalid DirOperation: " << (int)operation).str());
+		}
+	}
+
+	InvalidOperationForDirError::InvalidOperationForDirError(DirOperation operation):
+		sMessage((ostringstream() << "directories do not support this operation: " << FormatOperation(operation)).str())
+	{}
 
 	const char* InvalidOperationForDirError::what() const noexcept
 	{

@@ -2,13 +2,22 @@
 
 namespace az
 {
+	struct BlobInfo;
+	struct ShareInfo;
+	struct ServiceRequest;
 	class Driver;
 }
 
 #include <string>
 #include <memory>
 #include <unordered_map>
-#include "fileaccessor.hpp"
+#include <azure/storage/blobs/blob_service_client.hpp>
+#include <azure/storage/blobs/blob_container_client.hpp>
+#include <azure/storage/blobs/blob_client.hpp>
+#include <azure/storage/files/shares/share_service_client.hpp>
+#include <azure/storage/files/shares/share_client.hpp>
+#include <azure/storage/files/shares/share_directory_client.hpp>
+#include <azure/storage/files/shares/share_file_client.hpp>
 #include "filestream.hpp"
 #include "macro.hpp"
 
@@ -26,6 +35,43 @@ namespace az
 	static const std::string sScheme = "https";
 	static const size_t nPreferredBufferSize = 4 * 1024 * 1024;
 
+	struct BlobInfo
+	{
+		std::string sAccountName;
+		std::string sContainer;
+		std::string sBlob;
+	};
+
+	struct ShareInfo
+	{
+		std::string sShare;
+		std::vector<std::string> path;
+	};
+
+	struct ServiceRequest
+	{
+		Azure::Core::Url azureUrl;
+		StorageType storageType;
+		bool bEmulated;
+		bool bDir;
+		union
+		{
+			BlobInfo blob;
+			ShareInfo share;
+		};
+		union
+		{
+			std::shared_ptr<Azure::Storage::StorageSharedKeyCredential> emulatedStorageCredential;
+			std::shared_ptr<Azure::Core::Credentials::TokenCredential> cloudStorageCredential;
+		};
+		ServiceRequest(const Azure::Core::Url azureUrl, StorageType storageType, bool bDir, const BlobInfo& blob, std::shared_ptr<Azure::Storage::StorageSharedKeyCredential> emulatedStorageCredential);
+		ServiceRequest(const Azure::Core::Url azureUrl, StorageType storageType, bool bDir, const BlobInfo& blob, std::shared_ptr<Azure::Core::Credentials::TokenCredential> cloudStorageCredential);
+		ServiceRequest(const Azure::Core::Url azureUrl, StorageType storageType, bool bDir, const ShareInfo& share, std::shared_ptr<Azure::Storage::StorageSharedKeyCredential> emulatedStorageCredential);
+		ServiceRequest(const Azure::Core::Url azureUrl, StorageType storageType, bool bDir, const ShareInfo& share, std::shared_ptr<Azure::Core::Credentials::TokenCredential> cloudStorageCredential);
+		ServiceRequest(const ServiceRequest& other);
+		~ServiceRequest();
+	};
+
 	class Driver
 	{
 	public:
@@ -41,23 +87,54 @@ namespace az
 		void Disconnect();
 		bool IsConnected() const;
 
-		std::unique_ptr<FileAccessor> CreateFileAccessor(const std::string& url);
-		FileStream& RetrieveFileStream(void* handle) const;
-		FileReader& RetrieveFileReader(void* handle) const;
-		FileOutputStream& RetrieveFileOutputStream(void* handle) const;
+		bool Exists(const std::string& sUrl) const;
+		size_t GetSize(const std::string& sUrl) const;
+		FileReader& OpenForReading(const std::string& sUrl);
+		FileWriter& OpenForWriting(const std::string& sUrl);
+		FileWriter& OpenForAppending(const std::string& sUrl);
+		void Close(void* handle);
+		size_t Read(void* handle, void* dest, size_t nSize, size_t nCount);
+		void Seek(void* handle, long long int nOffset, int nOrigin);
+		size_t Write(void* handle, const void* source, size_t nSize, size_t nCount);
+		void Flush(void* handle);
+		void Remove(const std::string& sUrl) const;
+		void MkDir(const std::string& sUrl) const;
+		void RmDir(const std::string& sUrl) const;
+		size_t GetFreeDiskSpace() const;
+		void CopyTo(const std::string& sUrl, const std::string& destUrl);
+		void CopyFrom(const std::string& sUrl, const std::string& sourceUrl);
 
-	protected:
+	private:
 		void CheckConnected() const;
 		bool IsEmulatedStorage() const;
 
-		FileReader& RegisterReader(FileReader&& reader);
-		FileOutputStream& RegisterWriter(FileOutputStream&& writer);
+		ServiceRequest ParseUrl(const std::string& sUrl) const;
 
-		FileStream& RetrieveFileStream(void* handle, bool bSearchReaders, bool bSearchWriters) const;
+		std::string GetServiceUrl(const ServiceRequest& request) const;
+		std::string GetBlobContainerUrl(const ServiceRequest& request) const;
+		Azure::Storage::Blobs::BlobServiceClient GetBlobServiceClient(const ServiceRequest& request) const;
+		Azure::Storage::Blobs::BlobContainerClient GetBlobContainerClient(const ServiceRequest& request) const;
+		Azure::Storage::Blobs::BlobClient GetBlobClient(const ServiceRequest& request) const;
+		std::vector<Azure::Storage::Blobs::BlobClient> ListBlobs(const ServiceRequest& request) const;
+
+		std::string GetFileShareUrl(const ServiceRequest& request) const;
+		Azure::Storage::Files::Shares::ShareServiceClient GetFileShareServiceClient(const ServiceRequest& request) const;
+		Azure::Storage::Files::Shares::ShareClient GetShareClient(const ServiceRequest& request) const;
+		Azure::Storage::Files::Shares::ShareDirectoryClient GetDirClient(const ServiceRequest& request) const;
+		Azure::Storage::Files::Shares::ShareFileClient GetFileClient(const ServiceRequest& request) const;
+		std::vector<Azure::Storage::Files::Shares::ShareDirectoryClient> ListDirs(const ServiceRequest& request) const;
+		std::vector<Azure::Storage::Files::Shares::ShareFileClient> ListFiles(const ServiceRequest& request) const;
+		Azure::Storage::Files::Shares::ShareDirectoryClient GetParentDir(const ServiceRequest& request) const;
+		void CheckParentDirExists(const ServiceRequest& request) const;
+
+		FileReader& RegisterReader(FileReader&& reader);
+		FileWriter& RegisterWriter(FileWriter&& writer);
+
+		FileStream& RetrieveFileStream(void* handle, FileStreamType streamType) const;
 
 		bool bIsConnected;
 
-		std::unordered_map<void*, FileReader> fileReaders;
-		std::unordered_map<void*, FileOutputStream> fileWriters;
+		std::unordered_map<void*, std::unique_ptr<FileReader>> fileReaders;
+		std::unordered_map<void*, std::unique_ptr<FileWriter>> fileWriters;
 	};
 }

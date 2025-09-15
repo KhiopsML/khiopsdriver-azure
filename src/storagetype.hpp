@@ -2,7 +2,7 @@
 
 namespace az
 {
-    enum class StorageType
+    enum StorageType
     {
         BLOB,
         SHARE

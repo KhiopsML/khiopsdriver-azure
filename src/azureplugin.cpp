@@ -18,44 +18,18 @@
 
 #include "spdlog/spdlog.h"
 
-// Include the necessary SDK headers
-#include <azure/core.hpp>
-#include <azure/storage/blobs.hpp>
-// Include to support file shares
-#include <azure/storage/files/shares.hpp>
-
-#include <azure/identity/chained_token_credential.hpp>
-#include <azure/identity/environment_credential.hpp>
-#include <azure/identity/workload_identity_credential.hpp>
-#include <azure/identity/azure_cli_credential.hpp>
-#include <azure/identity/managed_identity_credential.hpp>
-
+#include "returnval.hpp"
 #include "util.hpp"
 #include "driver.hpp"
-#include "returnval.hpp"
-#include "errorlogger.hpp"
 #include "exception.hpp"
 
 using namespace std;
 using namespace az;
 
-constexpr char emulated_storage_connection_string[] =
-	"DefaultEndpointsProtocol=http;"
-	"AccountName=devstoreaccount1;"
-	"AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;"
-	"BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;";
-
 const char sCaughtNonExceptionValue[] = "unknown error (caught a value that is not a descendant of std::exception)";
 
 Driver driver;
-ErrorLogger errorLogger;
-
-// Add appropriate using namespace directives
-using namespace Azure::Storage;
-using namespace Azure::Storage::Blobs;
-using namespace Azure::Storage::Files::Shares;
-using namespace Azure::Identity;
-
+util::errlog::ErrorLogger errorLogger;
 
 static int FileOrDirExists(const char* sUrl);
 
@@ -282,7 +256,7 @@ long long int driver_getFileSize(const char* sUrl)
 		{
 			throw NullArgError(__func__, STRINGIFY(sUrl));
 		}
-		return driver.CreateFileAccessor(sUrl)->GetSize();
+		return driver.GetSize(sUrl);
 	}
 	catch (const exception& exc)
 	{
@@ -308,11 +282,11 @@ void* driver_fopen(const char* sUrl, char mode)
 		switch (mode)
 		{
 		case 'r':
-			return driver.CreateFileAccessor(sUrl)->OpenForReading().GetHandle();
+			return driver.OpenForReading(sUrl).GetHandle();
 		case 'w':
-			return driver.CreateFileAccessor(sUrl)->OpenForWriting().GetHandle();
+			return driver.OpenForWriting(sUrl).GetHandle();
 		case 'a':
-			return driver.CreateFileAccessor(sUrl)->OpenForAppending().GetHandle();
+			return driver.OpenForAppending(sUrl).GetHandle();
 		default:
 			throw InvalidFileStreamModeError(sUrl, mode);
 		}
@@ -338,7 +312,7 @@ int driver_fclose(void* handle)
 		{
 			throw NullArgError(__func__, STRINGIFY(handle));
 		}
-		driver.RetrieveFileStream(handle).Close();
+		driver.Close(handle);
 		return nCloseSuccess;
 	}
 	catch (const exception& exc)
@@ -366,7 +340,7 @@ long long int driver_fread(void* dest, size_t size, size_t count, void* handle)
 		{
 			throw NullArgError(__func__, STRINGIFY(handle));
 		}
-		return driver.RetrieveFileReader(handle).Read(dest, size, count);
+		return driver.Read(handle, dest, size, count);
 	}
 	catch (const exception& exc)
 	{
@@ -404,7 +378,7 @@ int driver_fseek(void* handle, long long int offset, int whence)
 		default:
 			throw InvalidSeekOriginError(whence);
 		}
-		driver.RetrieveFileReader(handle).Seek(offset, nOrigin);
+		driver.Seek(handle, offset, nOrigin);
 		return nSeekSuccess;
 	}
 	catch (const exception& exc)
@@ -455,7 +429,7 @@ long long int driver_fwrite(const void* source, size_t size, size_t count, void*
 		{
 			throw NullArgError(__func__, STRINGIFY(handle));
 		}
-		return driver.RetrieveFileOutputStream(handle).Write(source, size, count);
+		return driver.Write(handle, source, size, count);
 	}
 	catch (const exception& exc)
 	{
@@ -478,7 +452,7 @@ int driver_fflush(void* handle)
 		{
 			throw NullArgError(__func__, STRINGIFY(handle));
 		}
-		driver.RetrieveFileOutputStream(handle).Flush();
+		driver.Flush(handle);
 		return nFlushSuccess;
 	}
 	catch (const exception& exc)
@@ -502,7 +476,7 @@ int driver_remove(const char* sUrl)
 		{
 			throw NullArgError(__func__, STRINGIFY(sUrl));
 		}
-		driver.CreateFileAccessor(sUrl)->Remove();
+		driver.Remove(sUrl);
 		return nSuccess;
 	}
 	catch (const exception& exc)
@@ -526,7 +500,7 @@ int driver_mkdir(const char* sUrl)
 		{
 			throw NullArgError(__func__, STRINGIFY(sUrl));
 		}
-		driver.CreateFileAccessor(sUrl)->MkDir();
+		driver.MkDir(sUrl);
 		return nSuccess;
 	}
 	catch (const exception& exc)
@@ -550,7 +524,7 @@ int driver_rmdir(const char* sUrl)
 		{
 			throw NullArgError(__func__, STRINGIFY(sUrl));
 		}
-		driver.CreateFileAccessor(sUrl)->RmDir();
+		driver.RmDir(sUrl);
 		return nSuccess;
 	}
 	catch (const exception& exc)
@@ -574,7 +548,7 @@ long long int driver_diskFreeSpace(const char* sUrl)
 		{
 			throw NullArgError(__func__, STRINGIFY(sUrl));
 		}
-		return driver.CreateFileAccessor(sUrl)->GetFreeDiskSpace();
+		return driver.GetFreeDiskSpace();
 	}
 	catch (const exception& exc)
 	{
@@ -601,7 +575,7 @@ int driver_copyToLocal(const char* sSourceUrl, const char* sDestUrl)
 		{
 			throw NullArgError(__func__, STRINGIFY(sDestUrl));
 		}
-		driver.CreateFileAccessor(sSourceUrl)->CopyTo(sDestUrl);
+		driver.CopyTo(sSourceUrl, sDestUrl);
 		return nSuccess;
 	}
 	catch (const exception& exc)
@@ -629,7 +603,7 @@ int driver_copyFromLocal(const char* sSourceUrl, const char* sDestUrl)
 		{
 			throw NullArgError(__func__, STRINGIFY(sDestUrl));
 		}
-		driver.CreateFileAccessor(sDestUrl)->CopyFrom(sSourceUrl);
+		driver.CopyFrom(sDestUrl, sSourceUrl);
 		return nSuccess;
 	}
 	catch (const exception& exc)
@@ -646,5 +620,5 @@ int driver_copyFromLocal(const char* sSourceUrl, const char* sDestUrl)
 
 static int FileOrDirExists(const char* sUrl)
 {
-	return driver.CreateFileAccessor(sUrl)->Exists() ? nTrue : nFalse;
+	return driver.Exists(sUrl) ? nTrue : nFalse;
 }
