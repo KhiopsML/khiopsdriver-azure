@@ -25,7 +25,7 @@ using namespace az;
 
 void TestFSeek(string sUrl, bool bCrLf = false);
 
-INSTANTIATE_TEST_SUITE_P(BlobAndShare, IoTest, testing::Values(StorageType::BLOB, StorageType::SHARE), IoTest::FormatParam);
+INSTANTIATE_TEST_SUITE_P(BlobAndShare, IoTest, testing::Values(BLOB, SHARE), IoTest::FormatParam);
 
 TEST_P(IoTest, FSeekSingleFile)
 {

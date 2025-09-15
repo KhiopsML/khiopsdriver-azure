@@ -11,7 +11,7 @@ class StorageTestUrlProvider
 {
 public:
     StorageTestUrlProvider();
-    StorageTestUrlProvider(StorageType storageType, bool bIsEmulatedStorage);
+    StorageTestUrlProvider(az::StorageType storageType, bool bIsEmulatedStorage);
 
     const std::string InexistantDir() const;
     const std::string Dir() const;
@@ -33,7 +33,7 @@ class IoTestUrlProvider : public StorageTestUrlProvider
 {
 public:
     IoTestUrlProvider();
-    IoTestUrlProvider(StorageType storageType, bool bIsEmulatedStorage);
+    IoTestUrlProvider(az::StorageType storageType, bool bIsEmulatedStorage);
 
     const std::string RandomOutputFile() const;
 };

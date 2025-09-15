@@ -65,7 +65,7 @@ namespace az
 				bGetHeader = true;
 				nRandomlyPicked++;
 			}
-			if (clients[i].tag == StorageType::BLOB)
+			if (clients[i].tag == BLOB)
 			{
 				if (bGetHeader)
 				{

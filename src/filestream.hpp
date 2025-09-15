@@ -11,6 +11,7 @@ namespace az
 
 #include <cstddef>
 #include <vector>
+#include <string>
 #include <azure/storage/blobs/blob_client.hpp>
 #include <azure/storage/files/shares/share_file_client.hpp>
 #include "filestream.hpp"
@@ -50,6 +51,7 @@ namespace az
 		FileReader(std::vector<Azure::Storage::Blobs::BlobClient>&& clients);
 		FileReader(std::vector<Azure::Storage::Files::Shares::ShareFileClient>&& clients);
 		FileReader(std::vector<ObjectClient>&& clients);
+		~FileReader();
 		void Close() override;
 		size_t Read(void* dest, size_t nSize, size_t nCount);
 		void Seek(long long int nOffset, int nOrigin);
@@ -72,6 +74,7 @@ namespace az
 		FileWriter(FileOutputMode mode, Azure::Storage::Blobs::BlobClient&& client);
 		FileWriter(FileOutputMode mode, Azure::Storage::Files::Shares::ShareFileClient&& client);
 		FileWriter(FileOutputMode mode, ObjectClient&& client);
+		~FileWriter();
 		void Close();
 		size_t Write(const void* source, size_t nSize, size_t nCount);
 		void Flush();
@@ -81,5 +84,6 @@ namespace az
 		FileOutputMode mode;
 		ObjectClient client;
 		size_t nCurrentPos;
+		std::vector<std::string> blockIds;
 	};
 }

@@ -23,7 +23,7 @@ int compareSize(const char *file_name_output, long long int filesize);
 
 void EndToEndTest_(string sInputUrl, string sOutputUrl, string sLocalFilePath, size_t nBufferSize);
 
-INSTANTIATE_TEST_SUITE_P(BlobAndShare, EndToEndTest, testing::Values(StorageType::BLOB, StorageType::SHARE), EndToEndTest::FormatParam);
+INSTANTIATE_TEST_SUITE_P(BlobAndShare, EndToEndTest, testing::Values(BLOB, SHARE), EndToEndTest::FormatParam);
 
 TEST_P(EndToEndTest, SingleFile512KB)
 {

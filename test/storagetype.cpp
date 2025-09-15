@@ -3,15 +3,16 @@
 #include <sstream>
 
 using namespace std;
+using namespace az;
 
 void PrintTo(const StorageType& storageType, std::ostream* os)
 {
     switch (storageType)
     {
-    case StorageType::BLOB:
+    case BLOB:
         *os << "Blob";
         break;
-    case StorageType::SHARE:
+    case SHARE:
         *os << "Share";
         break;
     default:

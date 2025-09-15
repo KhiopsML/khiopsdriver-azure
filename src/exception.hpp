@@ -184,7 +184,7 @@ namespace az
 	class InvalidSeekOffsetError : public Error
 	{
 	public:
-		InvalidSeekOffsetError(int nOffset, int nOrigin);
+		InvalidSeekOffsetError(long long int nOffset, int nOrigin);
 
 		virtual const char* what() const noexcept override;
 

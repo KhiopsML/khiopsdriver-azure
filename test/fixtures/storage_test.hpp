@@ -22,7 +22,7 @@ private:
     bool bIsEmulatedStorage;
 };
 
-class CommonStorageTest : public EmulatableStorageUser, public testing::TestWithParam<StorageType>
+class CommonStorageTest : public EmulatableStorageUser, public testing::TestWithParam<az::StorageType>
 {
 public:
     static std::string FormatParam(const testing::TestParamInfo<CommonStorageTest::ParamType>& testParamInfo);
@@ -46,7 +46,7 @@ protected:
     StorageTestUrlProvider url;
 };
 
-class IoTest : public EmulatableStorageUser, public testing::TestWithParam<StorageType>
+class IoTest : public EmulatableStorageUser, public testing::TestWithParam<az::StorageType>
 {
 public:
     static std::string FormatParam(const testing::TestParamInfo<IoTest::ParamType>& testParamInfo);
@@ -59,7 +59,7 @@ protected:
     std::string sLocalFilePath;
 };
 
-class EndToEndTest : public EmulatableStorageUser, public testing::TestWithParam<StorageType>
+class EndToEndTest : public EmulatableStorageUser, public testing::TestWithParam<az::StorageType>
 {
 public:
     static std::string FormatParam(const testing::TestParamInfo<EndToEndTest::ParamType>& testParamInfo);

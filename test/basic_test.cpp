@@ -67,7 +67,7 @@ TEST(BasicTest, Disconnect)
     ASSERT_EQ(driver_isConnected(), nFalse);
 }
 
-INSTANTIATE_TEST_SUITE_P(BlobAndShare, CommonStorageTest, testing::Values(StorageType::BLOB, StorageType::SHARE), CommonStorageTest::FormatParam);
+INSTANTIATE_TEST_SUITE_P(BlobAndShare, CommonStorageTest, testing::Values(BLOB, SHARE), CommonStorageTest::FormatParam);
 
 TEST_P(CommonStorageTest, GetFileSize)
 {

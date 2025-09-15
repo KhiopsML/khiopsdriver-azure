@@ -5,6 +5,7 @@
 #include <boost/uuid/uuid_io.hpp>
 
 using namespace std;
+using namespace az;
 
 StorageTestUrlProvider::StorageTestUrlProvider()
 {
@@ -14,10 +15,10 @@ StorageTestUrlProvider::StorageTestUrlProvider(StorageType storageType, bool bIs
 {
     switch (storageType)
     {
-    case StorageType::BLOB:
+    case BLOB:
         sPrefix = bIsEmulatedStorage ? "http://localhost:10000/devstoreaccount1" : "https://khiopsdriverazure.blob.core.windows.net";
         break;
-    case StorageType::SHARE:
+    case SHARE:
         if (bIsEmulatedStorage)
         {
             throw runtime_error("FILE storage type is incompatible with emulated mode");

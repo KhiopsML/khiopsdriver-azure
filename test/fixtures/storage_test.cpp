@@ -20,7 +20,7 @@
 // Macro that skips the test if emulated mode is ON but storage type is SHARE,
 // because the emulator does not support SHARE services.
 #define SKIP_IF_EMULATED_SHARE_SERVICE()                                            \
-    if (IsEmulatedStorage() && GetParam() == StorageType::SHARE)                    \
+    if (IsEmulatedStorage() && GetParam() == SHARE)                    \
     {                                                                               \
         GTEST_SKIP() << "emulated storage server does not support SHARE services";  \
     }
@@ -51,7 +51,7 @@ string CommonStorageTest::FormatParam(const testing::TestParamInfo<CommonStorage
 void CommonStorageTest::SetUp()
 {
     SKIP_IF_EMULATED_SHARE_SERVICE();
-    if (IsEmulatedStorage() && GetParam() == StorageType::SHARE)
+    if (IsEmulatedStorage() && GetParam() == SHARE)
     {
         GTEST_SKIP() << "emulated storage server does not support SHARE service";
     }
@@ -61,14 +61,14 @@ void CommonStorageTest::SetUp()
 // Blob-specific storage tests
 void BlobStorageTest::SetUp()
 {
-    url = StorageTestUrlProvider(StorageType::BLOB, IsEmulatedStorage());
+    url = StorageTestUrlProvider(BLOB, IsEmulatedStorage());
 }
 
 // Share-specific storage tests
 void ShareStorageTest::SetUp()
 {
     SKIP_IF_EMULATED_SERVICE();
-    url = StorageTestUrlProvider(StorageType::SHARE, IsEmulatedStorage());
+    url = StorageTestUrlProvider(SHARE, IsEmulatedStorage());
 }
 
 // I/O tests (common to blob and share)

@@ -638,7 +638,7 @@ namespace az
 				throw IncompatibleConnectionStringError();
 			}
 			auto credential = make_shared<Azure::Storage::StorageSharedKeyCredential>(connectionString.sAccountName, connectionString.sAccountKey);
-			return ServiceRequest(url, StorageType::BLOB, bDir, BlobInfo{ match[1].str(), match[2].str(), match[3].str() }, credential);
+			return ServiceRequest(url, BLOB, bDir, BlobInfo{ match[1].str(), match[2].str(), match[3].str() }, credential);
 		}
 		else if (util::str::EndsWith(sHost, sBlobDomain))
 		{
@@ -656,7 +656,7 @@ namespace az
 					std::make_shared<Azure::Identity::AzureCliCredential>()
 				}
 			);
-			return ServiceRequest(url, StorageType::BLOB, bDir, BlobInfo{ string(), match[1].str(), match[2].str()}, credential);
+			return ServiceRequest(url, BLOB, bDir, BlobInfo{ string(), match[1].str(), match[2].str()}, credential);
 		}
 		else if (util::str::EndsWith(sHost, sFileDomain))
 		{
@@ -675,7 +675,7 @@ namespace az
 					std::make_shared<Azure::Identity::AzureCliCredential>()
 				}
 			);
-			return ServiceRequest(url, StorageType::SHARE, bDir, ShareInfo{ match[1].str(), fileOrDirPath }, credential);
+			return ServiceRequest(url, SHARE, bDir, ShareInfo{ match[1].str(), fileOrDirPath }, credential);
 		}
 		else
 		{

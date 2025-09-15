@@ -155,7 +155,7 @@ namespace az
 		return sMessage.c_str();
 	}
 
-	InvalidSeekOffsetError::InvalidSeekOffsetError(int nOffset, int nOrigin) :
+	InvalidSeekOffsetError::InvalidSeekOffsetError(long long int nOffset, int nOrigin) :
 		sMessage((ostringstream() << "tried to seek " << nOffset << " bytes from origin '" << nOrigin << "' which is outside the file").str())
 	{
 	}
