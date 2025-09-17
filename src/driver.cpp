@@ -88,6 +88,12 @@ namespace az
 	{
 	}
 
+	Driver::~Driver()
+	{
+		fileReaders.clear();
+		fileWriters.clear();
+	}
+
 	const string& Driver::GetName() const
 	{
 		return sName;
@@ -313,7 +319,25 @@ namespace az
 
 	void Driver::Close(void* handle)
 	{
-		RetrieveFileStream(handle, FileStreamType::ALL).Close();
+		auto rIt = fileReaders.find(handle);
+		if (rIt != fileReaders.end())
+		{
+			rIt->second->Close();
+			fileReaders.erase(handle);
+		}
+		else
+		{
+			auto wIt = fileWriters.find(handle);
+			if (wIt != fileWriters.end())
+			{
+				wIt->second->Close();
+				fileWriters.erase(handle);
+			}
+			else
+			{
+				throw FileStreamNotFoundError(handle);
+			}
+		}
 	}
 	
 	size_t Driver::Read(void* handle, void* dest, size_t nSize, size_t nCount)
@@ -508,6 +532,7 @@ namespace az
 				}
 
 				delete[] buffer;
+				Close(reader.GetHandle());
 			}
 		}
 		else // SHARE
@@ -530,6 +555,7 @@ namespace az
 				}
 
 				delete[] buffer;
+				Close(reader.GetHandle());
 			}
 		}
 	}
@@ -564,6 +590,7 @@ namespace az
 				}
 
 				delete[] buffer;
+				Close(writer.GetHandle());
 			}
 		}
 		else // SHARE
@@ -592,6 +619,7 @@ namespace az
 				}
 
 				delete[] buffer;
+				Close(writer.GetHandle());
 			}
 		}
 	}

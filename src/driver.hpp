@@ -76,6 +76,7 @@ namespace az
 	{
 	public:
 		Driver();
+		~Driver();
 
 		const std::string& GetName() const;
 		const std::string& GetVersion() const;
