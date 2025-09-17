@@ -70,7 +70,7 @@ set(SourceList
     macro.hpp
     util.hpp util.cpp
     returnval.hpp
-    exception.hpp exception.cpp
+    exception.hpp
     objectclient.hpp objectclient.cpp
     storagetype.hpp
     filestream.hpp filestream.cpp

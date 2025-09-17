@@ -80,16 +80,6 @@ namespace az
 
         namespace env
         {
-            EnvironmentVariableNotFoundError::EnvironmentVariableNotFoundError(const string& sVarName) :
-                sMessage((ostringstream() << "environment variable '" << sVarName << "' not found").str())
-            {
-            }
-
-            const char* EnvironmentVariableNotFoundError::what() const noexcept
-            {
-                return sMessage.c_str();
-            }
-
             string GetEnvironmentVariableOrThrow(const string& sVarName)
             {
                 char* sValue = getenv(sVarName.c_str());
@@ -148,16 +138,6 @@ namespace az
 
         namespace connstr
         {
-            ParsingError::ParsingError(const string& sMessage) :
-                sMessage(sMessage)
-            {
-            }
-
-            const char* ParsingError::what() const noexcept
-            {
-                return sMessage.c_str();
-            }
-
             ConnectionString ConnectionString::ParseConnectionString(const string& sConnectionString)
             {
                 smatch match;

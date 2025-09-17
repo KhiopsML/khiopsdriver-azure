@@ -22,11 +22,7 @@ namespace az
 {
 	class NoFilePartInfoError : public Error
 	{
-	public:
-		inline virtual const char* what() const noexcept override
-		{
-			return "no part info found in file info";
-		}
+	public: inline NoFilePartInfoError() : Error("no part info found in file info") {}
 	};
 
 	class FileInfo

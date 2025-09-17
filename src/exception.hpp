@@ -26,213 +26,163 @@ namespace az
 
 #include <exception>
 #include <string>
+#include <sstream>
 
 namespace az
 {
 	class Error: public std::exception
 	{
+	public:
+		inline Error(std::string sMessage) : sMessage(sMessage) {}
+		inline virtual const char* what() const noexcept override { return sMessage.c_str(); };
+
+	protected:
+		std::string sMessage;
 	};
 
 	class NullArgError : public Error
 	{
 	public:
-		NullArgError(const char* sFuncname, const char* sArgname);
-
-		virtual const char* what() const noexcept override;
-
-	private:
-		std::string sMessage;
+		inline NullArgError(const char* sFuncname, const char* sArgname) :
+			Error((std::ostringstream() << "error passing null pointer as '" << sArgname << "' argument to function '" << sFuncname << "'").str())
+		{}
 	};
 
 	class InvalidDomainError : public Error
 	{
-	public:
-		InvalidDomainError(const std::string& sDomain);
-
-		virtual const char* what() const noexcept override;
-
-	private:
-		std::string sMessage;
+	public: inline InvalidDomainError(const std::string& sDomain): Error((std::ostringstream() << "invalid domain: " << sDomain).str()) {}
 	};
 
 	class NotConnectedError : public Error
 	{
-	public:
-		virtual const char* what() const noexcept override;
+	public: inline NotConnectedError() : Error("not connected") {}
 	};
 
 	class IncompatibleConnectionStringError : public Error
 	{
-	public:
-		virtual const char* what() const noexcept override;
+	public: inline IncompatibleConnectionStringError() : Error("connection string is not valid for the provided URL") {}
 	};
 
 	class NetworkError : public Error
 	{
-	public:
-		virtual const char* what() const noexcept override;
+	public: inline NetworkError() : Error("failed to communicate with the storage server") {}
 	};
 
 	class InvalidUrlError : public Error
 	{
-	public:
-		InvalidUrlError(const std::string& sUrl);
-
-		virtual const char* what() const noexcept override;
-
-	private:
-		std::string sMessage;
+	public: inline InvalidUrlError(const std::string& sUrl) : Error((std::stringstream() << "invalid URL: " << sUrl).str()) {}
 	};
 
 	class InvalidObjectPathError : public Error
 	{
-	public:
-		InvalidObjectPathError(const std::string& sPath);
-
-		virtual const char* what() const noexcept override;
-
-	private:
-		std::string sMessage;
+	public: inline InvalidObjectPathError(const std::string& sPath) : Error((std::ostringstream() << "invalid object path: " << sPath).str()) {}
 	};
 
-	enum class FileOperation
+	enum class FileOperation { MKDIR, RMDIR };
+
+	inline std::string FormatOperation(FileOperation operation)
 	{
-		MKDIR,
-		RMDIR
-	};
-
-	std::string FormatOperation(FileOperation operation);
+		switch (operation)
+		{
+		case FileOperation::MKDIR:
+			return "making directory";
+		case FileOperation::RMDIR:
+			return "removing directory";
+		default:
+			throw std::invalid_argument((std::ostringstream() << "invalid FileOperation: " << (int)operation).str());
+		}
+	}
 
 	class InvalidOperationForFileError : public Error
 	{
 	public:
-		InvalidOperationForFileError(FileOperation operation);
-
-		virtual const char* what() const noexcept override;
-
-	private:
-		std::string sMessage;
+		inline InvalidOperationForFileError(FileOperation operation) :
+			Error((std::ostringstream() << "files do not support this operation: " << FormatOperation(operation)).str())
+		{}
 	};
 
-	enum class DirOperation
+	enum class DirOperation { GET_SIZE, READ, WRITE, APPEND, REMOVE, COPY };
+
+	inline std::string FormatOperation(DirOperation operation)
 	{
-		GET_SIZE,
-		READ,
-		WRITE,
-		APPEND,
-		REMOVE,
-		COPY
-	};
-
-	std::string FormatOperation(DirOperation operation);
+		switch (operation)
+		{
+		case DirOperation::GET_SIZE:
+			return "getting size";
+		case DirOperation::READ:
+			return "reading";
+		case DirOperation::WRITE:
+			return "writing";
+		case DirOperation::APPEND:
+			return "appending";
+		case DirOperation::REMOVE:
+			return "removing (use driver_rmdir instead)";
+		case DirOperation::COPY:
+			return "copying";
+		default:
+			throw std::invalid_argument((std::ostringstream() << "invalid DirOperation: " << (int)operation).str());
+		}
+	}
 
 	class InvalidOperationForDirError : public Error
 	{
 	public:
-		InvalidOperationForDirError(DirOperation operation);
-
-		virtual const char* what() const noexcept override;
-
-	private:
-		std::string sMessage;
+		inline InvalidOperationForDirError(DirOperation operation) :
+			Error((std::ostringstream() << "directories do not support this operation: " << FormatOperation(operation)).str())
+		{}
 	};
 
 	class NoFileError : public Error
 	{
-	public:
-		NoFileError(const std::string& sUrl);
-
-		virtual const char* what() const noexcept override;
-
-	private:
-		std::string sMessage;
+	public: inline NoFileError(const std::string& sUrl) : Error((std::ostringstream() << "no file exists at URL " << sUrl).str()) {}
 	};
 
 	class DeletionError : public Error
 	{
-	public:
-		DeletionError(const std::string& sUrl);
-
-		virtual const char* what() const noexcept override;
-
-	private:
-		std::string sMessage;
+	public: inline DeletionError(const std::string& sUrl) : Error((std::ostringstream() << "failed to delete " << sUrl).str()) {}
 	};
 
 	class InvalidFileStreamModeError : public Error
 	{
 	public:
-		InvalidFileStreamModeError(const std::string& sUrl, char mode);
-
-		virtual const char* what() const noexcept override;
-
-	private:
-		std::string sMessage;
+		inline InvalidFileStreamModeError(const std::string& sUrl, char mode) :
+			Error((std::ostringstream() << "tried to open file " << sUrl << " with invalid mode " << mode).str())
+		{}
 	};
 
 	class InvalidSeekOriginError : public Error
 	{
 	public:
-		InvalidSeekOriginError(int nOrigin);
-
-		virtual const char* what() const noexcept override;
-
-	private:
-		std::string sMessage;
+		inline InvalidSeekOriginError(int nOrigin) :
+			Error((std::ostringstream() << "tried to seek from invalid origin '" << nOrigin << "'").str())
+		{}
 	};
 
 	class InvalidSeekOffsetError : public Error
 	{
 	public:
-		InvalidSeekOffsetError(long long int nOffset, int nOrigin);
-
-		virtual const char* what() const noexcept override;
-
-	private:
-		std::string sMessage;
+		inline InvalidSeekOffsetError(long long int nOffset, int nOrigin) :
+			Error((std::ostringstream() << "tried to seek " << nOffset << " bytes from origin '" << nOrigin << "' which is outside the file").str())
+		{}
 	};
 
 	class FileStreamNotFoundError : public Error
 	{
-	public:
-		FileStreamNotFoundError(const void* handle);
-
-		virtual const char* what() const noexcept override;
-
-	private:
-		std::string sMessage;
+	public: inline FileStreamNotFoundError(const void* handle) : Error((std::ostringstream() << "file stream with handle '" << handle << "' not found").str()) {}
 	};
 
 	class IntermediateDirNotFoundError : public Error
 	{
-	public:
-		IntermediateDirNotFoundError(const std::string& sUrl);
-
-		virtual const char* what() const noexcept override;
-
-	private:
-		std::string sMessage;
+	public: inline IntermediateDirNotFoundError(const std::string& sUrl) : Error((std::ostringstream() << "intermediate directory '" << sUrl << "' not found").str()) {}
 	};
 
 	class DirAlreadyExistsError : public Error
 	{
-	public:
-		DirAlreadyExistsError(const std::string& sUrl);
-
-		virtual const char* what() const noexcept override;
-
-	private:
-		std::string sMessage;
+	public: inline DirAlreadyExistsError(const std::string& sUrl) : Error((std::ostringstream() << "directory '" << sUrl << "' already exists").str()) {}
 	};
 
 	class CreationError : public Error
 	{
-	public:
-		CreationError(const std::string& sUrl);
-
-		virtual const char* what() const noexcept override;
-
-	private:
-		std::string sMessage;
+	public: inline CreationError(const std::string& sUrl) : Error((std::ostringstream() << "failed to create " << sUrl).str()) {}
 	};
 }

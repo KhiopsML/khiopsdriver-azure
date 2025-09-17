@@ -27,11 +27,9 @@ namespace az
             class EnvironmentVariableNotFoundError : public Error
             {
             public:
-                EnvironmentVariableNotFoundError(const std::string& sVarName);
-                virtual const char* what() const noexcept override;
-
-            private:
-                std::string sMessage;
+                inline EnvironmentVariableNotFoundError(const std::string& sVarName) :
+                    Error((std::ostringstream() << "environment variable '" << sVarName << "' not found").str())
+                {}
             };
 
             std::string GetEnvironmentVariableOrThrow(const std::string& sVarName);
@@ -58,12 +56,7 @@ namespace az
         {
             class ParsingError : public Error
             {
-            public:
-                ParsingError(const std::string& sMessage);
-                virtual const char* what() const noexcept override;
-
-            private:
-                std::string sMessage;
+                using Error::Error;
             };
 
             struct ConnectionString
