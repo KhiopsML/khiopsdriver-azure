@@ -2,19 +2,19 @@
 
 namespace az
 {
-	const int nSuccess = 1;
-	const int nFailure = 0;
-	const int nTrue = 1;
-	const int nFalse = 0;
-	const long long int nSizeFailure = -1;
-	const int nCloseSuccess = 0;
-	const int nCloseFailure = -1;
-	const int nReadFailure = -1;
-	const int nSeekSuccess = 0;
-	const int nSeekFailure = -1;
-	const int nWriteFailure = -1;
-	const int nFlushSuccess = 0;
-	const int nFlushFailure = -1;
-	const int nFreeDiskSpaceFailure = -1;
-	const int nGenericFailure = -1;
+	constexpr int nSuccess = 1;
+	constexpr int nFailure = 0;
+	constexpr int nTrue = 1;
+	constexpr int nFalse = 0;
+	constexpr long long int nSizeFailure = -1;
+	constexpr int nCloseSuccess = 0;
+	constexpr int nCloseFailure = -1;
+	constexpr int nReadFailure = -1;
+	constexpr int nSeekSuccess = 0;
+	constexpr int nSeekFailure = -1;
+	constexpr int nWriteFailure = -1;
+	constexpr int nFlushSuccess = 0;
+	constexpr int nFlushFailure = -1;
+	constexpr int nFreeDiskSpaceFailure = -1;
+	constexpr int nGenericFailure = -1;
 }
