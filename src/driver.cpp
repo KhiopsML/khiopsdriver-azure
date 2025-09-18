@@ -81,7 +81,17 @@ namespace az
 		}
 	}
 
-	ServiceRequest::~ServiceRequest() {}
+	ServiceRequest::~ServiceRequest()
+	{
+		if (storageType == BLOB)
+			blob.~BlobInfo();
+		else
+			share.~ShareInfo();
+		if (bEmulated)
+			emulatedStorageCredential.~shared_ptr();
+		else
+			cloudStorageCredential.~shared_ptr();
+	}
 
 	Driver::Driver():
 		bIsConnected(false)
