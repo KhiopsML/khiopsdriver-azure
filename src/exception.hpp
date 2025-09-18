@@ -1,29 +1,5 @@
 #pragma once
 
-namespace az
-{
-	class Error;
-	class InvalidDomainError;
-	class NotConnectedError;
-	class IncompatibleConnectionStringError;
-	class NetworkError;
-	class InvalidUrlError;
-	class InvalidFileUrlPathError;
-	class InvalidDirUrlPathError;
-	enum class Operation;
-	class InvalidOperationForFileError;
-	class InvalidOperationForDirError;
-	class NoFileError;
-	class DeletionError;
-	class InvalidFileStreamModeError;
-	class InvalidSeekOriginError;
-	class InvalidSeekOffsetError;
-	class FileStreamNotFoundError;
-	class IntermediateDirNotFoundError;
-	class DirAlreadyExistsError;
-	class CreationError;
-}
-
 #include <exception>
 #include <string>
 #include <sstream>

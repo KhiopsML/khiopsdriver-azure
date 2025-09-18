@@ -31,6 +31,8 @@ namespace az
 
 	FileStreamType operator&(const FileStreamType& a, const FileStreamType& b);
 
+
+
 	class FileStream
 	{
 	public:
