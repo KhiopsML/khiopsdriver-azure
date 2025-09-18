@@ -10,9 +10,23 @@ namespace az
 		else
 			new(&shareFile) Azure::Storage::Files::Shares::ShareFileClient(source.shareFile);
 	}
-	ObjectClient::ObjectClient(const Azure::Storage::Blobs::BlobClient& client) : tag(BLOB), blob(client) {}
-	ObjectClient::ObjectClient(const Azure::Storage::Files::Shares::ShareFileClient& client) : tag(SHARE), shareFile(client) {}
-	ObjectClient::~ObjectClient() {}
+	ObjectClient::ObjectClient(const Azure::Storage::Blobs::BlobClient& client) :
+		tag(BLOB)
+	{
+		new(&blob) Azure::Storage::Blobs::BlobClient(client);
+	}
+	ObjectClient::ObjectClient(const Azure::Storage::Files::Shares::ShareFileClient& client) :
+		tag(SHARE)
+	{
+		new(&shareFile) Azure::Storage::Files::Shares::ShareFileClient(client);
+	}
+	ObjectClient::~ObjectClient()
+	{
+		if (tag == BLOB)
+			blob.~BlobClient();
+		else
+			shareFile.~ShareFileClient();
+	}
 	ObjectClient& ObjectClient::operator=(const ObjectClient& source)
 	{
 		tag = source.tag;
