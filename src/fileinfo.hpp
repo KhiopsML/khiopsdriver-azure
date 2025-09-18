@@ -29,9 +29,11 @@ namespace az
 	{
 	public:
 		FileInfo();
-		FileInfo(std::vector<Azure::Storage::Blobs::BlobClient>&& clients);
-		FileInfo(std::vector<Azure::Storage::Files::Shares::ShareFileClient>&& clients);
-		FileInfo(std::vector<ObjectClient>&& clients);
+		FileInfo(const std::vector<Azure::Storage::Blobs::BlobClient>& clients);
+		FileInfo(const std::vector<Azure::Storage::Files::Shares::ShareFileClient>& clients);
+		FileInfo(const std::vector<ObjectClient>& clients);
+		FileInfo(FileInfo&& source);
+		~FileInfo();
 		size_t GetSize() const;
 		size_t GetHeaderLen() const;
 		const PartInfo& GetPartInfo(size_t nIndex) const;
@@ -50,7 +52,7 @@ namespace az
 		size_t nSize;
 		ObjectClient client;
 
-		FilePartInfo(std::string&& sHeader, size_t nSize, ObjectClient&& client);
+		FilePartInfo(std::string&& sHeader, size_t nSize, const ObjectClient& client);
 		FilePartInfo(const FilePartInfo& other);
 		FilePartInfo& operator=(FilePartInfo&& source);
 	};
@@ -61,6 +63,7 @@ namespace az
 		size_t nContentSize;
 		ObjectClient client;
 
-		PartInfo(size_t nUserOffset, size_t nContentSize, ObjectClient&& client);
+		PartInfo(size_t nUserOffset, size_t nContentSize, const ObjectClient& client);
+		PartInfo(PartInfo&& source);
 	};
 }

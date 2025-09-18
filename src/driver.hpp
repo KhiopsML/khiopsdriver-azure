@@ -90,9 +90,9 @@ namespace az
 
 		bool Exists(const std::string& sUrl) const;
 		size_t GetSize(const std::string& sUrl) const;
-		FileReader& OpenForReading(const std::string& sUrl);
-		FileWriter& OpenForWriting(const std::string& sUrl);
-		FileWriter& OpenForAppending(const std::string& sUrl);
+		FileStream& OpenForReading(const std::string& sUrl);
+		FileStream& OpenForWriting(const std::string& sUrl);
+		FileStream& OpenForAppending(const std::string& sUrl);
 		void Close(void* handle);
 		size_t Read(void* handle, void* dest, size_t nSize, size_t nCount);
 		void Seek(void* handle, long long int nOffset, int nOrigin);
@@ -128,14 +128,11 @@ namespace az
 		Azure::Storage::Files::Shares::ShareDirectoryClient GetParentDir(const ServiceRequest& request) const;
 		void CheckParentDirExists(const ServiceRequest& request) const;
 
-		FileReader& RegisterReader(FileReader&& reader);
-		FileWriter& RegisterWriter(FileWriter&& writer);
-
-		FileStream& RetrieveFileStream(void* handle, FileStreamType streamType) const;
+		FileStream& RegisterFileStream(FileStream&& fileStream);
+		FileStream& RetrieveFileStream(void* handle) const;
 
 		bool bIsConnected;
 
-		std::unordered_map<void*, std::unique_ptr<FileReader>> fileReaders;
-		std::unordered_map<void*, std::unique_ptr<FileWriter>> fileWriters;
+		std::unordered_map<void*, std::unique_ptr<FileStream>> fileStreams;
 	};
 }

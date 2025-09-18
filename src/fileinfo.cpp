@@ -26,15 +26,15 @@ namespace az
 		nSize(0)
 	{}
 
-	FileInfo::FileInfo(vector<Azure::Storage::Blobs::BlobClient>&& clients) :
+	FileInfo::FileInfo(const vector<Azure::Storage::Blobs::BlobClient>& clients) :
 		FileInfo(vector<ObjectClient>(clients.begin(), clients.end()))
 	{}
 
-	FileInfo::FileInfo(vector<Azure::Storage::Files::Shares::ShareFileClient>&& clients) :
+	FileInfo::FileInfo(const vector<Azure::Storage::Files::Shares::ShareFileClient>& clients) :
 		FileInfo(vector<ObjectClient>(clients.begin(), clients.end()))
 	{}
 
-	FileInfo::FileInfo(vector<ObjectClient>&& clients):
+	FileInfo::FileInfo(const vector<ObjectClient>& clients):
 		storageType(clients.front().tag)
 	{
 		if (clients.empty())
@@ -112,7 +112,7 @@ namespace az
 					nFilePartSize = (size_t)clients[i].shareFile.GetProperties().Value.FileSize;
 				}
 			}
-			filePartInfos.emplace_back(move(sFilePartHeader), nFilePartSize, move(clients[i]));
+			filePartInfos.emplace_back(move(sFilePartHeader), nFilePartSize, clients[i]);
 			if (bGetHeader)
 			{
 				filePartsWithHeadersToInspect.push_back(i);
@@ -122,6 +122,18 @@ namespace az
 		nHeaderLen = GetFileHeader(filePartInfos, move(filePartsWithHeadersToInspect)).size();
 		parts = GetFileParts(filePartInfos, nHeaderLen);
 		nSize = accumulate(parts.begin(), parts.end(), 0ULL, [](size_t nTotal, const PartInfo& partInfo) { return nTotal + partInfo.nContentSize; });
+	}
+
+	FileInfo::FileInfo(FileInfo&& source) :
+		storageType(move(source.storageType)),
+		nHeaderLen(move(source.nHeaderLen)),
+		nSize(move(source.nSize)),
+		parts(move(source.parts))
+	{}
+
+	FileInfo::~FileInfo()
+	{
+		parts.clear();
 	}
 
 	size_t FileInfo::GetSize() const
@@ -148,10 +160,10 @@ namespace az
 		return (size_t)(find_if(parts.begin(), parts.end(), [nUserOffset](const auto& part) { return nUserOffset < part.nUserOffset; }) - 1 - parts.begin());
 	}
 
-	FilePartInfo::FilePartInfo(string&& sHeader, size_t nSize, ObjectClient&& client) :
+	FilePartInfo::FilePartInfo(string&& sHeader, size_t nSize, const ObjectClient& client) :
 		sHeader(sHeader),
 		nSize(nSize),
-		client(move(client))
+		client(client)
 	{
 	}
 
@@ -169,12 +181,18 @@ namespace az
 		return *this;
 	}
 
-	PartInfo::PartInfo(size_t nUserOffset, size_t nContentSize, ObjectClient&& client) :
+	PartInfo::PartInfo(size_t nUserOffset, size_t nContentSize, const ObjectClient& client) :
 		nUserOffset(nUserOffset),
 		nContentSize(nContentSize),
-		client(move(client))
+		client(client)
 	{
 	}
+
+	PartInfo::PartInfo(PartInfo&& source) :
+		nUserOffset(move(source.nUserOffset)),
+		nContentSize(move(source.nContentSize)),
+		client(source.client)
+	{}
 
 	static string ReadHeaderFromBodyStream(unique_ptr<BodyStream>&& bodyStream)
 	{

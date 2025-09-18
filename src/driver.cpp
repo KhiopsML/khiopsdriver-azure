@@ -100,8 +100,7 @@ namespace az
 
 	Driver::~Driver()
 	{
-		fileReaders.clear();
-		fileWriters.clear();
+		fileStreams.clear();
 	}
 
 	const string& Driver::GetName() const
@@ -211,7 +210,7 @@ namespace az
 		}
 	}
 
-	FileReader& Driver::OpenForReading(const string& sUrl)
+	FileStream& Driver::OpenForReading(const string& sUrl)
 	{
 		CheckConnected();
 		ServiceRequest request = ParseUrl(sUrl);
@@ -228,7 +227,7 @@ namespace az
 				{
 					throw NoFileError(sUrl);
 				}
-				return RegisterReader(move(FileReader(move(blobs))));
+				return RegisterFileStream(move(FileStream::OpenForReading(move(blobs))));
 			}
 		}
 		else // SHARE
@@ -244,12 +243,12 @@ namespace az
 				{
 					throw NoFileError(sUrl);
 				}
-				return RegisterReader(move(FileReader(move(files))));
+				return RegisterFileStream(move(FileStream::OpenForReading(move(files))));
 			}
 		}
 	}
 
-	FileWriter& Driver::OpenForWriting(const string& sUrl)
+	FileStream& Driver::OpenForWriting(const string& sUrl)
 	{
 		CheckConnected();
 		ServiceRequest request = ParseUrl(sUrl);
@@ -261,7 +260,7 @@ namespace az
 			}
 			else
 			{
-				return RegisterWriter(move(FileWriter(FileOutputMode::WRITE, move(GetBlobClient(request)))));
+				return RegisterFileStream(move(FileStream::OpenForWriting(FileStream::OutputMode::WRITE, move(GetBlobClient(request)))));
 			}
 		}
 		else // SHARE
@@ -273,12 +272,12 @@ namespace az
 			else
 			{
 				CheckParentDirExists(request);
-				return RegisterWriter(move(FileWriter(FileOutputMode::WRITE, move(GetFileClient(request)))));
+				return RegisterFileStream(move(FileStream::OpenForWriting(FileStream::OutputMode::WRITE, move(GetFileClient(request)))));
 			}
 		}
 	}
 	
-	FileWriter& Driver::OpenForAppending(const string& sUrl)
+	FileStream& Driver::OpenForAppending(const string& sUrl)
 	{
 		CheckConnected();
 		ServiceRequest request = ParseUrl(sUrl);
@@ -290,7 +289,7 @@ namespace az
 			}
 			else
 			{
-				return RegisterWriter(move(FileWriter(FileOutputMode::APPEND, move(GetBlobClient(request)))));
+				return RegisterFileStream(move(FileStream::OpenForWriting(FileStream::OutputMode::APPEND, move(GetBlobClient(request)))));
 			}
 		}
 		else // SHARE
@@ -322,52 +321,36 @@ namespace az
 				{
 					client.Create(0);
 				}
-				return RegisterWriter(move(FileWriter(FileOutputMode::APPEND, move(client))));
+				return RegisterFileStream(move(FileStream::OpenForWriting(FileStream::OutputMode::APPEND, move(client))));
 			}
 		}
 	}
 
 	void Driver::Close(void* handle)
 	{
-		auto rIt = fileReaders.find(handle);
-		if (rIt != fileReaders.end())
-		{
-			rIt->second->Close();
-			fileReaders.erase(handle);
-		}
-		else
-		{
-			auto wIt = fileWriters.find(handle);
-			if (wIt != fileWriters.end())
-			{
-				wIt->second->Close();
-				fileWriters.erase(handle);
-			}
-			else
-			{
-				throw FileStreamNotFoundError(handle);
-			}
-		}
+		FileStream& fileStream = RetrieveFileStream(handle);
+		fileStream.Close();
+		fileStreams.erase(fileStream.GetHandle());
 	}
 	
 	size_t Driver::Read(void* handle, void* dest, size_t nSize, size_t nCount)
 	{
-		return ((FileReader&)RetrieveFileStream(handle, FileStreamType::READER)).Read(dest, nSize, nCount);
+		return RetrieveFileStream(handle).Read(dest, nSize, nCount);
 	}
 	
 	void Driver::Seek(void* handle, long long int nOffset, int nOrigin)
 	{
-		((FileReader&)RetrieveFileStream(handle, FileStreamType::READER)).Seek(nOffset, nOrigin);
+		RetrieveFileStream(handle).Seek(nOffset, nOrigin);
 	}
 
 	size_t Driver::Write(void* handle, const void* source, size_t nSize, size_t nCount)
 	{
-		return ((FileWriter&)RetrieveFileStream(handle, FileStreamType::WRITER)).Write(source, nSize, nCount);
+		return RetrieveFileStream(handle).Write(source, nSize, nCount);
 	}
 
 	void Driver::Flush(void* handle)
 	{
-		((FileWriter&)RetrieveFileStream(handle, FileStreamType::WRITER)).Flush();
+		RetrieveFileStream(handle).Flush();
 	}
 	
 	void Driver::Remove(const string& sUrl) const
@@ -866,38 +849,17 @@ namespace az
 		GetParentDir(request);
 	}
 
-	FileReader& Driver::RegisterReader(FileReader&& reader)
+	FileStream& Driver::RegisterFileStream(FileStream&& fileStream)
 	{
-		void* handle = reader.GetHandle();
-		fileReaders[handle] = make_unique<FileReader>(move(reader));
-		return *fileReaders.at(handle);
+		void* handle = fileStream.GetHandle();
+		fileStreams[handle] = make_unique<FileStream>(move(fileStream));
+		return *fileStreams.at(handle);
 	}
 
-	FileWriter& Driver::RegisterWriter(FileWriter&& writer)
+	FileStream& Driver::RetrieveFileStream(void* handle) const
 	{
-		void* handle = writer.GetHandle();
-		fileWriters[handle] = make_unique<FileWriter>(move(writer));
-		return *fileWriters.at(handle);
-	}
-
-	FileStream& Driver::RetrieveFileStream(void* handle, FileStreamType streamType) const
-	{
-		if ((streamType & FileStreamType::READER) != FileStreamType::NONE)
-		{
-			auto rIt = fileReaders.find(handle);
-			if (rIt != fileReaders.end())
-			{
-				return (FileStream&)*fileReaders.at(handle);
-			}
-		}
-		if ((streamType & FileStreamType::WRITER) != FileStreamType::NONE)
-		{
-			auto wIt = fileWriters.find(handle);
-			if (wIt != fileWriters.end())
-			{
-				return (FileStream&)*fileWriters.at(handle);
-			}
-		}
-		throw FileStreamNotFoundError(handle);
+		auto it = fileStreams.find(handle);
+		if (it == fileStreams.end()) throw FileStreamNotFoundError(handle);
+		return *it->second;
 	}
 }

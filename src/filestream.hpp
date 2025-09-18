@@ -1,91 +1,83 @@
 #pragma once
 
-namespace az
-{
-	enum class FileStreamType;
-	class FileStream;
-	class FileReader;
-	enum class FileOutputMode;
-	class FileWriter;
-}
-
 #include <cstddef>
 #include <vector>
 #include <string>
+#include <sstream>
 #include <azure/storage/blobs/blob_client.hpp>
 #include <azure/storage/files/shares/share_file_client.hpp>
 #include "filestream.hpp"
 #include "storagetype.hpp"
 #include "objectclient.hpp"
 #include "fileinfo.hpp"
+#include "exception.hpp"
 
 namespace az
 {
-	enum class FileStreamType
-	{
-		NONE = 0,
-		READER = 1 << 0,
-		WRITER = 1 << 1,
-		ALL = READER | WRITER
-	};
-
-	FileStreamType operator&(const FileStreamType& a, const FileStreamType& b);
-
-
-
 	class FileStream
 	{
 	public:
-		virtual ~FileStream();
+		enum class Mode { READ, WRITE };
+		enum class OutputMode { WRITE, APPEND };
+
+		static FileStream OpenForReading(const std::vector<Azure::Storage::Blobs::BlobClient>& clients);
+		static FileStream OpenForReading(const std::vector<Azure::Storage::Files::Shares::ShareFileClient>& clients);
+		static FileStream OpenForReading(const std::vector<ObjectClient>& clients);
+		static FileStream OpenForWriting(OutputMode mode, const Azure::Storage::Blobs::BlobClient& client);
+		static FileStream OpenForWriting(OutputMode mode, const Azure::Storage::Files::Shares::ShareFileClient& client);
+		static FileStream OpenForWriting(OutputMode mode, const ObjectClient& client);
+		FileStream(FileStream&& source);
+		~FileStream();
+
 		void* GetHandle() const;
-		virtual void Close() = 0;
 
-	protected:
-		FileStream();
+		void Close();
 
-	private:
-		void* handle;
-	};
-
-	class FileReader : public FileStream
-	{
-	public:
-		FileReader(std::vector<Azure::Storage::Blobs::BlobClient>&& clients);
-		FileReader(std::vector<Azure::Storage::Files::Shares::ShareFileClient>&& clients);
-		FileReader(std::vector<ObjectClient>&& clients);
-		~FileReader();
-		void Close() override;
+		// Reader-only operations
 		size_t Read(void* dest, size_t nSize, size_t nCount);
 		void Seek(long long int nOffset, int nOrigin);
 
-	private:
-		StorageType storageType;
-		FileInfo fileInfo;
-		size_t nCurrentPos;
-	};
-
-	enum class FileOutputMode
-	{
-		WRITE,
-		APPEND
-	};
-
-	class FileWriter : public FileStream
-	{
-	public:
-		FileWriter(FileOutputMode mode, Azure::Storage::Blobs::BlobClient&& client);
-		FileWriter(FileOutputMode mode, Azure::Storage::Files::Shares::ShareFileClient&& client);
-		FileWriter(FileOutputMode mode, ObjectClient&& client);
-		~FileWriter();
-		void Close();
+		// Writer-only operations
 		size_t Write(const void* source, size_t nSize, size_t nCount);
 		void Flush();
 
 	private:
+		FileStream();
+
+		void* handle;
+
 		StorageType storageType;
-		FileOutputMode mode;
-		ObjectClient client;
+		Mode mode;
 		size_t nCurrentPos;
-		std::vector<std::string> blockIds;
+
+		struct WriteInfo
+		{
+			OutputMode mode;
+			ObjectClient client;
+			std::vector<std::string> blockIds;
+			WriteInfo(OutputMode mode, const ObjectClient& client, const std::vector<std::string>& blockIds);
+			WriteInfo(WriteInfo&& source);
+			~WriteInfo();
+		};
+
+		union
+		{
+			FileInfo readInfo; // Reader-only attributes
+			WriteInfo writeInfo; // Writer-only attributes
+		};
+	};
+
+	class InvalidOperationForStreamModeError : public Error
+	{
+	public:
+		inline InvalidOperationForStreamModeError(const std::string& operation, FileStream::Mode mode) :
+			Error(
+				(std::ostringstream()
+					<< "operation '" << operation << "' is invalid for stream mode '"
+					<< (mode == FileStream::Mode::READ ? "reader" : "writer") << "'"
+					).str()
+			)
+		{
+		}
 	};
 }

@@ -9,12 +9,87 @@ using namespace std;
 
 namespace az
 {
-	FileStreamType operator&(const FileStreamType& a, const FileStreamType& b)
+	static unique_ptr<Azure::Core::IO::BodyStream> DownloadFilePart(const ObjectClient& client, size_t nOffset, size_t nLength);
+
+	FileStream FileStream::OpenForReading(const std::vector<Azure::Storage::Blobs::BlobClient>& clients)
 	{
-		return (FileStreamType)((int)a & (int)b);
+		return move(OpenForReading(vector<ObjectClient>(clients.begin(), clients.end())));
 	}
 
-	FileStream::~FileStream() {}
+	FileStream FileStream::OpenForReading(const std::vector<Azure::Storage::Files::Shares::ShareFileClient>& clients)
+	{
+		return move(OpenForReading(vector<ObjectClient>(clients.begin(), clients.end())));
+	}
+
+	FileStream FileStream::OpenForReading(const std::vector<ObjectClient>& clients)
+	{
+		if (clients.empty()) throw invalid_argument("cannot open a file for reading with no storage clients");
+		FileStream fs;
+		fs.storageType = clients.front().tag;
+		fs.mode = Mode::READ;
+		new(&fs.readInfo) FileInfo(clients);
+		return fs;
+	}
+
+	FileStream FileStream::OpenForWriting(OutputMode mode, const Azure::Storage::Blobs::BlobClient& client)
+	{
+		return move(OpenForWriting(mode, move(ObjectClient(client))));
+	}
+
+	FileStream FileStream::OpenForWriting(OutputMode mode, const Azure::Storage::Files::Shares::ShareFileClient& client)
+	{
+		return move(OpenForWriting(mode, move(ObjectClient(client))));
+	}
+
+	FileStream FileStream::OpenForWriting(OutputMode mode, const ObjectClient& client)
+	{
+		FileStream fs;
+		fs.storageType = client.tag;
+		fs.mode = Mode::WRITE;
+		new(&fs.writeInfo) WriteInfo(mode, client, vector<string>());
+
+		if (fs.storageType == BLOB)
+		{
+			if (fs.writeInfo.mode == OutputMode::APPEND)
+			{
+				try
+				{
+					vector<Azure::Storage::Blobs::Models::BlobBlock> blocks;
+					auto blockListRequestResponse = fs.writeInfo.client.blob.AsBlockBlobClient().GetBlockList();
+					blocks = blockListRequestResponse.Value.CommittedBlocks;
+					transform(blocks.begin(), blocks.end(), back_inserter(fs.writeInfo.blockIds), [](const auto& block) { return block.Name; });
+				}
+				catch (const Azure::Storage::StorageException&)
+				{
+				}
+			}
+		}
+		else // SHARE storage
+		{
+			if (fs.writeInfo.mode == OutputMode::WRITE)
+				fs.writeInfo.client.shareFile.Create(0);
+			else  // APPEND mode
+				fs.nCurrentPos = (size_t)fs.writeInfo.client.shareFile.GetProperties().Value.FileSize;
+		}
+		return fs;
+	}
+
+	FileStream::FileStream(FileStream&& source) :
+		handle(move(source.handle)),
+		storageType(move(source.storageType)),
+		mode(move(source.mode)),
+		nCurrentPos(move(source.nCurrentPos))
+	{
+		if (mode == Mode::READ) new(&readInfo) FileInfo(move(source.readInfo));
+		else new(&writeInfo) WriteInfo(move(source.writeInfo));
+	}
+
+	FileStream::~FileStream()
+	{
+		//Close();
+		if (mode == Mode::READ) readInfo.~FileInfo();
+		else writeInfo.~WriteInfo();
+	}
 
 	void* FileStream::GetHandle() const
 	{
@@ -22,58 +97,50 @@ namespace az
 	}
 
 	FileStream::FileStream() :
-		handle((void*)chrono::steady_clock::now().time_since_epoch().count())
+		handle((void*)chrono::steady_clock::now().time_since_epoch().count()),
+		nCurrentPos(0ULL)
 	{
 	}
 
-	static unique_ptr<Azure::Core::IO::BodyStream> DownloadFilePart(const ObjectClient& client, size_t nOffset, size_t nLength);
+	FileStream::WriteInfo::WriteInfo(OutputMode mode, const ObjectClient& client, const std::vector<std::string>& blockIds):
+		mode(mode),
+		client(client),
+		blockIds(blockIds)
+	{}
 
-	FileReader::FileReader(vector<Azure::Storage::Blobs::BlobClient>&& clients) :
-		FileReader(vector<ObjectClient>(clients.begin(), clients.end()))
+	FileStream::WriteInfo::WriteInfo(WriteInfo&& source):
+		mode(move(source.mode)),
+		client(source.client),
+		blockIds(move(source.blockIds))
+	{}
+
+	FileStream::WriteInfo::~WriteInfo()
 	{
+		blockIds.clear();
 	}
 
-	FileReader::FileReader(vector<Azure::Storage::Files::Shares::ShareFileClient>&& clients) :
-		FileReader(vector<ObjectClient>(clients.begin(), clients.end()))
+	void FileStream::Close()
 	{
+		if (mode == Mode::WRITE) Flush();
 	}
 
-	FileReader::FileReader(vector<ObjectClient>&& clients) :
-		FileStream(),
-		nCurrentPos(0)
+	size_t FileStream::Read(void* dest, size_t nSize, size_t nCount)
 	{
-		if (clients.empty())
-		{
-			throw invalid_argument("cannot instantiate a file reader with no clients");
-		}
-		storageType = clients.front().tag;
-		fileInfo = move(FileInfo(move(clients)));
-	}
+		if (mode != Mode::READ) throw InvalidOperationForStreamModeError("read", mode);
 
-	FileReader::~FileReader()
-	{
-		Close();
-	}
-
-	void FileReader::Close()
-	{
-	}
-
-	size_t FileReader::Read(void* dest, size_t nSize, size_t nCount)
-	{
-		size_t nTotalFileSize = fileInfo.GetSize();
+		size_t nTotalFileSize = readInfo.GetSize();
 		size_t nToRead = nSize * nCount;
 		size_t nRead = 0;
 		size_t nTotalRead = 0;
-		size_t nFilePartIndex = fileInfo.GetFilePartIndexOfUserOffset(nCurrentPos);
+		size_t nFilePartIndex = readInfo.GetFilePartIndexOfUserOffset(nCurrentPos);
 
 		while (nToRead != 0 && nCurrentPos != nTotalFileSize)
 		{
-			const PartInfo& partInfo = fileInfo.GetPartInfo(nFilePartIndex);
+			const PartInfo& partInfo = readInfo.GetPartInfo(nFilePartIndex);
 			unique_ptr<Azure::Core::IO::BodyStream> bodyStream = move(
 				DownloadFilePart(
 					partInfo.client,
-					(nFilePartIndex == 0 ? 0 : fileInfo.GetHeaderLen()) + nCurrentPos - partInfo.nUserOffset,
+					(nFilePartIndex == 0 ? 0 : readInfo.GetHeaderLen()) + nCurrentPos - partInfo.nUserOffset,
 					nToRead < partInfo.nContentSize ? nToRead : partInfo.nContentSize
 				)
 			);
@@ -86,9 +153,11 @@ namespace az
 		return nTotalRead;
 	}
 
-	void FileReader::Seek(long long int nOffset, int nOrigin)
+	void FileStream::Seek(long long int nOffset, int nOrigin)
 	{
-		size_t nTotalFileSize = fileInfo.GetSize();
+		if (mode != Mode::READ) throw InvalidOperationForStreamModeError("seek", mode);
+
+		size_t nTotalFileSize = readInfo.GetSize();
 		long long int nSignedDest;
 
 		switch (nOrigin)
@@ -114,6 +183,58 @@ namespace az
 		nCurrentPos = (size_t)nSignedDest;
 	}
 
+	size_t FileStream::Write(const void* source, size_t nSize, size_t nCount)
+	{
+		if (mode != Mode::WRITE) throw InvalidOperationForStreamModeError("write", mode);
+
+		if (storageType == BLOB)
+		{
+			Azure::Storage::Blobs::BlockBlobClient bbclient = writeInfo.client.blob.AsBlockBlobClient();
+
+			size_t nToWrite = nSize * nCount;
+
+			string sBlockIdInBase10 = (ostringstream() << setfill('0') << setw(64) << writeInfo.blockIds.size()).str();
+			vector<uint8_t> blockIdInBase10(sBlockIdInBase10.begin(), sBlockIdInBase10.end());
+			string sBlockIdInBase64 = Azure::Core::Convert::Base64Encode(blockIdInBase10);
+
+			Azure::Core::IO::MemoryBodyStream bodyStream((const uint8_t*)source, nToWrite);
+			bbclient.StageBlock(sBlockIdInBase64, bodyStream);
+			writeInfo.blockIds.push_back(sBlockIdInBase64);
+
+			return nToWrite;
+		}
+		else // SHARE storage
+		{
+			Azure::Storage::Files::Shares::Models::FileHttpHeaders httpHeaders;
+			Azure::Storage::Files::Shares::Models::FileSmbProperties smbProperties;
+			Azure::Storage::Files::Shares::SetFilePropertiesOptions opts;
+
+			size_t nToWrite = nSize * nCount;
+
+			Azure::Core::IO::MemoryBodyStream bodyStream((const uint8_t*)source, nToWrite);
+			opts.Size = nCurrentPos + nToWrite;
+			writeInfo.client.shareFile.SetProperties(httpHeaders, smbProperties, opts);
+			writeInfo.client.shareFile.UploadRange((int64_t)nCurrentPos, bodyStream);
+			nCurrentPos += nToWrite;
+
+			return nToWrite;
+		}
+	}
+
+	void FileStream::Flush()
+	{
+		if (mode != Mode::WRITE) throw InvalidOperationForStreamModeError("flush", mode);
+
+		if (storageType == BLOB)
+		{
+			writeInfo.client.blob.AsBlockBlobClient().CommitBlockList(writeInfo.blockIds);
+		}
+		else
+		{
+			writeInfo.client.shareFile.ForceCloseAllHandles();
+		}
+	}
+
 	static unique_ptr<Azure::Core::IO::BodyStream> DownloadFilePart(const ObjectClient& client, size_t nOffset, size_t nLength)
 	{
 		Azure::Core::Http::HttpRange range{ (int64_t)nOffset, (int64_t)nLength };
@@ -131,108 +252,6 @@ namespace az
 			opts.Range = range;
 			auto downloadResult = move(client.shareFile.Download(opts).Value);
 			return move(downloadResult.BodyStream);
-		}
-	}
-
-	FileWriter::FileWriter(FileOutputMode mode, Azure::Storage::Blobs::BlobClient&& client) :
-		FileWriter(mode, move(ObjectClient(client)))
-	{
-	}
-
-	FileWriter::FileWriter(FileOutputMode mode, Azure::Storage::Files::Shares::ShareFileClient&& client) :
-		FileWriter(mode, move(ObjectClient(client)))
-	{
-	}
-
-	FileWriter::FileWriter(FileOutputMode mode, ObjectClient&& client) :
-		FileStream(),
-		storageType(client.tag),
-		mode(mode),
-		client(client),
-		nCurrentPos(0),
-		blockIds()
-	{
-		if (storageType == BLOB)
-		{
-			if (mode == FileOutputMode::APPEND)
-			{
-				try
-				{
-					vector<Azure::Storage::Blobs::Models::BlobBlock> blocks;
-					auto blockListRequestResponse = this->client.blob.AsBlockBlobClient().GetBlockList();
-					blocks = blockListRequestResponse.Value.CommittedBlocks;
-					transform(blocks.begin(), blocks.end(), back_inserter(blockIds), [](const auto& block) { return block.Name; });
-				}
-				catch (const Azure::Storage::StorageException&)
-				{
-				}
-			}
-		}
-		else // SHARE storage
-		{
-			if (mode == FileOutputMode::WRITE)
-				this->client.shareFile.Create(0);
-			else  // APPEND mode
-				nCurrentPos = (size_t)this->client.shareFile.GetProperties().Value.FileSize;
-		}
-	}
-
-	FileWriter::~FileWriter()
-	{
-		Close();
-	}
-
-	void FileWriter::Close()
-	{
-		Flush();
-	}
-
-	size_t FileWriter::Write(const void* source, size_t nSize, size_t nCount)
-	{
-
-		if (storageType == BLOB)
-		{
-			Azure::Storage::Blobs::BlockBlobClient bbclient = client.blob.AsBlockBlobClient();
-
-			size_t nToWrite = nSize * nCount;
-
-			string sBlockIdInBase10 = (ostringstream() << setfill('0') << setw(64) << blockIds.size()).str();
-			vector<uint8_t> blockIdInBase10(sBlockIdInBase10.begin(), sBlockIdInBase10.end());
-			string sBlockIdInBase64 = Azure::Core::Convert::Base64Encode(blockIdInBase10);
-
-			Azure::Core::IO::MemoryBodyStream bodyStream((const uint8_t*)source, nToWrite);
-			bbclient.StageBlock(sBlockIdInBase64, bodyStream);
-			blockIds.push_back(sBlockIdInBase64);
-
-			return nToWrite;
-		}
-		else // SHARE storage
-		{
-			Azure::Storage::Files::Shares::Models::FileHttpHeaders httpHeaders;
-			Azure::Storage::Files::Shares::Models::FileSmbProperties smbProperties;
-			Azure::Storage::Files::Shares::SetFilePropertiesOptions opts;
-
-			size_t nToWrite = nSize * nCount;
-
-			Azure::Core::IO::MemoryBodyStream bodyStream((const uint8_t*)source, nToWrite);
-			opts.Size = nCurrentPos + nToWrite;
-			client.shareFile.SetProperties(httpHeaders, smbProperties, opts);
-			client.shareFile.UploadRange((int64_t)nCurrentPos, bodyStream);
-			nCurrentPos += nToWrite;
-
-			return nToWrite;
-		}
-	}
-
-	void FileWriter::Flush()
-	{
-		if (storageType == BLOB)
-		{
-			client.blob.AsBlockBlobClient().CommitBlockList(blockIds);
-		}
-		else
-		{
-			client.shareFile.ForceCloseAllHandles();
 		}
 	}
 }
