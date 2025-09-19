@@ -10,10 +10,10 @@
 	catch (const exception& exc)						                                                    \
 	{													                                                    \
 		errorLogger.LogException(exc);					                                                    \
-		return errval;									                                                    \
+		return (errval);									                                                \
 	}													                                                    \
 	catch (...)											                                                    \
 	{													                                                    \
 		errorLogger.LogError("unknown error (caught a value that is not a descendant of std::exception)");  \
-		return errval;									                                                    \
+		return (errval);									                                                \
 	}
