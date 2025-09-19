@@ -189,7 +189,7 @@ namespace az
 				{
 					throw NoFileError(sUrl);
 				}
-				return FileInfo(move(blobs)).GetSize();
+				return FragmentedFile(move(blobs)).GetSize();
 			}
 		}
 		else // SHARE
@@ -205,7 +205,7 @@ namespace az
 				{
 					throw NoFileError(sUrl);
 				}
-				return FileInfo(move(files)).GetSize();
+				return FragmentedFile(move(files)).GetSize();
 			}
 		}
 	}

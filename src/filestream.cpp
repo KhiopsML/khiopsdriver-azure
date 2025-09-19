@@ -9,7 +9,7 @@ using namespace std;
 
 namespace az
 {
-	static unique_ptr<Azure::Core::IO::BodyStream> DownloadFilePart(const ObjectClient& client, size_t nOffset, size_t nLength);
+	static unique_ptr<Azure::Core::IO::BodyStream> DownloadFileFragment(const ObjectClient& client, size_t nOffset, size_t nLength);
 
 	FileStream FileStream::OpenForReading(const std::vector<Azure::Storage::Blobs::BlobClient>& clients)
 	{
@@ -27,7 +27,7 @@ namespace az
 		FileStream fs;
 		fs.storageType = clients.front().tag;
 		fs.mode = Mode::READ;
-		new(&fs.readInfo) FileInfo(clients);
+		new(&fs.readInfo) FragmentedFile(clients);
 		return fs;
 	}
 
@@ -80,14 +80,13 @@ namespace az
 		mode(move(source.mode)),
 		nCurrentPos(move(source.nCurrentPos))
 	{
-		if (mode == Mode::READ) new(&readInfo) FileInfo(move(source.readInfo));
+		if (mode == Mode::READ) new(&readInfo) FragmentedFile(move(source.readInfo));
 		else new(&writeInfo) WriteInfo(move(source.writeInfo));
 	}
 
 	FileStream::~FileStream()
 	{
-		//Close();
-		if (mode == Mode::READ) readInfo.~FileInfo();
+		if (mode == Mode::READ) readInfo.~FragmentedFile();
 		else writeInfo.~WriteInfo();
 	}
 
@@ -132,23 +131,23 @@ namespace az
 		size_t nToRead = nSize * nCount;
 		size_t nRead = 0;
 		size_t nTotalRead = 0;
-		size_t nFilePartIndex = readInfo.GetFilePartIndexOfUserOffset(nCurrentPos);
+		size_t nFragmentIndex = readInfo.GetFragmentIndexOfUserOffset(nCurrentPos);
 
 		while (nToRead != 0 && nCurrentPos != nTotalFileSize)
 		{
-			const PartInfo& partInfo = readInfo.GetPartInfo(nFilePartIndex);
+			const FragmentedFile::Fragment& fragment = readInfo.GetFragment(nFragmentIndex);
 			unique_ptr<Azure::Core::IO::BodyStream> bodyStream = move(
-				DownloadFilePart(
-					partInfo.client,
-					(nFilePartIndex == 0 ? 0 : readInfo.GetHeaderLen()) + nCurrentPos - partInfo.nUserOffset,
-					nToRead < partInfo.nContentSize ? nToRead : partInfo.nContentSize
+				DownloadFileFragment(
+					fragment.client,
+					(nFragmentIndex == 0 ? 0 : readInfo.GetHeaderLen()) + nCurrentPos - fragment.nUserOffset,
+					nToRead < fragment.nContentSize ? nToRead : fragment.nContentSize
 				)
 			);
 			nToRead -= (nRead = bodyStream->ReadToCount((uint8_t*)dest, nToRead));
 			nTotalRead += nRead;
 			nCurrentPos += nRead;
 			dest = (uint8_t*)dest + nRead;
-			nFilePartIndex++;
+			nFragmentIndex++;
 		}
 		return nTotalRead;
 	}
@@ -235,7 +234,7 @@ namespace az
 		}
 	}
 
-	static unique_ptr<Azure::Core::IO::BodyStream> DownloadFilePart(const ObjectClient& client, size_t nOffset, size_t nLength)
+	static unique_ptr<Azure::Core::IO::BodyStream> DownloadFileFragment(const ObjectClient& client, size_t nOffset, size_t nLength)
 	{
 		Azure::Core::Http::HttpRange range{ (int64_t)nOffset, (int64_t)nLength };
 

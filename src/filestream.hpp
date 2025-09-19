@@ -9,7 +9,7 @@
 #include "filestream.hpp"
 #include "storagetype.hpp"
 #include "objectclient.hpp"
-#include "fileinfo.hpp"
+#include "fragmentedfile.hpp"
 #include "exception.hpp"
 
 namespace az
@@ -62,7 +62,7 @@ namespace az
 
 		union
 		{
-			FileInfo readInfo; // Reader-only attributes
+			FragmentedFile readInfo; // Reader-only attributes
 			WriteInfo writeInfo; // Writer-only attributes
 		};
 	};

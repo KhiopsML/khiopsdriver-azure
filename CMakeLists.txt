@@ -74,7 +74,7 @@ set(SourceList
     objectclient.hpp objectclient.cpp
     storagetype.hpp
     filestream.hpp filestream.cpp
-    fileinfo.hpp fileinfo.cpp
+    fragmentedfile.hpp fragmentedfile.cpp
     blobpathresolve.hpp blobpathresolve.cpp
     sharepathresolve.hpp sharepathresolve.cpp
 )
