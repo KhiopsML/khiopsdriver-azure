@@ -1,12 +1,16 @@
 #include "driver.hpp"
+#include <algorithm>
+#include <iterator>
 #include <regex>
 #include <fstream>
 #include <sstream>
+#include <iomanip>
 #include <spdlog/spdlog.h>
 #include <azure/core.hpp>
 #include <azure/identity.hpp>
 #include <azure/storage/blobs/blob_options.hpp>
 #include <azure/storage/files/shares/share_options.hpp>
+#include <azure/storage/blobs/block_blob_client.hpp>
 #include "util.hpp"
 #include "exception.hpp"
 #include "storagetype.hpp"
@@ -615,6 +619,50 @@ namespace az
 				Close(writer.GetHandle());
 			}
 		}
+	}
+
+	void Driver::Concatenate(const vector<string>& inputUrls, const string& sDestUrl)
+	{
+		CheckConnected();
+		if (inputUrls.size() < 2) return; // nothing to do
+
+		vector<ServiceRequest> inputs;
+		transform(inputUrls.begin(), inputUrls.end(), back_inserter(inputs), [this](const string& sInputUrl) { return ParseUrl(sInputUrl); });
+		ServiceRequest output = ParseUrl(sDestUrl);
+
+		for (const auto& input : inputs)
+		{
+			if (input.storageType != BLOB) throw invalid_argument("concatenation is only supported for blobs");
+			if (input.bDir) throw invalid_argument("concatenation is not supported for directories");
+		}
+		if (output.storageType != BLOB) throw invalid_argument("blob concatenation destination URL must be a blob URL");
+		if (output.bDir) throw invalid_argument("concatenation destination URL cannot be a directory");
+
+		vector<FragmentedFile> fragmentedFiles;
+		transform(inputs.begin(), inputs.end(), back_inserter(fragmentedFiles), [this](const auto& input) { return FragmentedFile(ListBlobs(input)); });
+		size_t nHeaderLen = fragmentedFiles.front().GetHeaderLen();
+		if (any_of(fragmentedFiles.begin() + 1, fragmentedFiles.end(), [nHeaderLen](const auto& fragmentedFile) { return fragmentedFile.GetHeaderLen() != nHeaderLen; }))
+		{
+			throw invalid_argument("input blob headers are incompatible");
+		}
+
+		auto destBlob = GetBlobClient(output).AsBlockBlobClient();
+		vector<string> destBlockIds;
+		Azure::Core::Http::HttpRange range;
+		for (size_t nInputIndex = 0; nInputIndex != inputs.size(); nInputIndex++)
+		{
+			string sBlockIdInBase10 = (ostringstream() << setfill('0') << setw(64) << destBlockIds.size()).str();
+			vector<uint8_t> blockIdInBase10(sBlockIdInBase10.begin(), sBlockIdInBase10.end());
+			string sBlockIdInBase64 = Azure::Core::Convert::Base64Encode(blockIdInBase10);
+			destBlockIds.push_back(sBlockIdInBase64);
+
+			Azure::Storage::Blobs::StageBlockFromUriOptions opts;
+			range.Offset = nInputIndex == 0 ? 0 : nHeaderLen;
+			opts.SourceRange = range;
+			destBlob.StageBlockFromUri(sBlockIdInBase64, inputs[nInputIndex].azureUrl.GetAbsoluteUrl(), opts);
+		}
+
+		destBlob.CommitBlockList(destBlockIds);
 	}
 
 	void Driver::CheckConnected() const

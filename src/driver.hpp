@@ -104,6 +104,7 @@ namespace az
 		size_t GetFreeDiskSpace() const;
 		void CopyTo(const std::string& sUrl, const std::string& destUrl);
 		void CopyFrom(const std::string& sUrl, const std::string& sourceUrl);
+		void Concatenate(const std::vector<std::string>& inputUrls, const std::string& sDestUrl);
 
 	private:
 		void CheckConnected() const;
