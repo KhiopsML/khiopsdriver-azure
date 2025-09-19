@@ -5,7 +5,6 @@
 #include <fstream>
 #include <sstream>
 #include <iomanip>
-#include <spdlog/spdlog.h>
 #include <azure/core.hpp>
 #include <azure/identity.hpp>
 #include <azure/storage/blobs/blob_options.hpp>
@@ -100,6 +99,15 @@ namespace az
 	Driver::Driver():
 		bIsConnected(false)
 	{
+		try
+		{
+			nPreferredBufferSize = stoull(util::env::GetEnvironmentVariableOrThrow("AZURE_PREFERRED_BUFFER_SIZE"));
+		}
+		catch (const exception&)
+		{
+			// if the env var is not set, is empty or contains non-numeric data, fallback to the default preferred buffer size
+			nPreferredBufferSize = nDefaultPreferredBufferSize;
+		}
 	}
 
 	Driver::~Driver()
@@ -518,12 +526,11 @@ namespace az
 			else
 			{
 				auto& reader = OpenForReading(sUrl);
-				constexpr size_t nBufferSize = 4ULL * 1024 * 1024; // TODO
-				char* buffer = new char[nBufferSize];
+				char* buffer = new char[GetPreferredBufferSize()];
 				size_t nRead;
 				ofstream ofs(destUrl, ios::binary);
 
-				while ((nRead = reader.Read(buffer, 1, nBufferSize)) != 0ULL)
+				while ((nRead = reader.Read(buffer, 1, GetPreferredBufferSize())) != 0ULL)
 				{
 					ofs.write(buffer, (streamsize)nRead);
 				}
@@ -541,12 +548,11 @@ namespace az
 			else
 			{
 				auto& reader = OpenForReading(sUrl);
-				constexpr size_t nBufferSize = 4ULL * 1024 * 1024; // TODO
-				char* buffer = new char[nBufferSize];
+				char* buffer = new char[GetPreferredBufferSize()];
 				size_t nRead;
 				ofstream ofs(destUrl, ios::binary);
 
-				while ((nRead = reader.Read(buffer, 1, nBufferSize)) != 0ULL)
+				while ((nRead = reader.Read(buffer, 1, GetPreferredBufferSize())) != 0ULL)
 				{
 					ofs.write(buffer, (streamsize)nRead);
 				}
@@ -570,14 +576,13 @@ namespace az
 			else
 			{
 				auto& writer = OpenForWriting(sUrl);
-				constexpr size_t nBufferSize = 4ULL * 1024 * 1024; // TODO
-				char* buffer = new char[nBufferSize];
+				char* buffer = new char[GetPreferredBufferSize()];
 				size_t nRead;
 				ifstream ifs(sourceUrl, ios::binary);
 
 				for (;;)
 				{
-					ifs.read(buffer, nBufferSize);
+					ifs.read(buffer, GetPreferredBufferSize());
 					nRead = (size_t)ifs.gcount();
 					if (nRead == 0)
 					{
@@ -599,14 +604,13 @@ namespace az
 			else
 			{
 				auto& writer = OpenForWriting(sUrl);
-				constexpr size_t nBufferSize = 4ULL * 1024 * 1024; // TODO
-				char* buffer = new char[nBufferSize];
+				char* buffer = new char[GetPreferredBufferSize()];
 				size_t nRead;
 				ifstream ifs(sourceUrl, ios::binary);
 
 				for (;;)
 				{
-					ifs.read(buffer, nBufferSize);
+					ifs.read(buffer, GetPreferredBufferSize());
 					nRead = (size_t)ifs.gcount();
 					if (nRead == 0)
 					{

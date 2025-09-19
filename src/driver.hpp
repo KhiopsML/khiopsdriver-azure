@@ -33,7 +33,7 @@ namespace az
 	static const std::string sName = "Azure driver";
 	static const std::string sVersion = DRIVER_VERSION;
 	static const std::string sScheme = "https";
-	static const size_t nPreferredBufferSize = 4 * 1024 * 1024;
+	static constexpr size_t nDefaultPreferredBufferSize = 4 * 1024 * 1024;
 
 	struct BlobInfo
 	{
@@ -133,6 +133,8 @@ namespace az
 		FileStream& RetrieveFileStream(void* handle) const;
 
 		bool bIsConnected;
+
+		size_t nPreferredBufferSize;
 
 		std::unordered_map<void*, std::unique_ptr<FileStream>> fileStreams;
 	};
