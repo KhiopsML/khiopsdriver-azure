@@ -15,6 +15,8 @@
 #include <limits.h>
 #include <memory>
 #include <sstream>
+#include <string>
+#include <vector>
 
 #include "spdlog/spdlog.h"
 
@@ -309,6 +311,25 @@ int driver_copyFromLocal(const char* sSourceUrl, const char* sDestUrl)
 		if (!sSourceUrl) throw NullArgError(__func__, STRINGIFY(sSourceUrl));
 		if (!sDestUrl) throw NullArgError(__func__, STRINGIFY(sDestUrl));
 		driver.CopyFrom(sDestUrl, sSourceUrl);
+		return nSuccess;
+	})
+}
+
+int driver_concat(const char* destfilename, const char** sourcefilenames, size_t sourcefilecount)
+{
+	HANDLE_ERRORS(nFailure,
+	{
+		spdlog::debug("Concatenating {} files to URL {}", sourcefilecount, destfilename);
+		if (spdlog::get_level() <= spdlog::level::debug)
+		{
+			for (size_t i = 0; i < sourcefilecount; i++)
+			{
+				spdlog::debug("Source file #{}: {}", i + 1, sourcefilenames[i]);
+			}
+		}
+		if (!destfilename) throw NullArgError(__func__, STRINGIFY(destfilename));
+		if (!sourcefilenames) throw NullArgError(__func__, STRINGIFY(sourcefilenames));
+		driver.Concatenate(vector<string>(sourcefilenames, sourcefilenames + sourcefilecount), destfilename);
 		return nSuccess;
 	})
 }

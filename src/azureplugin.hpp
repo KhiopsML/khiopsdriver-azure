@@ -131,6 +131,12 @@ extern "C"
 	// Returns 1 on success, 0 on error
 	VISIBLE int driver_copyFromLocal(const char *sourcefilename, const char *destfilename);
 
+	// Concatenates all sourcefilecount files specified in sourcefilenames to a new file destfilename
+	// The concatenation is done on the storage server side
+	// The source files are not deleted
+	// Returns 1 on success, 0 on error
+	VISIBLE int driver_concat(const char* destfilename, const char** sourcefilenames, size_t sourcefilecount);
+
 #ifdef __cplusplus
 } /* extern "C" */
 #endif /* __cplusplus */
