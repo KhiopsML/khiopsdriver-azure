@@ -134,12 +134,13 @@ namespace az
 		while (nToRead != 0 && nCurrentPos != nTotalFileSize)
 		{
 			const FragmentedFile::Fragment& fragment = readInfo.GetFragment(nFragmentIndex);
-			unique_ptr<Azure::Core::IO::BodyStream> bodyStream;
 
 			Azure::Core::Http::HttpRange range {
 				(int64_t)((nFragmentIndex == 0 ? 0 : readInfo.GetHeaderLen()) + nCurrentPos - fragment.nUserOffset),
 				(int64_t)(nToRead < fragment.nContentSize ? nToRead : fragment.nContentSize)
 			};
+
+			unique_ptr<Azure::Core::IO::BodyStream> bodyStream;
 
 			if (fragment.client.tag == BLOB)
 			{

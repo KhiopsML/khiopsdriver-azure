@@ -101,10 +101,7 @@ namespace az
 		{
 			sFragmentHeader = "";
 			bool bGetHeader = false;
-			if (i < 5 || nClients <= 10 || i >= nClients - 5)
-			{
-				bGetHeader = true;
-			}
+			if (i < 5 || nClients <= 10 || i >= nClients - 5) bGetHeader = true;
 			else if (nRandomlyPicked < 10 && (i >= nClients - 15 + nRandomlyPicked || util::random::RandomBool()))
 			{
 				bGetHeader = true;
@@ -115,53 +112,32 @@ namespace az
 				if (bGetHeader)
 				{
 					DownloadBlobOptions opts;
-					opts.Range = move(range);
+					opts.Range = range;
 					auto downloadResult = move(clients[i].blob.Download(opts).Value);
 					sFragmentHeader = ReadHeaderFromBodyStream(move(downloadResult.BodyStream));
-					if (i == 0)
-					{
-						nFirstFragmentHeaderLen = sFragmentHeader.length();
-					}
-					else
-					{
-						opts.Range->Length = nFirstFragmentHeaderLen;
-					}
+					if (i == 0) nFirstFragmentHeaderLen = sFragmentHeader.length();
+					else opts.Range->Length = nFirstFragmentHeaderLen;
 					nFragmentSize = (size_t)downloadResult.BlobSize;
 				}
-				else
-				{
-					nFragmentSize = (size_t)clients[i].blob.GetProperties().Value.BlobSize;
-				}
+				else nFragmentSize = (size_t)clients[i].blob.GetProperties().Value.BlobSize;
 			}
 			else // SHARE storage
 			{
 				if (bGetHeader)
 				{
 					DownloadFileOptions opts;
-					opts.Range = move(range);
+					opts.Range = range;
 					auto downloadResult = move(clients[i].shareFile.Download(opts).Value);
 					sFragmentHeader = ReadHeaderFromBodyStream(move(downloadResult.BodyStream));
-					if (i == 0)
-					{
-						nFirstFragmentHeaderLen = sFragmentHeader.length();
-					}
-					else
-					{
-						opts.Range->Length = nFirstFragmentHeaderLen;
-					}
+					if (i == 0) nFirstFragmentHeaderLen = sFragmentHeader.length();
+					else opts.Range->Length = nFirstFragmentHeaderLen;
 					opts.Range->Length = nFirstFragmentHeaderLen;
 					nFragmentSize = (size_t)downloadResult.FileSize;
 				}
-				else
-				{
-					nFragmentSize = (size_t)clients[i].shareFile.GetProperties().Value.FileSize;
-				}
+				else nFragmentSize = (size_t)clients[i].shareFile.GetProperties().Value.FileSize;
 			}
 			fragmentsForComputation.emplace_back(move(sFragmentHeader), nFragmentSize, clients[i]);
-			if (bGetHeader)
-			{
-				fragmentsWithHeadersToInspect.push_back(i);
-			}
+			if (bGetHeader) fragmentsWithHeadersToInspect.push_back(i);
 		}
 
 		nHeaderLen = GetFileHeader(fragmentsForComputation, move(fragmentsWithHeadersToInspect)).size();
