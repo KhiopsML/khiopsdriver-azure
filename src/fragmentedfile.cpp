@@ -21,8 +21,9 @@ namespace az
 		string sHeader;
 		size_t nSize;
 		ObjectClient client;
+		Azure::ETag etag;
 
-		FragmentForComputation(string&& sHeader, size_t nSize, const ObjectClient& client);
+		FragmentForComputation(string&& sHeader, size_t nSize, const ObjectClient& client, const Azure::ETag& etag);
 		FragmentForComputation(const FragmentForComputation& other);
 		FragmentForComputation& operator=(FragmentForComputation&& source);
 	};
@@ -33,16 +34,18 @@ namespace az
 
 	static constexpr size_t nMaxHeaderSize = 8ULL * 1024 * 1024;
 
-	FragmentForComputation::FragmentForComputation(string&& sHeader, size_t nSize, const ObjectClient& client) :
+	FragmentForComputation::FragmentForComputation(string&& sHeader, size_t nSize, const ObjectClient& client, const Azure::ETag& etag) :
 		sHeader(sHeader),
 		nSize(nSize),
-		client(client)
+		client(client),
+		etag(etag)
 	{}
 
 	FragmentForComputation::FragmentForComputation(const FragmentForComputation& other) :
 		sHeader(other.sHeader),
 		nSize(other.nSize),
-		client(other.client)
+		client(other.client),
+		etag(other.etag)
 	{}
 
 	FragmentForComputation& FragmentForComputation::operator=(FragmentForComputation&& source)
@@ -50,19 +53,22 @@ namespace az
 		sHeader = move(source.sHeader);
 		nSize = move(source.nSize);
 		client = move(source.client);
+		etag = move(source.etag);
 		return *this;
 	}
 
-	FragmentedFile::Fragment::Fragment(size_t nUserOffset, size_t nContentSize, const ObjectClient& client) :
+	FragmentedFile::Fragment::Fragment(size_t nUserOffset, size_t nContentSize, const ObjectClient& client, const Azure::ETag& etag) :
 		nUserOffset(nUserOffset),
 		nContentSize(nContentSize),
-		client(client)
+		client(client),
+		etag(etag)
 	{}
 
 	FragmentedFile::Fragment::Fragment(Fragment&& source) :
 		nUserOffset(move(source.nUserOffset)),
 		nContentSize(move(source.nContentSize)),
-		client(source.client)
+		client(source.client),
+		etag(move(source.etag))
 	{}
 
 	FragmentedFile::FragmentedFile() :
@@ -96,6 +102,7 @@ namespace az
 		size_t nFragmentSize;
 		vector<size_t> fragmentsWithHeadersToInspect;
 		size_t nFirstFragmentHeaderLen;
+		Azure::ETag etag;
 
 		for (size_t i = 0; i < nClients; i++)
 		{
@@ -114,6 +121,7 @@ namespace az
 					DownloadBlobOptions opts;
 					opts.Range = range;
 					auto downloadResult = move(clients[i].blob.Download(opts).Value);
+					etag = downloadResult.Details.ETag;
 					sFragmentHeader = ReadHeaderFromBodyStream(move(downloadResult.BodyStream));
 					if (i == 0) nFirstFragmentHeaderLen = sFragmentHeader.length();
 					else opts.Range->Length = nFirstFragmentHeaderLen;
@@ -128,6 +136,7 @@ namespace az
 					DownloadFileOptions opts;
 					opts.Range = range;
 					auto downloadResult = move(clients[i].shareFile.Download(opts).Value);
+					etag = downloadResult.Details.ETag;
 					sFragmentHeader = ReadHeaderFromBodyStream(move(downloadResult.BodyStream));
 					if (i == 0) nFirstFragmentHeaderLen = sFragmentHeader.length();
 					else opts.Range->Length = nFirstFragmentHeaderLen;
@@ -136,7 +145,7 @@ namespace az
 				}
 				else nFragmentSize = (size_t)clients[i].shareFile.GetProperties().Value.FileSize;
 			}
-			fragmentsForComputation.emplace_back(move(sFragmentHeader), nFragmentSize, clients[i]);
+			fragmentsForComputation.emplace_back(move(sFragmentHeader), nFragmentSize, clients[i], etag);
 			if (bGetHeader) fragmentsWithHeadersToInspect.push_back(i);
 		}
 
@@ -231,7 +240,7 @@ namespace az
 			nContentSize = bFirstIter ? fragment.nSize : fragment.nSize - nHeaderLen;
 			if (nContentSize != 0)
 			{
-				result.emplace_back(nUserOffset, nContentSize, move(fragment.client));
+				result.emplace_back(nUserOffset, nContentSize, move(fragment.client), move(fragment.etag));
 			}
 			nUserOffset += nContentSize;
 			bFirstIter = false;

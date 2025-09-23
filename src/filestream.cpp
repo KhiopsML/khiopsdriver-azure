@@ -144,7 +144,10 @@ namespace az
 
 			if (fragment.client.tag == BLOB)
 			{
+				Azure::Storage::Blobs::BlobAccessConditions accessConditions;
+				accessConditions.IfMatch = fragment.etag;
 				Azure::Storage::Blobs::DownloadBlobOptions opts;
+				opts.AccessConditions = accessConditions;
 				opts.Range = range;
 				auto downloadResult = move(fragment.client.blob.Download(opts).Value);
 				bodyStream = move(downloadResult.BodyStream);
