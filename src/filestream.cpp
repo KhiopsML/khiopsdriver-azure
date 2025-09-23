@@ -9,8 +9,6 @@ using namespace std;
 
 namespace az
 {
-	static unique_ptr<Azure::Core::IO::BodyStream> DownloadFileFragment(const ObjectClient& client, size_t nOffset, size_t nLength);
-
 	FileStream FileStream::OpenForReading(const std::vector<Azure::Storage::Blobs::BlobClient>& clients)
 	{
 		return move(OpenForReading(vector<ObjectClient>(clients.begin(), clients.end())));
@@ -136,13 +134,28 @@ namespace az
 		while (nToRead != 0 && nCurrentPos != nTotalFileSize)
 		{
 			const FragmentedFile::Fragment& fragment = readInfo.GetFragment(nFragmentIndex);
-			unique_ptr<Azure::Core::IO::BodyStream> bodyStream = move(
-				DownloadFileFragment(
-					fragment.client,
-					(nFragmentIndex == 0 ? 0 : readInfo.GetHeaderLen()) + nCurrentPos - fragment.nUserOffset,
-					nToRead < fragment.nContentSize ? nToRead : fragment.nContentSize
-				)
-			);
+			unique_ptr<Azure::Core::IO::BodyStream> bodyStream;
+
+			Azure::Core::Http::HttpRange range {
+				(int64_t)((nFragmentIndex == 0 ? 0 : readInfo.GetHeaderLen()) + nCurrentPos - fragment.nUserOffset),
+				(int64_t)(nToRead < fragment.nContentSize ? nToRead : fragment.nContentSize)
+			};
+
+			if (fragment.client.tag == BLOB)
+			{
+				Azure::Storage::Blobs::DownloadBlobOptions opts;
+				opts.Range = range;
+				auto downloadResult = move(fragment.client.blob.Download(opts).Value);
+				bodyStream = move(downloadResult.BodyStream);
+			}
+			else // SHARE storage
+			{
+				Azure::Storage::Files::Shares::DownloadFileOptions opts;
+				opts.Range = range;
+				auto downloadResult = move(fragment.client.shareFile.Download(opts).Value);
+				bodyStream = move(downloadResult.BodyStream);
+			}
+
 			nToRead -= (nRead = bodyStream->ReadToCount((uint8_t*)dest, nToRead));
 			nTotalRead += nRead;
 			nCurrentPos += nRead;
@@ -231,26 +244,6 @@ namespace az
 		else
 		{
 			writeInfo.client.shareFile.ForceCloseAllHandles();
-		}
-	}
-
-	static unique_ptr<Azure::Core::IO::BodyStream> DownloadFileFragment(const ObjectClient& client, size_t nOffset, size_t nLength)
-	{
-		Azure::Core::Http::HttpRange range{ (int64_t)nOffset, (int64_t)nLength };
-
-		if (client.tag == BLOB)
-		{
-			Azure::Storage::Blobs::DownloadBlobOptions opts;
-			opts.Range = range;
-			auto downloadResult = move(client.blob.Download(opts).Value);
-			return move(downloadResult.BodyStream);
-		}
-		else // SHARE storage
-		{
-			Azure::Storage::Files::Shares::DownloadFileOptions opts;
-			opts.Range = range;
-			auto downloadResult = move(client.shareFile.Download(opts).Value);
-			return move(downloadResult.BodyStream);
 		}
 	}
 }
