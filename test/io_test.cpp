@@ -64,6 +64,34 @@ void TestFSeek(string sUrl, bool bCrLf)
 	delete[] buffer;
 }
 
+TEST_P(IoTest, FReadAtEndOfFile)
+{
+	char ibuffer[64];
+	void* ihandle;
+	long long int filesize;
+
+	ASSERT_EQ(driver_connect(), nSuccess);
+
+	// We want the file to be at least 10-byte long
+	ASSERT_GT(filesize = driver_getFileSize(url.File().c_str()), 10);
+
+	ASSERT_NE(ihandle = driver_fopen(url.File().c_str(), 'r'), nullptr);
+
+	// Reading the first four bytes... OK
+	ASSERT_EQ(driver_fread(ibuffer, 1, 4, ihandle), 4);
+	// Reading the next four bytes... OK
+	ASSERT_EQ(driver_fread(ibuffer, 1, 4, ihandle), 4);
+	ASSERT_EQ(driver_fseek(ihandle, -2, 2), nSeekSuccess);
+	// Trying to read four bytes from the last but one... it should read the last two bytes
+	ASSERT_EQ(driver_fread(ibuffer, 1, 4, ihandle), 2);
+	// Trying to read four bytes while we are already at the end of the file... should raise an error
+	ASSERT_EQ(driver_fread(ibuffer, 1, 4, ihandle), nReadFailure);
+
+	ASSERT_EQ(driver_fclose(ihandle), nCloseSuccess);
+
+	ASSERT_EQ(driver_disconnect(), nSuccess);
+}
+
 TEST_P(IoTest, FReadWithConcurrentWrite)
 {
 	string file = url.RandomOutputFile();
