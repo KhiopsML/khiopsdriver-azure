@@ -131,7 +131,7 @@ namespace az
 		size_t nTotalRead = 0;
 		size_t nFragmentIndex = readInfo.GetFragmentIndexOfUserOffset(nCurrentPos);
 
-		while (nToRead != 0 && nCurrentPos != nTotalFileSize)
+		while (nToRead != 0)
 		{
 			const FragmentedFile::Fragment& fragment = readInfo.GetFragment(nFragmentIndex);
 
@@ -164,6 +164,7 @@ namespace az
 			nTotalRead += nRead;
 			nCurrentPos += nRead;
 			dest = (uint8_t*)dest + nRead;
+			if (nCurrentPos == nTotalFileSize) break;
 			nFragmentIndex++;
 		}
 		return nTotalRead;
