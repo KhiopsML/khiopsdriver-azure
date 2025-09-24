@@ -79,13 +79,20 @@ TEST_P(IoTest, FReadAtEndOfFile)
 
 	// Reading the first four bytes... OK
 	ASSERT_EQ(driver_fread(ibuffer, 1, 4, ihandle), 4);
+	ibuffer[4] = 0;
+	ASSERT_STREQ(ibuffer, "Labe");
 	// Reading the next four bytes... OK
 	ASSERT_EQ(driver_fread(ibuffer, 1, 4, ihandle), 4);
+	ibuffer[4] = 0;
+	ASSERT_STREQ(ibuffer, "l\tag");
 	ASSERT_EQ(driver_fseek(ihandle, -2, 2), nSeekSuccess);
 	// Trying to read four bytes from the last but one... it should read the last two bytes
 	ASSERT_EQ(driver_fread(ibuffer, 1, 4, ihandle), 2);
+	ibuffer[2] = 0;
+	ASSERT_STREQ(ibuffer, "e\n");
 	// Trying to read four bytes while we are already at the end of the file... should raise an error
 	ASSERT_EQ(driver_fread(ibuffer, 1, 4, ihandle), nReadFailure);
+	ASSERT_STREQ(ibuffer, "e\n"); // Buffer content unchanged
 
 	ASSERT_EQ(driver_fclose(ihandle), nCloseSuccess);
 
