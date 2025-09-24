@@ -12,6 +12,8 @@
 #include <fstream>  
 #include <sstream>
 
+#include <boost/algorithm/string.hpp>
+
 #include <boost/process/v2/environment.hpp>
 
 #include <boost/uuid/uuid.hpp>            // uuid class
@@ -92,6 +94,7 @@ TEST_P(IoTest, FReadAtEndOfFile)
 	ASSERT_STREQ(ibuffer, "e\n");
 	// Trying to read four bytes while we are already at the end of the file... should raise an error
 	ASSERT_EQ(driver_fread(ibuffer, 1, 4, ihandle), nReadFailure);
+	ASSERT_TRUE(boost::algorithm::starts_with(driver_getlasterror(), "416 The range specified is invalid for the current size of the resource."));
 	ASSERT_STREQ(ibuffer, "e\n"); // Buffer content unchanged
 
 	ASSERT_EQ(driver_fclose(ihandle), nCloseSuccess);
@@ -125,6 +128,7 @@ TEST_P(IoTest, FReadWithConcurrentWrite)
 
 	// This second reading operation should fail because it should find an ETag different to the one fetched by the driver_fopen call
 	ASSERT_EQ(driver_fread(ibuffer, 1, 6, ihandle), nReadFailure);
+	ASSERT_TRUE(boost::algorithm::starts_with(driver_getlasterror(), "412 The condition specified using HTTP conditional header(s) is not met."));
 	ASSERT_STREQ(ibuffer, "abc"); // Input buffer content unchanged
 
 	// Open file again. This will fetch the new ETag
