@@ -161,4 +161,14 @@ namespace az
 	{
 	public: inline CreationError(const std::string& sUrl) : Error((std::ostringstream() << "failed to create " << sUrl).str()) {}
 	};
+
+	class ReadAtEOFError : public Error
+	{
+	public: inline ReadAtEOFError() : Error("cannot read after end of file") {}
+	};
+
+	class ReadingUpdatedFileError : public Error
+	{
+	public: inline ReadingUpdatedFileError() : Error("the file has been updated during the reading") {}
+	};
 }

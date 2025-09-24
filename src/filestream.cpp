@@ -142,22 +142,38 @@ namespace az
 
 			unique_ptr<Azure::Core::IO::BodyStream> bodyStream;
 
-			if (fragment.client.tag == BLOB)
+			try
 			{
-				Azure::Storage::Blobs::BlobAccessConditions accessConditions;
-				accessConditions.IfMatch = fragment.etag;
-				Azure::Storage::Blobs::DownloadBlobOptions opts;
-				opts.AccessConditions = accessConditions;
-				opts.Range = range;
-				auto downloadResult = move(fragment.client.blob.Download(opts).Value);
-				bodyStream = move(downloadResult.BodyStream);
+				if (fragment.client.tag == BLOB)
+				{
+					Azure::Storage::Blobs::BlobAccessConditions accessConditions;
+					accessConditions.IfMatch = fragment.etag;
+					Azure::Storage::Blobs::DownloadBlobOptions opts;
+					opts.AccessConditions = accessConditions;
+					opts.Range = range;
+					auto downloadResult = move(fragment.client.blob.Download(opts).Value);
+					bodyStream = move(downloadResult.BodyStream);
+				}
+				else // SHARE storage
+				{
+					Azure::Storage::Files::Shares::DownloadFileOptions opts;
+					opts.Range = range;
+					auto downloadResult = move(fragment.client.shareFile.Download(opts).Value);
+					bodyStream = move(downloadResult.BodyStream);
+					
+				}
 			}
-			else // SHARE storage
+			catch (const Azure::Storage::StorageException& exc)
 			{
-				Azure::Storage::Files::Shares::DownloadFileOptions opts;
-				opts.Range = range;
-				auto downloadResult = move(fragment.client.shareFile.Download(opts).Value);
-				bodyStream = move(downloadResult.BodyStream);
+				switch (exc.StatusCode)
+				{
+				case Azure::Core::Http::HttpStatusCode::RangeNotSatisfiable:
+					throw ReadAtEOFError();
+				case Azure::Core::Http::HttpStatusCode::PreconditionFailed:
+					throw ReadingUpdatedFileError();
+				default:
+					throw;
+				}
 			}
 
 			nToRead -= (nRead = bodyStream->ReadToCount((uint8_t*)dest, nToRead));
