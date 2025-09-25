@@ -1,3 +1,5 @@
+// Input and output file streams, for reading from / writing to blobs and share files.
+
 #pragma once
 
 #include <cstddef>

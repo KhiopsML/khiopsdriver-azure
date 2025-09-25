@@ -1,3 +1,5 @@
+// A collection of utilities.
+
 #pragma once
 
 #include <vector>

@@ -1,3 +1,5 @@
+// The high-level driver, performing most of the work.
+
 #pragma once
 
 namespace az

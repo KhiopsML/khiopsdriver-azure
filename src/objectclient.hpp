@@ -1,3 +1,5 @@
+// Tagged union abstracting the concepts of blob clients and share file clients to a single "object client".
+
 #pragma once
 
 #include <azure/storage/blobs/blob_client.hpp>

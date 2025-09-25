@@ -1,3 +1,5 @@
+// The return values of the functions exposed by the driver library.
+
 #pragma once
 
 namespace az

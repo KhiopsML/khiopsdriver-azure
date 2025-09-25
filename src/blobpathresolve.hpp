@@ -1,3 +1,6 @@
+// Functions relative to blob path resolution.
+// They are used to list all blobs matching a given URL.
+
 #pragma once
 
 #include <vector>

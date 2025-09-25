@@ -1,3 +1,5 @@
+// Third-party code
+
 #pragma once
 
 #include <string>

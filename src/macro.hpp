@@ -1,3 +1,5 @@
+// Preprocessor macros
+
 #pragma once
 
 #define STRINGIFY(s) #s

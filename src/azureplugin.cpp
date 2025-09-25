@@ -1,3 +1,10 @@
+// This is the main file that implements the functions exposed by the driver as a library.
+// It delegates most of the work to the Driver class.
+// This library must be C-compatible so it provides a C interface.
+// This means that all high-level types taken as arguments or returned by the driver are converted,
+// in this file, to basic C types.
+// Exceptions are also caught in this file to convert them to function return codes and message logging.
+
 #ifdef __CYGWIN__
 #define _CRT_SECURE_NO_WARNINGS
 #endif

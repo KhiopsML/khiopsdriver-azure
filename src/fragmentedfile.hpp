@@ -1,3 +1,6 @@
+// Remote file abstraction that understands a file might have been split into multiple remote files.
+// This is also used for monolythic files, which are considered as single-fragment files.
+
 #pragma once
 
 #include <cstddef>

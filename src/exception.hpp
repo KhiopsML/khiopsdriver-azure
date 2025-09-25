@@ -1,3 +1,5 @@
+// Exceptions thrown by the driver. They are caught by the C-interface so they do not propagate to user code.
+
 #pragma once
 
 #include <exception>

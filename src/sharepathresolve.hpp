@@ -1,3 +1,6 @@
+// Functions relative to share file path resolution.
+// They are used to list all share files matching a given URL.
+
 #pragma once
 
 #include <vector>
