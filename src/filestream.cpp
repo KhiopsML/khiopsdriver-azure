@@ -159,8 +159,9 @@ namespace az
 					Azure::Storage::Files::Shares::DownloadFileOptions opts;
 					opts.Range = range;
 					auto downloadResult = move(fragment.client.shareFile.Download(opts).Value);
+					if (downloadResult.Details.ETag != fragment.etag)
+						throw ReadingUpdatedFileError();
 					bodyStream = move(downloadResult.BodyStream);
-					
 				}
 			}
 			catch (const Azure::Storage::StorageException& exc)
