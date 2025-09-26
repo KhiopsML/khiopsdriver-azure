@@ -636,37 +636,58 @@ namespace az
 
 		for (const auto& input : inputs)
 		{
-			if (input.storageType != BLOB) throw invalid_argument("concatenation is only supported for blobs"); // TODO: IMPLEMENT IT FOR SHARE FILES
+			if (input.storageType != output.storageType) throw invalid_argument("input storage type (BLOB/SHARE) is inconsistent with output storage type");
 			if (input.bDir) throw invalid_argument("concatenation is not supported for directories");
 		}
-		if (output.storageType != BLOB) throw invalid_argument("blob concatenation destination URL must be a blob URL");
 		if (output.bDir) throw invalid_argument("concatenation destination URL cannot be a directory");
 
 		vector<FragmentedFile> fragmentedFiles;
-		transform(inputs.begin(), inputs.end(), back_inserter(fragmentedFiles), [this](const auto& input) { return FragmentedFile(ListBlobs(input)); });
+		if (output.storageType == BLOB)
+		{
+			transform(inputs.begin(), inputs.end(), back_inserter(fragmentedFiles), [this](const auto& input) { return FragmentedFile(ListBlobs(input)); });
+		}
+		else // SHARE
+		{
+			transform(inputs.begin(), inputs.end(), back_inserter(fragmentedFiles), [this](const auto& input) { return FragmentedFile(ListFiles(input)); });
+		}
 		size_t nHeaderLen = fragmentedFiles.front().GetHeaderLen();
 		if (any_of(fragmentedFiles.begin() + 1, fragmentedFiles.end(), [nHeaderLen](const auto& fragmentedFile) { return fragmentedFile.GetHeaderLen() != nHeaderLen; }))
 		{
-			throw invalid_argument("input blob headers are incompatible");
+			throw invalid_argument("input fragment headers are incompatible");
 		}
 
-		auto destBlob = GetBlobClient(output).AsBlockBlobClient();
-		vector<string> destBlockIds;
-		Azure::Core::Http::HttpRange range;
-		for (size_t nInputIndex = 0; nInputIndex != inputs.size(); nInputIndex++)
+		if (output.storageType == BLOB)
 		{
-			string sBlockIdInBase10 = (ostringstream() << setfill('0') << setw(64) << destBlockIds.size()).str();
-			vector<uint8_t> blockIdInBase10(sBlockIdInBase10.begin(), sBlockIdInBase10.end());
-			string sBlockIdInBase64 = Azure::Core::Convert::Base64Encode(blockIdInBase10);
-			destBlockIds.push_back(sBlockIdInBase64);
+			auto destBlob = GetBlobClient(output).AsBlockBlobClient();
+			vector<string> destBlockIds;
+			Azure::Core::Http::HttpRange range;
+			for (size_t nInputIndex = 0; nInputIndex != inputs.size(); nInputIndex++)
+			{
+				string sBlockIdInBase10 = (ostringstream() << setfill('0') << setw(64) << destBlockIds.size()).str();
+				vector<uint8_t> blockIdInBase10(sBlockIdInBase10.begin(), sBlockIdInBase10.end());
+				string sBlockIdInBase64 = Azure::Core::Convert::Base64Encode(blockIdInBase10);
+				destBlockIds.push_back(sBlockIdInBase64);
 
-			Azure::Storage::Blobs::StageBlockFromUriOptions opts;
-			range.Offset = nInputIndex == 0 ? 0 : nHeaderLen;
-			opts.SourceRange = range;
-			destBlob.StageBlockFromUri(sBlockIdInBase64, inputs[nInputIndex].azureUrl.GetAbsoluteUrl(), opts);
+				range.Offset = nInputIndex == 0 ? 0 : nHeaderLen;
+				Azure::Storage::Blobs::StageBlockFromUriOptions opts;
+				opts.SourceRange = range;
+				destBlob.StageBlockFromUri(sBlockIdInBase64, inputs[nInputIndex].azureUrl.GetAbsoluteUrl(), opts);
+			}
+			destBlob.CommitBlockList(destBlockIds);
 		}
-
-		destBlob.CommitBlockList(destBlockIds);
+		else // SHARE
+		{
+			auto destFile = GetFileClient(output);
+			destFile.Create(0LL);
+			size_t nOffset = 0ULL;
+			Azure::Core::Http::HttpRange range;
+			for (size_t nInputIndex = 0; nInputIndex != inputs.size(); nInputIndex++)
+			{
+				range.Offset = nInputIndex == 0 ? 0 : nHeaderLen;
+				destFile.UploadRangeFromUri(nOffset, inputs[nInputIndex].azureUrl.GetAbsoluteUrl(), range);
+				nOffset += fragmentedFiles[nInputIndex].GetSize();
+			}
+		}
 	}
 
 	void Driver::CheckConnected() const
