@@ -140,7 +140,6 @@ namespace az
 					sFragmentHeader = ReadHeaderFromBodyStream(move(downloadResult.BodyStream));
 					if (i == 0) nFirstFragmentHeaderLen = sFragmentHeader.length();
 					else opts.Range->Length = nFirstFragmentHeaderLen;
-					opts.Range->Length = nFirstFragmentHeaderLen;
 					nFragmentSize = (size_t)downloadResult.FileSize;
 				}
 				else nFragmentSize = (size_t)clients[i].shareFile.GetProperties().Value.FileSize;
