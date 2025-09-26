@@ -636,7 +636,7 @@ namespace az
 
 		for (const auto& input : inputs)
 		{
-			if (input.storageType != BLOB) throw invalid_argument("concatenation is only supported for blobs");
+			if (input.storageType != BLOB) throw invalid_argument("concatenation is only supported for blobs"); // TODO: IMPLEMENT IT FOR SHARE FILES
 			if (input.bDir) throw invalid_argument("concatenation is not supported for directories");
 		}
 		if (output.storageType != BLOB) throw invalid_argument("blob concatenation destination URL must be a blob URL");

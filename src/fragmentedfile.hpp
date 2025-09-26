@@ -24,8 +24,9 @@ namespace az
 			ObjectClient client;
 			Azure::ETag etag;
 
-			Fragment(size_t nUserOffset, size_t nContentSize, const ObjectClient& client, const Azure::ETag& etag);
+			Fragment(size_t nContentSize, const ObjectClient& client, const Azure::ETag& etag);
 			Fragment(Fragment&& source);
+			Fragment& operator=(Fragment&& source);
 		};
 
 		class NoFragmentError : public Error

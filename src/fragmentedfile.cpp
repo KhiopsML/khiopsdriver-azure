@@ -16,49 +16,12 @@ using DownloadFileOptions = Azure::Storage::Files::Shares::DownloadFileOptions;
 
 namespace az
 {
-	static struct FragmentForComputation
-	{
-		string sHeader;
-		size_t nSize;
-		ObjectClient client;
-		Azure::ETag etag;
-
-		FragmentForComputation(string&& sHeader, size_t nSize, const ObjectClient& client, const Azure::ETag& etag);
-		FragmentForComputation(const FragmentForComputation& other);
-		FragmentForComputation& operator=(FragmentForComputation&& source);
-	};
-
 	static string ReadHeaderFromBodyStream(std::unique_ptr<BodyStream>&& bodyStream);
-	static string GetFileHeader(const vector<FragmentForComputation>& fragments, vector<size_t>&& fragmentsWithHeadersToInspect);
-	static vector<FragmentedFile::Fragment> GetFileFragments(vector<FragmentForComputation>& fragments, size_t nHeaderLen);
 
-	static constexpr size_t nMaxHeaderSize = 8ULL * 1024 * 1024;
+	static constexpr size_t nMaxHeaderLen = 8ULL * 1024 * 1024;
 
-	FragmentForComputation::FragmentForComputation(string&& sHeader, size_t nSize, const ObjectClient& client, const Azure::ETag& etag) :
-		sHeader(sHeader),
-		nSize(nSize),
-		client(client),
-		etag(etag)
-	{}
-
-	FragmentForComputation::FragmentForComputation(const FragmentForComputation& other) :
-		sHeader(other.sHeader),
-		nSize(other.nSize),
-		client(other.client),
-		etag(other.etag)
-	{}
-
-	FragmentForComputation& FragmentForComputation::operator=(FragmentForComputation&& source)
-	{
-		sHeader = move(source.sHeader);
-		nSize = move(source.nSize);
-		client = move(source.client);
-		etag = move(source.etag);
-		return *this;
-	}
-
-	FragmentedFile::Fragment::Fragment(size_t nUserOffset, size_t nContentSize, const ObjectClient& client, const Azure::ETag& etag) :
-		nUserOffset(nUserOffset),
+	FragmentedFile::Fragment::Fragment(size_t nContentSize, const ObjectClient& client, const Azure::ETag& etag) :
+		nUserOffset(0ULL),
 		nContentSize(nContentSize),
 		client(client),
 		etag(etag)
@@ -70,6 +33,15 @@ namespace az
 		client(source.client),
 		etag(move(source.etag))
 	{}
+
+	FragmentedFile::Fragment& FragmentedFile::Fragment::operator=(Fragment&& source)
+	{
+		nUserOffset = move(source.nUserOffset);
+		nContentSize = move(source.nContentSize);
+		client = source.client;
+		etag = move(source.etag);
+		return *this;
+	}
 
 	FragmentedFile::FragmentedFile() :
 		nHeaderLen(0),
@@ -85,72 +57,88 @@ namespace az
 	{}
 
 	FragmentedFile::FragmentedFile(const vector<ObjectClient>& clients):
-		storageType(clients.front().tag)
+		storageType(clients.front().tag),
+		nHeaderLen(0ULL),
+		nSize(0ULL)
 	{
-		if (clients.empty())
-		{
-			nHeaderLen = 0;
-			nSize = 0;
-			return;
-		}
+		if (clients.empty()) return;
 
-		vector<FragmentForComputation> fragmentsForComputation;
-		HttpRange range { 0, nMaxHeaderSize };
+		HttpRange range { 0, nMaxHeaderLen };
 		size_t nClients = clients.size();
 		size_t nRandomlyPicked = 0;
+		string sHeader;
 		string sFragmentHeader;
 		size_t nFragmentSize;
-		vector<size_t> fragmentsWithHeadersToInspect;
-		size_t nFirstFragmentHeaderLen;
 		Azure::ETag etag;
+		bool bGetHeader;
+		bool bMaybeHeader = true;
 
 		for (size_t i = 0; i < nClients; i++)
 		{
-			sFragmentHeader = "";
-			bool bGetHeader = false;
-			if (i < 5 || nClients <= 10 || i >= nClients - 5) bGetHeader = true;
+			// Determine if we need to fetch the header of the current fragment
+			if (!bMaybeHeader) bGetHeader = false;
+			else if (i < 5 || nClients <= 10 || i >= nClients - 5) bGetHeader = true;
 			else if (nRandomlyPicked < 10 && (i >= nClients - 15 + nRandomlyPicked || util::random::RandomBool()))
 			{
 				bGetHeader = true;
 				nRandomlyPicked++;
 			}
+			else bGetHeader = false;
+
 			if (clients[i].tag == BLOB)
 			{
-				if (bGetHeader)
+				nFragmentSize = (size_t)clients[i].blob.GetProperties().Value.BlobSize;
+				if (bGetHeader && nFragmentSize >= nHeaderLen)
 				{
 					DownloadBlobOptions opts;
 					opts.Range = range;
 					auto downloadResult = move(clients[i].blob.Download(opts).Value);
 					etag = downloadResult.Details.ETag;
 					sFragmentHeader = ReadHeaderFromBodyStream(move(downloadResult.BodyStream));
-					if (i == 0) nFirstFragmentHeaderLen = sFragmentHeader.length();
-					else opts.Range->Length = nFirstFragmentHeaderLen;
-					nFragmentSize = (size_t)downloadResult.BlobSize;
 				}
-				else nFragmentSize = (size_t)clients[i].blob.GetProperties().Value.BlobSize;
 			}
 			else // SHARE storage
 			{
-				if (bGetHeader)
+				nFragmentSize = (size_t)clients[i].shareFile.GetProperties().Value.FileSize;
+				if (bGetHeader && nFragmentSize >= nHeaderLen)
 				{
 					DownloadFileOptions opts;
 					opts.Range = range;
 					auto downloadResult = move(clients[i].shareFile.Download(opts).Value);
 					etag = downloadResult.Details.ETag;
 					sFragmentHeader = ReadHeaderFromBodyStream(move(downloadResult.BodyStream));
-					if (i == 0) nFirstFragmentHeaderLen = sFragmentHeader.length();
-					else opts.Range->Length = nFirstFragmentHeaderLen;
-					nFragmentSize = (size_t)downloadResult.FileSize;
 				}
-				else nFragmentSize = (size_t)clients[i].shareFile.GetProperties().Value.FileSize;
 			}
-			fragmentsForComputation.emplace_back(move(sFragmentHeader), nFragmentSize, clients[i], etag);
-			if (bGetHeader) fragmentsWithHeadersToInspect.push_back(i);
+
+			if (i == 0)
+			{
+				sHeader = sFragmentHeader;
+				nHeaderLen = sHeader.length();
+				range.Length = nHeaderLen;
+				if (nHeaderLen == 0) bMaybeHeader = false;
+			}
+
+			if (bMaybeHeader && bGetHeader && sFragmentHeader != sHeader)
+			{
+				bMaybeHeader = false;
+				nHeaderLen = 0;
+			}
+
+			fragments.emplace_back(nFragmentSize, clients[i], etag);
 		}
 
-		nHeaderLen = GetFileHeader(fragmentsForComputation, move(fragmentsWithHeadersToInspect)).size();
-		fragments = GetFileFragments(fragmentsForComputation, nHeaderLen);
-		nSize = accumulate(fragments.begin(), fragments.end(), 0ULL, [](size_t nTotal, const Fragment& fragment) { return nTotal + fragment.nContentSize; });
+		size_t nFreePosition = 0ULL;
+		for (size_t i = 0ULL; i < fragments.size(); i++)
+		{
+			if (i != 0ULL) fragments[i].nContentSize =- nHeaderLen;
+			if (fragments[i].nContentSize != 0ULL)
+			{
+				fragments[i].nUserOffset = nSize;
+				nSize += fragments[i].nContentSize;
+				if (i != nFreePosition) fragments[nFreePosition] = move(fragments[i]);
+				nFreePosition++;
+			}
+		}
 	}
 
 	FragmentedFile::FragmentedFile(FragmentedFile&& source) :
@@ -192,7 +180,7 @@ namespace az
 	static string ReadHeaderFromBodyStream(unique_ptr<BodyStream>&& bodyStream)
 	{
 		string sHeader;
-		constexpr size_t nBufferSize = 4096; // TODO
+		constexpr size_t nBufferSize = 4096; // TODO: can be adjusted if needed
 		size_t nBytesRead;
 		uint8_t* bufferReadEnd;
 		uint8_t* foundLineFeed;
@@ -217,33 +205,5 @@ namespace az
 		delete[] buffer;
 
 		return bFoundLineFeed ? sHeader : "";
-	}
-
-	static string GetFileHeader(const vector<FragmentForComputation>& fragments, vector<size_t>&& fragmentsWithHeadersToInspect)
-	{
-		string sFirstHeader = fragments.at(fragmentsWithHeadersToInspect.front()).sHeader;
-		return sFirstHeader.empty()
-			|| any_of(fragmentsWithHeadersToInspect.begin() + 1, fragmentsWithHeadersToInspect.end(), [sFirstHeader, &fragments](auto fragmentIndex) { return fragments[fragmentIndex].sHeader != sFirstHeader; })
-			? string()
-			: sFirstHeader;
-	}
-
-	static vector<FragmentedFile::Fragment> GetFileFragments(vector<FragmentForComputation>& fragments, size_t nHeaderLen)
-	{
-		vector<FragmentedFile::Fragment> result;
-		size_t nUserOffset = 0;
-		size_t nContentSize;
-		bool bFirstIter = true;
-		for (auto& fragment : fragments)
-		{
-			nContentSize = bFirstIter ? fragment.nSize : fragment.nSize - nHeaderLen;
-			if (nContentSize != 0)
-			{
-				result.emplace_back(nUserOffset, nContentSize, move(fragment.client), move(fragment.etag));
-			}
-			nUserOffset += nContentSize;
-			bFirstIter = false;
-		}
-		return result;
 	}
 }
