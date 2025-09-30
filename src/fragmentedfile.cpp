@@ -139,6 +139,7 @@ namespace az
 				nFreePosition++;
 			}
 		}
+		fragments.erase(fragments.begin() + nFreePosition, fragments.end());
 	}
 
 	FragmentedFile::FragmentedFile(FragmentedFile&& source) :
@@ -180,22 +181,18 @@ namespace az
 	static string ReadHeaderFromBodyStream(unique_ptr<BodyStream>&& bodyStream)
 	{
 		string sHeader;
-		constexpr size_t nBufferSize = 4096; // TODO: can be adjusted if needed
-		size_t nBytesRead;
-		uint8_t* bufferReadEnd;
+		size_t nBufferSize = (size_t)bodyStream->Length();
+		uint8_t* bufferEnd;
 		uint8_t* foundLineFeed;
 		bool bFoundLineFeed;
 
 		uint8_t* buffer = new uint8_t[nBufferSize];
 		try
 		{
-			do
-			{
-				nBytesRead = bodyStream->ReadToCount(buffer, nBufferSize);
-				bufferReadEnd = buffer + nBytesRead;
-				bFoundLineFeed = (foundLineFeed = find(buffer, bufferReadEnd, '\n')) < bufferReadEnd;
-				sHeader.append((const char*)buffer, bFoundLineFeed ? foundLineFeed + 1 - buffer : nBytesRead);
-			} while (!bFoundLineFeed && nBytesRead == nBufferSize);
+			bodyStream->ReadToCount(buffer, nBufferSize);
+			bufferEnd = buffer + nBufferSize;
+			bFoundLineFeed = (foundLineFeed = find(buffer, bufferEnd, '\n')) < bufferEnd;
+			sHeader.append((const char*)buffer, bFoundLineFeed ? foundLineFeed + 1 - buffer : nBufferSize);
 		}
 		catch (...)
 		{
