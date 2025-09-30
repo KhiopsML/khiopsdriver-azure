@@ -530,8 +530,16 @@ namespace az
 				size_t nRead;
 				ofstream ofs(destUrl, ios::binary);
 
-				while ((nRead = reader.Read(buffer, 1, GetPreferredBufferSize())) != 0ULL)
+				for (;;)
 				{
+					try
+					{
+						nRead = reader.Read(buffer, 1, GetPreferredBufferSize());
+					}
+					catch (const ReadAtEOFError&)
+					{
+						break;
+					}
 					ofs.write(buffer, (streamsize)nRead);
 				}
 
@@ -552,8 +560,16 @@ namespace az
 				size_t nRead;
 				ofstream ofs(destUrl, ios::binary);
 
-				while ((nRead = reader.Read(buffer, 1, GetPreferredBufferSize())) != 0ULL)
+				for (;;)
 				{
+					try
+					{
+						nRead = reader.Read(buffer, 1, GetPreferredBufferSize());
+					}
+					catch (const ReadAtEOFError&)
+					{
+						break;
+					}
 					ofs.write(buffer, (streamsize)nRead);
 				}
 
