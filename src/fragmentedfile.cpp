@@ -130,7 +130,7 @@ namespace az
 		size_t nFreePosition = 0ULL;
 		for (size_t i = 0ULL; i < fragments.size(); i++)
 		{
-			if (i != 0ULL) fragments[i].nContentSize =- nHeaderLen;
+			if (i != 0ULL) fragments[i].nContentSize -= nHeaderLen;
 			if (fragments[i].nContentSize != 0ULL)
 			{
 				fragments[i].nUserOffset = nSize;
