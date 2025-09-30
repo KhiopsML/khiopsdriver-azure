@@ -87,26 +87,26 @@ namespace az
 
 			if (clients[i].tag == BLOB)
 			{
-				nFragmentSize = (size_t)clients[i].blob.GetProperties().Value.BlobSize;
+				auto blobProperties = move(clients[i].blob.GetProperties().Value);
+				nFragmentSize = (size_t)blobProperties.BlobSize;
+				etag = blobProperties.ETag;
 				if (bGetHeader && nFragmentSize >= nHeaderLen)
 				{
 					DownloadBlobOptions opts;
 					opts.Range = range;
-					auto downloadResult = move(clients[i].blob.Download(opts).Value);
-					etag = downloadResult.Details.ETag;
-					sFragmentHeader = ReadHeaderFromBodyStream(move(downloadResult.BodyStream));
+					sFragmentHeader = ReadHeaderFromBodyStream(move(clients[i].blob.Download(opts).Value.BodyStream));
 				}
 			}
 			else // SHARE storage
 			{
-				nFragmentSize = (size_t)clients[i].shareFile.GetProperties().Value.FileSize;
+				auto fileProperties = move(clients[i].shareFile.GetProperties().Value);
+				nFragmentSize = (size_t)fileProperties.FileSize;
+				etag = fileProperties.ETag;
 				if (bGetHeader && nFragmentSize >= nHeaderLen)
 				{
 					DownloadFileOptions opts;
 					opts.Range = range;
-					auto downloadResult = move(clients[i].shareFile.Download(opts).Value);
-					etag = downloadResult.Details.ETag;
-					sFragmentHeader = ReadHeaderFromBodyStream(move(downloadResult.BodyStream));
+					sFragmentHeader = ReadHeaderFromBodyStream(move(clients[i].shareFile.Download(opts).Value.BodyStream));
 				}
 			}
 
