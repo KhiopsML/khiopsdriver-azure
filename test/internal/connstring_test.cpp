@@ -58,7 +58,7 @@ TEST(ConnectionStringTest, ParseIllFormedConnString)
 		az::util::connstr::ConnectionString::ParseConnectionString(sIllFormedConnString);
 		FAIL() << "did not catch parsing error";
 	}
-	catch (const az::util::connstr::ParsingError& exc)
+	catch (const std::exception& exc)
 	{
 		ASSERT_STREQ(exc.what(), "ill-formed connection string");
 	}
@@ -71,7 +71,7 @@ TEST(ConnectionStringTest, ParseConnStringMissingAccountName)
 		az::util::connstr::ConnectionString::ParseConnectionString(sConnStringMissingAccountName);
 		FAIL() << "did not catch parsing error";
 	}
-	catch (const az::util::connstr::ParsingError& exc)
+	catch (const std::exception& exc)
 	{
 		ASSERT_STREQ(exc.what(), "connection string is missing AccountName");
 	}
@@ -84,7 +84,7 @@ TEST(ConnectionStringTest, ParseConnStringMissingAccountKey)
 		az::util::connstr::ConnectionString::ParseConnectionString(sConnStringMissingAccountKey);
 		FAIL() << "did not catch parsing error";
 	}
-	catch (const az::util::connstr::ParsingError& exc)
+	catch (const std::exception& exc)
 	{
 		ASSERT_STREQ(exc.what(), "connection string is missing AccountKey");
 	}
@@ -97,7 +97,7 @@ TEST(ConnectionStringTest, ParseConnStringMissingBlobEndpoint)
 		az::util::connstr::ConnectionString::ParseConnectionString(sConnStringMissingBlobEndpoint);
 		FAIL() << "did not catch parsing error";
 	}
-	catch (const az::util::connstr::ParsingError& exc)
+	catch (const std::exception& exc)
 	{
 		ASSERT_STREQ(exc.what(), "connection string is missing BlobEndpoint");
 	}
