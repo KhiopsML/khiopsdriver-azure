@@ -166,15 +166,9 @@ namespace az
 			}
 			catch (const Azure::Storage::StorageException& exc)
 			{
-				switch (exc.StatusCode)
-				{
-				case Azure::Core::Http::HttpStatusCode::RangeNotSatisfiable:
-					throw ReadAtEOFError();
-				case Azure::Core::Http::HttpStatusCode::PreconditionFailed:
-					throw ReadingUpdatedFileError();
-				default:
-					throw;
-				}
+				if (exc.StatusCode == Azure::Core::Http::HttpStatusCode::RangeNotSatisfiable) throw ReadAtEOFError();
+				if (exc.StatusCode == Azure::Core::Http::HttpStatusCode::PreconditionFailed) throw ReadingUpdatedFileError();
+				throw;
 			}
 
 			nToRead -= (nRead = bodyStream->ReadToCount((uint8_t*)dest, nToRead));
