@@ -146,7 +146,7 @@ jobs:
       - name: Run tests with emulated storage - debug mode
         if: matrix.os == 'ubuntu-latest'
         run: |
-          AZURE_EMULATED_STORAGE=true AZURE_STORAGE_CONNECTION_STRING='AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;DefaultEndpointsProtocol=http;BlobEndpoint=http://localhost:10000/devstoreaccount1;QueueEndpoint=http://localhost:10001/devstoreaccount1;TableEndpoint=http://localhost:10002/devstoreaccount1;' ctest --preset test-debug --output-on-failure
+          (AZURE_EMULATED_STORAGE=true; AZURE_STORAGE_CONNECTION_STRING='AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;DefaultEndpointsProtocol=http;BlobEndpoint=http://localhost:10000/devstoreaccount1;QueueEndpoint=http://localhost:10001/devstoreaccount1;TableEndpoint=http://localhost:10002/devstoreaccount1;'; ctest --preset test-debug --output-on-failure)
 
       # Retrieve azure credentials through WIF - needed to run tests
       - name: Azure CLI Login
