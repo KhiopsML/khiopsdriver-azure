@@ -28,18 +28,18 @@ namespace az
 	{}
 
 	FragmentedFile::Fragment::Fragment(Fragment&& source) :
-		nUserOffset(move(source.nUserOffset)),
-		nContentSize(move(source.nContentSize)),
+		nUserOffset(std::move(source.nUserOffset)),
+		nContentSize(std::move(source.nContentSize)),
 		client(source.client),
-		etag(move(source.etag))
+		etag(std::move(source.etag))
 	{}
 
 	FragmentedFile::Fragment& FragmentedFile::Fragment::operator=(Fragment&& source)
 	{
-		nUserOffset = move(source.nUserOffset);
-		nContentSize = move(source.nContentSize);
+		nUserOffset = std::move(source.nUserOffset);
+		nContentSize = std::move(source.nContentSize);
 		client = source.client;
-		etag = move(source.etag);
+		etag = std::move(source.etag);
 		return *this;
 	}
 
@@ -87,26 +87,26 @@ namespace az
 
 			if (clients[i].tag == BLOB)
 			{
-				auto blobProperties = move(clients[i].blob.GetProperties().Value);
+				auto blobProperties = std::move(clients[i].blob.GetProperties().Value);
 				nFragmentSize = (size_t)blobProperties.BlobSize;
 				etag = blobProperties.ETag;
 				if (bGetHeader && nFragmentSize >= nHeaderLen)
 				{
 					DownloadBlobOptions opts;
 					opts.Range = range;
-					sFragmentHeader = ReadHeaderFromBodyStream(move(clients[i].blob.Download(opts).Value.BodyStream));
+					sFragmentHeader = ReadHeaderFromBodyStream(std::move(clients[i].blob.Download(opts).Value.BodyStream));
 				}
 			}
 			else // SHARE storage
 			{
-				auto fileProperties = move(clients[i].shareFile.GetProperties().Value);
+				auto fileProperties = std::move(clients[i].shareFile.GetProperties().Value);
 				nFragmentSize = (size_t)fileProperties.FileSize;
 				etag = fileProperties.ETag;
 				if (bGetHeader && nFragmentSize >= nHeaderLen)
 				{
 					DownloadFileOptions opts;
 					opts.Range = range;
-					sFragmentHeader = ReadHeaderFromBodyStream(move(clients[i].shareFile.Download(opts).Value.BodyStream));
+					sFragmentHeader = ReadHeaderFromBodyStream(std::move(clients[i].shareFile.Download(opts).Value.BodyStream));
 				}
 			}
 
@@ -135,7 +135,7 @@ namespace az
 			{
 				fragments[i].nUserOffset = nSize;
 				nSize += fragments[i].nContentSize;
-				if (i != nFreePosition) fragments[nFreePosition] = move(fragments[i]);
+				if (i != nFreePosition) fragments[nFreePosition] = std::move(fragments[i]);
 				nFreePosition++;
 			}
 		}
@@ -143,10 +143,10 @@ namespace az
 	}
 
 	FragmentedFile::FragmentedFile(FragmentedFile&& source) :
-		storageType(move(source.storageType)),
-		nHeaderLen(move(source.nHeaderLen)),
-		nSize(move(source.nSize)),
-		fragments(move(source.fragments))
+		storageType(std::move(source.storageType)),
+		nHeaderLen(std::move(source.nHeaderLen)),
+		nSize(std::move(source.nSize)),
+		fragments(std::move(source.fragments))
 	{}
 
 	FragmentedFile::~FragmentedFile()

@@ -11,12 +11,12 @@ namespace az
 {
 	FileStream FileStream::OpenForReading(const std::vector<Azure::Storage::Blobs::BlobClient>& clients)
 	{
-		return move(OpenForReading(vector<ObjectClient>(clients.begin(), clients.end())));
+		return OpenForReading(vector<ObjectClient>(clients.begin(), clients.end()));
 	}
 
 	FileStream FileStream::OpenForReading(const std::vector<Azure::Storage::Files::Shares::ShareFileClient>& clients)
 	{
-		return move(OpenForReading(vector<ObjectClient>(clients.begin(), clients.end())));
+		return OpenForReading(vector<ObjectClient>(clients.begin(), clients.end()));
 	}
 
 	FileStream FileStream::OpenForReading(const std::vector<ObjectClient>& clients)
@@ -31,12 +31,12 @@ namespace az
 
 	FileStream FileStream::OpenForWriting(OutputMode mode, const Azure::Storage::Blobs::BlobClient& client)
 	{
-		return move(OpenForWriting(mode, move(ObjectClient(client))));
+		return OpenForWriting(mode, ObjectClient(client));
 	}
 
 	FileStream FileStream::OpenForWriting(OutputMode mode, const Azure::Storage::Files::Shares::ShareFileClient& client)
 	{
-		return move(OpenForWriting(mode, move(ObjectClient(client))));
+		return OpenForWriting(mode, ObjectClient(client));
 	}
 
 	FileStream FileStream::OpenForWriting(OutputMode mode, const ObjectClient& client)
@@ -73,13 +73,13 @@ namespace az
 	}
 
 	FileStream::FileStream(FileStream&& source) :
-		handle(move(source.handle)),
-		storageType(move(source.storageType)),
-		mode(move(source.mode)),
-		nCurrentPos(move(source.nCurrentPos))
+		handle(std::move(source.handle)),
+		storageType(std::move(source.storageType)),
+		mode(std::move(source.mode)),
+		nCurrentPos(std::move(source.nCurrentPos))
 	{
-		if (mode == Mode::READ) new(&readInfo) FragmentedFile(move(source.readInfo));
-		else new(&writeInfo) WriteInfo(move(source.writeInfo));
+		if (mode == Mode::READ) new(&readInfo) FragmentedFile(std::move(source.readInfo));
+		else new(&writeInfo) WriteInfo(std::move(source.writeInfo));
 	}
 
 	FileStream::~FileStream()
@@ -106,9 +106,9 @@ namespace az
 	{}
 
 	FileStream::WriteInfo::WriteInfo(WriteInfo&& source):
-		mode(move(source.mode)),
+		mode(std::move(source.mode)),
 		client(source.client),
-		blockIds(move(source.blockIds))
+		blockIds(std::move(source.blockIds))
 	{}
 
 	FileStream::WriteInfo::~WriteInfo()
@@ -151,17 +151,17 @@ namespace az
 					Azure::Storage::Blobs::DownloadBlobOptions opts;
 					opts.AccessConditions = accessConditions;
 					opts.Range = range;
-					auto downloadResult = move(fragment.client.blob.Download(opts).Value);
-					bodyStream = move(downloadResult.BodyStream);
+					auto downloadResult = std::move(fragment.client.blob.Download(opts).Value);
+					bodyStream = std::move(downloadResult.BodyStream);
 				}
 				else // SHARE storage
 				{
 					Azure::Storage::Files::Shares::DownloadFileOptions opts;
 					opts.Range = range;
-					auto downloadResult = move(fragment.client.shareFile.Download(opts).Value);
+					auto downloadResult = std::move(fragment.client.shareFile.Download(opts).Value);
 					if (downloadResult.Details.ETag != fragment.etag)
 						throw ReadingUpdatedFileError();
-					bodyStream = move(downloadResult.BodyStream);
+					bodyStream = std::move(downloadResult.BodyStream);
 				}
 			}
 			catch (const Azure::Storage::StorageException& exc)

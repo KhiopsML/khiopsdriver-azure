@@ -29,7 +29,7 @@ namespace az
                     sFragment = nOffset == nStrLen ? "" : str.substr(nOffset, nDelimPos - nOffset);
                     if (!sFragment.empty() || !bRemoveEmpty)
                     {
-                        fragments.push_back(move(sFragment));
+                        fragments.push_back(std::move(sFragment));
                     }
                     if (nDelimPos == string::npos)
                     {
