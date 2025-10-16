@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ostream>
 #include "../src/storagetype.hpp"
+#include <ostream>
 
-void PrintTo(const az::StorageType& storageType, std::ostream* os);
+void PrintTo(const az::StorageType &storageType, std::ostream *os);
