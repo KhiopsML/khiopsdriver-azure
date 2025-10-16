@@ -201,7 +201,7 @@ namespace az
 				{
 					throw NoFileError(sUrl);
 				}
-				return FragmentedFile(move(blobs)).GetSize();
+				return FragmentedFile(std::move(blobs)).GetSize();
 			}
 		}
 		else // SHARE
@@ -217,7 +217,7 @@ namespace az
 				{
 					throw NoFileError(sUrl);
 				}
-				return FragmentedFile(move(files)).GetSize();
+				return FragmentedFile(std::move(files)).GetSize();
 			}
 		}
 	}
@@ -239,7 +239,7 @@ namespace az
 				{
 					throw NoFileError(sUrl);
 				}
-				return RegisterFileStream(move(FileStream::OpenForReading(move(blobs))));
+				return RegisterFileStream(FileStream::OpenForReading(blobs));
 			}
 		}
 		else // SHARE
@@ -255,7 +255,7 @@ namespace az
 				{
 					throw NoFileError(sUrl);
 				}
-				return RegisterFileStream(move(FileStream::OpenForReading(move(files))));
+				return RegisterFileStream(FileStream::OpenForReading(files));
 			}
 		}
 	}
@@ -272,7 +272,7 @@ namespace az
 			}
 			else
 			{
-				return RegisterFileStream(move(FileStream::OpenForWriting(FileStream::OutputMode::WRITE, move(GetBlobClient(request)))));
+				return RegisterFileStream(FileStream::OpenForWriting(FileStream::OutputMode::WRITE, GetBlobClient(request)));
 			}
 		}
 		else // SHARE
@@ -284,7 +284,7 @@ namespace az
 			else
 			{
 				CheckParentDirExists(request);
-				return RegisterFileStream(move(FileStream::OpenForWriting(FileStream::OutputMode::WRITE, move(GetFileClient(request)))));
+				return RegisterFileStream(FileStream::OpenForWriting(FileStream::OutputMode::WRITE, GetFileClient(request)));
 			}
 		}
 	}
@@ -301,7 +301,7 @@ namespace az
 			}
 			else
 			{
-				return RegisterFileStream(move(FileStream::OpenForWriting(FileStream::OutputMode::APPEND, move(GetBlobClient(request)))));
+				return RegisterFileStream(FileStream::OpenForWriting(FileStream::OutputMode::APPEND, GetBlobClient(request)));
 			}
 		}
 		else // SHARE
@@ -333,7 +333,7 @@ namespace az
 				{
 					client.Create(0);
 				}
-				return RegisterFileStream(move(FileStream::OpenForWriting(FileStream::OutputMode::APPEND, move(client))));
+				return RegisterFileStream(FileStream::OpenForWriting(FileStream::OutputMode::APPEND, client));
 			}
 		}
 	}
