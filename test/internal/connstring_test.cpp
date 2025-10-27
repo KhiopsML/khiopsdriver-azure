@@ -56,6 +56,26 @@ TEST(ConnectionStringTest, ParseValidConnString) {
   ASSERT_EQ(actual, expected);
 }
 
+const char *sValidAzuriteConnString = 
+    "DefaultEndpointsProtocol=http;"
+    "AccountName=devstoreaccount1;"
+    "AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/"
+    "K1SZFPTOtr/KBHBeksoGMGw==;"
+    "BlobEndpoint=http://localhost:10000/devstoreaccount1;"
+    "QueueEndpoint=http://localhost:10001/devstoreaccount1;";
+
+TEST(ConnectionStringTest, ParseAzuriteValidConnString) {
+  az::util::connstr::ConnectionString actual =
+      az::util::connstr::ConnectionString::ParseConnectionString(
+          sValidAzuriteConnString);
+  az::util::connstr::ConnectionString expected{
+      "devstoreaccount1",
+      "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/"
+      "K1SZFPTOtr/KBHBeksoGMGw==",
+      Azure::Core::Url("http://localhost:10000/devstoreaccount1")};
+  ASSERT_EQ(actual, expected);
+}
+
 TEST(ConnectionStringTest, ParseIllFormedConnString) {
   try {
     az::util::connstr::ConnectionString::ParseConnectionString(
