@@ -119,6 +119,7 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           enable-AzPSSession: true
+          
 
       - name: Azure PowerShell script
         uses: azure/powershell@v2
