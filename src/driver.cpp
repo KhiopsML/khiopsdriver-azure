@@ -15,6 +15,7 @@
 #include <iterator>
 #include <regex>
 #include <sstream>
+#include <iostream>
 
 using namespace std;
 
@@ -616,6 +617,9 @@ ServiceRequest Driver::ParseUrl(const string &sUrl) const {
         util::connstr::ConnectionString::ParseConnectionString(
             util::env::GetEnvironmentVariableOrThrow(
                 "AZURE_STORAGE_CONNECTION_STRING"));
+    cout << "BlobEndpoint = " << connectionString.blobEndpoint.GetAbsoluteUrl() << endl;
+    cout << "URL = " << url.GetAbsoluteUrl() << endl;
+
     if (util::str::StartsWith(url.GetAbsoluteUrl(),
                               connectionString.blobEndpoint.GetAbsoluteUrl())) {
       throw IncompatibleConnectionStringError();
