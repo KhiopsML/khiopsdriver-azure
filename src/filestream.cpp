@@ -163,8 +163,15 @@ size_t FileStream::Read(void *dest, size_t nSize, size_t nCount) {
         throw ReadingUpdatedFileError();
       throw;
     }
+    nRead = bodyStream->ReadToCount((uint8_t *)dest, nToRead);
+    
+    if (nToRead > 0 && nRead == 0) {
+      // Handle emulator special behavior that gracefully 
+      // accepts read beyond file size
+      throw ReadAtEOFError();
+    }
 
-    nToRead -= (nRead = bodyStream->ReadToCount((uint8_t *)dest, nToRead));
+    nToRead -= nRead;
     nTotalRead += nRead;
     nCurrentPos += nRead;
     dest = (uint8_t *)dest + nRead;
