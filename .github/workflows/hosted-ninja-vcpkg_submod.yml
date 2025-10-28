@@ -146,10 +146,7 @@ jobs:
       - name: Run tests with emulated storage - debug mode
         if: matrix.os == 'ubuntu-latest'
         run: |
-          export AZURE_EMULATED_STORAGE=true
-          export AZURE_STORAGE_CONNECTION_STRING='${{ steps.azuright.outputs.connstring }}'
-          ctest --preset test-debug --output-on-failure
-        shell: bash
+          AZURE_EMULATED_STORAGE=true ctest --preset test-debug --output-on-failure
 
       # Retrieve azure credentials through WIF - needed to run tests
       - name: Azure CLI Login
