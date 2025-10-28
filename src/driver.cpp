@@ -620,7 +620,7 @@ ServiceRequest Driver::ParseUrl(const string &sUrl) const {
     cout << "BlobEndpoint = " << connectionString.blobEndpoint.GetAbsoluteUrl() << endl;
     cout << "URL = " << url.GetAbsoluteUrl() << endl;
 
-    if (util::str::StartsWith(url.GetAbsoluteUrl(),
+    if (!util::str::StartsWith(url.GetAbsoluteUrl(),
                               connectionString.blobEndpoint.GetAbsoluteUrl())) {
       throw IncompatibleConnectionStringError();
     }
