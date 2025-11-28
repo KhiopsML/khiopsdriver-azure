@@ -14,7 +14,16 @@ cmake_minimum_required(VERSION 3.20)
 # Enforce c++14 standard.
 set(CMAKE_CXX_STANDARD 14)
 
-project(khiops-azure LANGUAGES CXX)
+# Get project version from the header file
+file(READ "src/azureplugin.hpp" H_FILE)
+string(REGEX MATCH "#define DRIVER_VERSION KHIOPS_STR\\(([^)]*)\\)" _ ${H_FILE})
+set(DRIVER_VERSION ${CMAKE_MATCH_1})
+string(REGEX REPLACE "-.*" "" VERSION ${DRIVER_VERSION})
+message(STATUS "Building Khiops driver version: ${DRIVER_VERSION} (CMake version : ${VERSION})")
+
+project(khiops-azure
+  LANGUAGES CXX
+  VERSION ${DRIVER_VERSION})
 
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/modules/)
 
@@ -133,3 +142,88 @@ if(BUILD_TESTS)
 endif(BUILD_TESTS)
 
 add_subdirectory(test)
+
+install(
+  TARGETS khiopsdriver_file_azure
+  LIBRARY DESTINATION lib
+  ARCHIVE DESTINATION lib # lib on windows
+  RUNTIME DESTINATION bin # dll on windows
+)
+
+set(CPACK_PACKAGE_VENDOR Orange)
+set(CPACK_PACKAGE_HOMEPAGE_URL https://khiops.org)
+set(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/LICENSE")
+set(CPACK_PACKAGE_VENDOR "Orange")
+set(CPACK_PACKAGE_CONTACT "Khiops Team <khiops.team@orange.com>")
+set(CPACK_SOURCE_IGNORE_FILES .git)
+set(CPACK_PACKAGE_DESCRIPTION "This driver allows Khiops to access the Azure Cloud storage.")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Azure driver for the Khiops tool")
+set(CPACK_PACKAGE_NAME "khiops-driver-azure")
+
+set(CPACK_VERBATIM_VARIABLES YES)
+set(CPACK_PACKAGE_INSTALL_DIRECTORY ${CPACK_PACKAGE_NAME})
+set(CPACK_OUTPUT_FILE_PREFIX "${CMAKE_BINARY_DIR}/packages")
+# set(CPACK_PACKAGING_INSTALL_PREFIX "/usr/")
+
+# ########### ARCHIVE Generator #############################
+
+# One package per component
+set(CPACK_ARCHIVE_COMPONENT_INSTALL ON)
+
+# user friendly archive names
+set(CPACK_ARCHIVE_FILE_NAME khiops-driver-azure-${PROJECT_VERSION})
+
+# ########### DEB Generator #############################
+
+# Package release ("This is the numbering of the DEB package itself, i.e. the version of the packaging and not the
+# version of the content")
+set(CPACK_DEBIAN_PACKAGE_RELEASE 1)
+
+# package name for deb.
+set(CPACK_DEBIAN_FILE_NAME DEB-DEFAULT)
+
+# Packages version: the full KHIOPS_VERSION (N.N.N_aN) instead of the PROJECT_VERSION (N.N.N)
+# set(CPACK_DEBIAN_PACKAGE_VERSION ${KHIOPS_VERSION})
+
+set(CPACK_DEB_COMPONENT_INSTALL YES)
+set(CPACK_DEBIAN_PACKAGE_SECTION "math")
+
+# runtime path setting
+set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
+set(CPACK_DEBIAN_PACKAGE_GENERATE_SHLIBS ON)
+# binaries in deb building will search shared library in the build tree. We should use directly
+# CMAKE_LIBRARY_OUTPUT_DIRECTORY but it produces a bug in dpkg-shlibdeps
+set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS_PRIVATE_DIRS ${CMAKE_BINARY_DIR}/lib/)
+
+# packages recommends
+set(CPACK_DEBIAN_PACKAGE_RECOMMENDS "khiops")
+
+# packages posinst and triggers set(CPACK_DEBIAN_KNI_PACKAGE_CONTROL_EXTRA
+# ${PROJECT_SOURCE_DIR}/packaging/linux/debian/kni/triggers")
+
+# set(CPACK_DEBIAN_PACKAGE_DEBUG ON)
+set(CPACK_DEBIAN_PACKAGE_CONTROL_STRICT_PERMISSION TRUE)
+
+# ########### RPM Generator #############################
+
+set(CPACK_RPM_COMPONENT_INSTALL ON)
+set(CPACK_RPM_PACKAGE_LICENSE BSD-3-Clause)
+set(CPACK_RPM_PACKAGE_GROUP "Applications/Engineering")
+set(CPACK_RPM_PACKAGE_VENDOR Orange)
+
+set(CPACK_RPM_KHIOPS_PACKAGE_AUTOREQ ON)
+
+# Packages version set(CPACK_RPM_PACKAGE_VERSION ${PROJECT_VERSION})
+
+# packages names set(CPACK_RPM_PACKAGE_NAME khiops)
+
+# default file name e.g. khiops-10.0.0-1.x86_64.rpm
+set(CPACK_RPM_FILE_NAME RPM-DEFAULT)
+
+# packages summary set(CPACK_RPM_PACKAGE_SUMMARY "Khiops tools")
+
+# packages post/postun install scripts set(CPACK_RPM_KNI_POST_INSTALL_SCRIPT_FILE
+# "${PROJECT_SOURCE_DIR}/packaging/linux/redhat/kni.post") set(CPACK_RPM_KNI_POSTUN_INSTALL_SCRIPT_FILE
+# "${PROJECT_SOURCE_DIR}/packaging/linux/redhat/kni.postun")
+
+include(CPack)
