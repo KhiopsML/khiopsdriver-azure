@@ -2,24 +2,27 @@
 name: DEB Packages
 on:
   workflow_dispatch:
-  pull_request:
-        branches: 
-        - main
 
 jobs:
   build:
-    runs-on: ubuntu-latest
     defaults:
       run:
         shell: bash
     strategy:
       fail-fast: false
       matrix:
-        image: [ #'debian:11', 
-                'debian:12', 'debian:13', 
-                #'ubuntu:20.04', 
-                'ubuntu:22.04', 'ubuntu:24.04']
-    container: ${{ matrix.image }}
+        setup:
+        - {os: ubuntu-latest, image: debian11}
+        - {os: ubuntu-latest, image: debian12}
+        - {os: ubuntu-latest, image: debian13}
+        - {os: ubuntu-latest, image: ubuntu20.04}
+        - {os: ubuntu-latest, image: ubuntu22.04}
+        - {os: ubuntu-latest, image: ubuntu24.04}
+        - {os: ubuntu-24.04-arm, image: ubuntu22.04-arm}
+        - {os: ubuntu-24.04-arm, image: ubuntu24.04-arm}
+    runs-on: ${{ matrix.setup.os }}
+    container:
+      image: ghcr.io/khiopsml/khiops/khiopsdev-${{ matrix.setup.image }}:latest
     steps:
       - name: Install packages
         run: |
@@ -28,8 +31,6 @@ jobs:
           apt-get -y --no-install-recommends install build-essential coreutils debhelper git ca-certificates curl 
           apt-get -y install ninja-build 
           apt-get -y install zip pkg-config # for vcpkkg
-          curl -LO "https://github.com/Kitware/CMake/releases/download/v3.30.3/cmake-3.30.3-linux-x86_64.sh"
-          bash cmake-3.30.3-linux-x86_64.sh --prefix=/usr/local/ --exclude-subdir
       - name: Checkout sources
         uses: actions/checkout@v4
         with:
@@ -48,6 +49,7 @@ jobs:
           source /etc/os-release
           echo "ID=$ID" >> "$GITHUB_ENV"
           echo "VERSION_CODENAME=$VERSION_CODENAME" >> "$GITHUB_ENV"
+          echo "ARCH=$(arch)" >> "$GITHUB_ENV"
       - name: Rename the packages to include the ubuntu codename
         run: |
           cd builds/packages/
@@ -60,7 +62,7 @@ jobs:
         with:
           # We add a `deb-` prefix so we can later recover all artifacts with the pattern `deb-*`
           # Note: The more natural pattern `*-deb` or `*` does not work
-          name: deb-${{ env.ID }}-${{ env.VERSION_CODENAME }}
+          name: deb-${{ env.ID }}-${{ env.VERSION_CODENAME }}-${{ env.ARCH }}
           path: builds/packages/*.deb
           if-no-files-found: error
  
@@ -70,7 +72,6 @@ jobs:
   # - that it executes a small test
   test:
     needs: build
-    runs-on: ubuntu-latest
     env:
       DEBIAN_FRONTEND: noninteractive
     defaults:
@@ -79,15 +80,22 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ #'debian:11', 
-             'debian:12',
-             #'debian:13', 'ubuntu:20.04', 
-             'ubuntu:22.04', 'ubuntu:24.04']
+        setup:
+        - {os: ubuntu-latest, image: debian11}
+        - {os: ubuntu-latest, image: debian12}
+        - {os: ubuntu-latest, image: debian13}
+        - {os: ubuntu-latest, image: ubuntu20.04}
+        - {os: ubuntu-latest, image: ubuntu22.04}
+        - {os: ubuntu-latest, image: ubuntu24.04}
+        - {os: ubuntu-24.04-arm, image: ubuntu22.04-arm}
+        - {os: ubuntu-24.04-arm, image: ubuntu24.04-arm}
+    runs-on: ${{ matrix.setup.os }}
+    container:
+      image: ghcr.io/khiopsml/khiops/khiopsdev-${{ matrix.setup.image }}:latest
     permissions:
       contents: 'read'
+      packages: 'read'
       id-token: 'write'            
-    container:
-      image: ${{ matrix.os }}
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
@@ -97,6 +105,8 @@ jobs:
           echo "ID=$ID" >> "$GITHUB_ENV"
           echo "VERSION_CODENAME=$VERSION_CODENAME" >> "$GITHUB_ENV"
           echo "MPI_IMPLEMENTATION=${{ inputs.mpi_implementation || 'openmpi' }}" >> "$GITHUB_ENV"
+          echo "ARCH=$(arch)" >> "$GITHUB_ENV"
+          echo "BUILDARCH=$(dpkg --print-architecture)" >> "$GITHUB_ENV"
       - name: Install curl & azure cli
         run: |
           apt-get update
@@ -104,31 +114,29 @@ jobs:
           curl -sL https://aka.ms/InstallAzureCLIDeb | bash
       - name: Download and install Khiops core
         run: |
-          curl -L https://github.com/KhiopsML/khiops/releases/download/11.0.0-b.0/khiops-core-${{ env.MPI_IMPLEMENTATION }}_11.0.0-b.0-1-${{ env.VERSION_CODENAME }}.amd64.deb --output ./khiops-core.deb
+          curl -L https://github.com/KhiopsML/khiops/releases/download/11.0.0-rc.2/khiops-core-${{ env.MPI_IMPLEMENTATION }}_11.0.0-rc.2-1-${{ env.VERSION_CODENAME }}.${{ env.BUILDARCH }}.deb --output ./khiops-core.deb
           dpkg -i ./khiops-core* || true
           apt-get -f install -y
       - name: Download artifacts (driver package)
         uses: actions/download-artifact@v4
         with:
-          name: deb-${{ env.ID }}-${{ env.VERSION_CODENAME }}
+          name: deb-${{ env.ID }}-${{ env.VERSION_CODENAME }}-${{ env.ARCH }}
           path: artifacts
       - name: Install driver
         run: dpkg -i ./artifacts/khiops-driver-*.deb
-
+      - name: Check Khiops core installation
+        uses: ./.github/actions/test-khiops-install
       # Retrieve azure credentials through WIF - needed to run tests
       - name: Azure CLI Login
         uses: azure/login@v2.3.0
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-    
-      - name: Check Khiops core installation
-        uses: ./.github/actions/test-khiops-install
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}    
       - name: Test Khiops on Iris dataset
         uses: ./.github/actions/test-khiops-on-iris
         with:
-          os-decription: ${{ env.ID }}-${{ env.VERSION_CODENAME }}
+          os-decription: ${{ env.ID }}-${{ env.VERSION_CODENAME }}-${{ env.ARCH }}
 
   # Release is only executed on tags
   release:

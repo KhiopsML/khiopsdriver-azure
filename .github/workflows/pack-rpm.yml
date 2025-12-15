@@ -93,7 +93,7 @@ jobs:
           echo "MPI_IMPLEMENTATION=${{ inputs.mpi_implementation || 'openmpi' }}" >> "$GITHUB_ENV"
       - name: Download and install Khiops core
         run: |
-          curl -L https://github.com/KhiopsML/khiops/releases/download/11.0.0-b.0/khiops-core-${{ env.MPI_IMPLEMENTATION }}-11.0.0_b.0-1.${{ env.VERSION }}.x86_64.rpm --output ./khiops-core.rpm
+          curl -L https://github.com/KhiopsML/khiops/releases/download/11.0.0-rc.2/khiops-core-${{ env.MPI_IMPLEMENTATION }}-11.0.0_rc.2-1.${{ env.VERSION }}.x86_64.rpm --output ./khiops-core.rpm
           yum install -y ./khiops-core*
       - name: Download artifacts (driver package)
         uses: actions/download-artifact@v4
@@ -103,7 +103,8 @@ jobs:
       - name: Install driver
         run: |
           yum install -y ./artifacts/khiops-driver-*.rpm
-
+      - name: Check Khiops core installation
+        uses: ./.github/actions/test-khiops-install
       # Retrieve azure credentials through WIF - needed to run tests
       - name: Install packages
         run: |
@@ -116,9 +117,6 @@ jobs:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
-      - name: Check Khiops core installation
-        uses: ./.github/actions/test-khiops-install
       - name: Test Khiops on Iris dataset
         uses: ./.github/actions/test-khiops-on-iris
         with:
