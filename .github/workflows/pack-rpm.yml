@@ -109,7 +109,7 @@ jobs:
         run: |
           dnf upgrade -y
           dnf install -y https://packages.microsoft.com/config/rhel/${{ matrix.rocky_version }}/packages-microsoft-prod.rpm
-          dnf install azure-cli
+          dnf install -y azure-cli
       - name: Azure CLI Login
         uses: azure/login@v2.3.0
         with:
