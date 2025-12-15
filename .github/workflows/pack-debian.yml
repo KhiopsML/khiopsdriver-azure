@@ -97,10 +97,11 @@ jobs:
           echo "ID=$ID" >> "$GITHUB_ENV"
           echo "VERSION_CODENAME=$VERSION_CODENAME" >> "$GITHUB_ENV"
           echo "MPI_IMPLEMENTATION=${{ inputs.mpi_implementation || 'openmpi' }}" >> "$GITHUB_ENV"
-      - name: Install curl
+      - name: Install curl & azure cli
         run: |
           apt-get update
           apt-get install -y curl
+          curl -L https://aka.ms/InstallAzureCli | bash
       - name: Download and install Khiops core
         run: |
           curl -L https://github.com/KhiopsML/khiops/releases/download/11.0.0-b.0/khiops-core-${{ env.MPI_IMPLEMENTATION }}_11.0.0-b.0-1-${{ env.VERSION_CODENAME }}.amd64.deb --output ./khiops-core.deb
