@@ -84,6 +84,13 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
+      - name: Set Azure Config Directory
+        run: |
+          # Create the directory if it doesn't exist
+          AZURE_CONFIG_DIR="${HOME}/.azure"
+          mkdir -p $AZURE_CONFIG_DIR
+          # Make it available to subsequent steps
+          echo "AZURE_CONFIG_DIR=$AZURE_CONFIG_DIR" >> "$GITHUB_ENV"
       - name: Set environment variables
         run: |
           source /etc/os-release

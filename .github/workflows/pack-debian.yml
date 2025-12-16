@@ -99,6 +99,13 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
+      - name: Set Azure Config Directory
+        run: |
+          # Create the directory if it doesn't exist
+          AZURE_CONFIG_DIR="${HOME}/.azure"
+          mkdir -p $AZURE_CONFIG_DIR
+          # Make it available to subsequent steps
+          echo "AZURE_CONFIG_DIR=$AZURE_CONFIG_DIR" >> "$GITHUB_ENV"
       - name: Set environment variables
         run: |
           source /etc/os-release
@@ -107,14 +114,6 @@ jobs:
           echo "MPI_IMPLEMENTATION=${{ inputs.mpi_implementation || 'openmpi' }}" >> "$GITHUB_ENV"
           echo "ARCH=$(arch)" >> "$GITHUB_ENV"
           echo "BUILDARCH=$(dpkg --print-architecture)" >> "$GITHUB_ENV"
-
-      - name: Set Azure Config Directory
-        run: |
-          # Create the directory if it doesn't exist
-          AZURE_CONFIG_DIR= ${HOME}/.azure"
-          mkdir -p $AZURE_CONFIG_DIR
-          # Make it available to subsequent steps
-          echo "AZURE_CONFIG_DIR=$AZURE_CONFIG_DIR" >> "$GITHUB_ENV"
       - name: Install curl & azure cli
         run: |
           apt-get update
