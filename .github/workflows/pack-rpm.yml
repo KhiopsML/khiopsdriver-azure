@@ -19,7 +19,11 @@ jobs:
       - name: Install packages
         run: |
           dnf upgrade -y
-          dnf install -y gcc-c++ make rpm-build # we do not use ninja because it is not in the dnf repo
+          dnf install -y gcc-c++ rpm-build
+          dnf install -y 'dnf-command(config-manager)'
+          dnf config-manager --set-enabled devel
+          dnf install -y ninja-build
+          dnf config-manager --set-disabled devel
           dnf install -y git perl # for vcpkg
           # Note: We install cmake from kitware's site to have a more recent version 
           curl -LO "https://github.com/Kitware/CMake/releases/download/v3.26.5/cmake-3.26.5-linux-x86_64.sh"
@@ -31,7 +35,7 @@ jobs:
           fetch-depth: 0
       - name: Configure CMake
         run: |
-            cmake -B builds -S . -G 'Unix Makefiles'  -D CMAKE_BUILD_TYPE=Release -D CMAKE_TOOLCHAIN_FILE=vcpkg/scripts/buildsystems/vcpkg.cmake
+            cmake -B builds -S . -G 'Ninja'  -D CMAKE_BUILD_TYPE=Release -D CMAKE_TOOLCHAIN_FILE=vcpkg/scripts/buildsystems/vcpkg.cmake
       - name: Build 
         run: |
             cmake --build builds --target khiopsdriver_file_azure
