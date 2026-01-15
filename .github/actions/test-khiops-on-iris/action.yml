@@ -61,6 +61,9 @@ runs:
           fi
           echo "KHIOPS_SCRIPT=$KHIOPS_ENV_DIR/khiops" >> "$GITHUB_ENV"
         fi
+    - name: Copy Azure directory to root's home
+      shell: bash
+      run: cp -r $HOME/.azure /root
     - name: Run Khiops tests
       shell: bash
       env:
