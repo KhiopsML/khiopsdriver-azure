@@ -25,8 +25,9 @@ StorageTestUrlProvider::StorageTestUrlProvider(StorageType storageType,
     sPrefix = "https://khiopsdriverazure.file.core.windows.net";
     break;
   default:
-    throw invalid_argument(
-        (ostringstream() << "invalid storage type" << (int)storageType).str());
+    ostringstream oss;
+    oss << "invalid storage type" << (int)storageType;
+    throw invalid_argument(oss.str());
   }
 }
 
@@ -41,10 +42,11 @@ const string StorageTestUrlProvider::Dir() const {
 }
 
 const string StorageTestUrlProvider::NewRandomDir() const {
-  return (ostringstream() << sPrefix + "/data-test-khiops-driver-azure/"
-                                       "khiops_data/output/CREATED_BY_TESTS_"
-                          << boost::uuids::random_generator()() << "/")
-      .str();
+  ostringstream oss;
+  oss << sPrefix + "/data-test-khiops-driver-azure/khiops_data/output/"
+                   "CREATED_BY_TESTS_"
+      << boost::uuids::random_generator()() << "/";
+  return oss.str();
 }
 
 const string StorageTestUrlProvider::InexistantFile() const {
@@ -94,9 +96,9 @@ IoTestUrlProvider::IoTestUrlProvider(StorageType storageType,
     : StorageTestUrlProvider(storageType, bIsEmulatedStorage) {}
 
 const string IoTestUrlProvider::RandomOutputFile() const {
-  return (ostringstream() << sPrefix
-                          << "/data-test-khiops-driver-azure/khiops_data/"
-                             "output/CREATED_BY_TESTS_"
-                          << boost::uuids::random_generator()() << ".txt")
-      .str();
+  ostringstream oss;
+  oss << sPrefix
+      << "/data-test-khiops-driver-azure/khiops_data/output/CREATED_BY_TESTS_"
+      << boost::uuids::random_generator()() << ".txt";
+  return oss.str();
 }

@@ -26,9 +26,8 @@ namespace env {
 class EnvironmentVariableNotFoundError : public Error {
 public:
   inline EnvironmentVariableNotFoundError(const std::string &sVarName)
-      : Error((std::ostringstream()
-               << "environment variable '" << sVarName << "' not found")
-                  .str()) {}
+      : Error(concatenate("environment variable '" << sVarName
+                                                   << "' not found")) {}
 };
 
 std::string GetEnvironmentVariableOrThrow(const std::string &sVarName);

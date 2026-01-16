@@ -78,9 +78,10 @@ class InvalidOperationForStreamModeError : public Error {
 public:
   inline InvalidOperationForStreamModeError(const std::string &operation,
                                             FileStream::Mode mode)
-      : Error((std::ostringstream()
-               << "operation '" << operation << "' is invalid for stream mode '"
-               << (mode == FileStream::Mode::READ ? "reader" : "writer") << "'")
-                  .str()) {}
+      : Error(concatenate("operation '"
+                          << operation << "' is invalid for stream mode '"
+                          << (mode == FileStream::Mode::READ ? "reader"
+                                                             : "writer")
+                          << "'")) {}
 };
 } // namespace az

@@ -72,17 +72,14 @@ string IoTest::FormatParam(
 void IoTest::SetUp() {
   SKIP_IF_EMULATED_SHARE_SERVICE();
   url = IoTestUrlProvider(GetParam(), IsEmulatedStorage());
+  ostringstream oss;
 #ifdef _WIN32
-  sLocalFilePath =
-      (ostringstream() << std::getenv("TEMP") << "\\out-"
-                       << boost::uuids::random_generator()() << ".txt")
-          .str();
+  oss << std::getenv("TEMP") << "\\out-" << boost::uuids::random_generator()()
+      << ".txt";
 #else
-  sLocalFilePath =
-      (ostringstream() << "/tmp/out-" << boost::uuids::random_generator()()
-                       << ".txt")
-          .str();
+  oss << "/tmp/out-" << boost::uuids::random_generator()() << ".txt";
 #endif
+  sLocalFilePath = oss.str();
   ASSERT_EQ(driver_connect(), nSuccess)
       << "driver failed to connect during test initialization";
   ASSERT_EQ(driver_isConnected(), nTrue)
@@ -100,17 +97,14 @@ string EndToEndTest::FormatParam(
 void EndToEndTest::SetUp() {
   SKIP_IF_EMULATED_SHARE_SERVICE();
   url = EndToEndTestUrlProvider(GetParam(), IsEmulatedStorage());
+  ostringstream oss;
 #ifdef _WIN32
-  sLocalFilePath =
-      (ostringstream() << std::getenv("TEMP") << "\\out-"
-                       << boost::uuids::random_generator()() << ".txt")
-          .str();
+  oss << std::getenv("TEMP") << "\\out-" << boost::uuids::random_generator()()
+      << ".txt";
 #else
-  sLocalFilePath =
-      (ostringstream() << "/tmp/out-" << boost::uuids::random_generator()()
-                       << ".txt")
-          .str();
+  oss << "/tmp/out-" << boost::uuids::random_generator()() << ".txt";
 #endif
+  sLocalFilePath = oss.str();
   ASSERT_EQ(driver_connect(), nSuccess)
       << "driver failed to connect during test initialization";
   ASSERT_EQ(driver_isConnected(), nTrue)

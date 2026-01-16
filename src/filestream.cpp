@@ -164,9 +164,9 @@ size_t FileStream::Read(void *dest, size_t nSize, size_t nCount) {
       throw;
     }
     nRead = bodyStream->ReadToCount((uint8_t *)dest, nToRead);
-    
+
     if (nToRead > 0 && nRead == 0) {
-      // Handle emulator special behavior that gracefully 
+      // Handle emulator special behavior that gracefully
       // accepts read beyond file size
       throw ReadAtEOFError();
     }
@@ -220,9 +220,9 @@ size_t FileStream::Write(const void *source, size_t nSize, size_t nCount) {
 
     size_t nToWrite = nSize * nCount;
 
-    string sBlockIdInBase10 = (ostringstream() << setfill('0') << setw(64)
-                                               << writeInfo.blockIds.size())
-                                  .str();
+    ostringstream oss;
+    oss << setfill('0') << setw(64) << writeInfo.blockIds.size();
+    string sBlockIdInBase10 = oss.str();
     vector<uint8_t> blockIdInBase10(sBlockIdInBase10.begin(),
                                     sBlockIdInBase10.end());
     string sBlockIdInBase64 =

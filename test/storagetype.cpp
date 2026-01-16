@@ -14,7 +14,8 @@ void PrintTo(const StorageType &storageType, std::ostream *os) {
     *os << "Share";
     break;
   default:
-    throw invalid_argument(
-        (ostringstream() << "invalid storage type" << (int)storageType).str());
+    ostringstream oss;
+    oss << "invalid storage type" << (int)storageType;
+    throw invalid_argument(oss.str());
   }
 }

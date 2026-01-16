@@ -12,10 +12,10 @@
 #include <azure/storage/files/shares/share_options.hpp>
 #include <fstream>
 #include <iomanip>
+#include <iostream>
 #include <iterator>
 #include <regex>
 #include <sstream>
-#include <iostream>
 
 using namespace std;
 
@@ -547,9 +547,9 @@ void Driver::Concatenate(const vector<string> &inputUrls,
     vector<string> destBlockIds;
     Azure::Core::Http::HttpRange range;
     for (size_t nInputIndex = 0; nInputIndex != inputs.size(); nInputIndex++) {
-      string sBlockIdInBase10 =
-          (ostringstream() << setfill('0') << setw(64) << destBlockIds.size())
-              .str();
+      ostringstream oss;
+      oss << setfill('0') << setw(64) << destBlockIds.size();
+      string sBlockIdInBase10 = oss.str();
       vector<uint8_t> blockIdInBase10(sBlockIdInBase10.begin(),
                                       sBlockIdInBase10.end());
       string sBlockIdInBase64 =
@@ -617,8 +617,9 @@ ServiceRequest Driver::ParseUrl(const string &sUrl) const {
         util::connstr::ConnectionString::ParseConnectionString(
             util::env::GetEnvironmentVariableOrThrow(
                 "AZURE_STORAGE_CONNECTION_STRING"));
-    if (!util::str::StartsWith(url.GetAbsoluteUrl(),
-                              connectionString.blobEndpoint.GetAbsoluteUrl())) {
+    if (!util::str::StartsWith(
+            url.GetAbsoluteUrl(),
+            connectionString.blobEndpoint.GetAbsoluteUrl())) {
       throw IncompatibleConnectionStringError();
     }
     auto credential = make_shared<Azure::Storage::StorageSharedKeyCredential>(
@@ -680,30 +681,30 @@ ServiceRequest Driver::ParseUrl(const string &sUrl) const {
 string Driver::GetServiceUrl(const ServiceRequest &request) const {
   if (request.storageType == BLOB) {
     if (request.bEmulated) {
-      return (ostringstream()
-              << request.azureUrl.GetScheme() << "://"
-              << request.azureUrl.GetHost() << ":" << request.azureUrl.GetPort()
-              << "/" << request.blob.sAccountName)
-          .str();
+      ostringstream oss;
+      oss << request.azureUrl.GetScheme() << "://" << request.azureUrl.GetHost()
+          << ":" << request.azureUrl.GetPort() << "/"
+          << request.blob.sAccountName;
+      return oss.str();
     } else {
-      return (ostringstream() << request.azureUrl.GetScheme() << "://"
-                              << request.azureUrl.GetHost() << ":"
-                              << request.azureUrl.GetPort())
-          .str();
+      ostringstream oss;
+      oss << request.azureUrl.GetScheme() << "://" << request.azureUrl.GetHost()
+          << ":" << request.azureUrl.GetPort();
+      return oss.str();
     }
   } else // SHARE
   {
-    return (ostringstream()
-            << request.azureUrl.GetScheme() << "://"
-            << request.azureUrl.GetHost() << ":" << request.azureUrl.GetPort())
-        .str();
+    ostringstream oss;
+    oss << request.azureUrl.GetScheme() << "://" << request.azureUrl.GetHost()
+        << ":" << request.azureUrl.GetPort();
+    return oss.str();
   }
 }
 
 string Driver::GetBlobContainerUrl(const ServiceRequest &request) const {
-  return (ostringstream() << GetServiceUrl(request) << "/"
-                          << request.blob.sContainer)
-      .str();
+  ostringstream oss;
+  oss << GetServiceUrl(request) << "/" << request.blob.sContainer;
+  return oss.str();
 }
 
 Azure::Storage::Blobs::BlobServiceClient
@@ -746,9 +747,9 @@ Driver::ListBlobs(const ServiceRequest &request) const {
 }
 
 string Driver::GetFileShareUrl(const ServiceRequest &request) const {
-  return (ostringstream() << GetServiceUrl(request) << "/"
-                          << request.share.sShare)
-      .str();
+  ostringstream oss;
+  oss << GetServiceUrl(request) << "/" << request.share.sShare;
+  return oss.str();
 }
 
 Azure::Storage::Files::Shares::ShareServiceClient

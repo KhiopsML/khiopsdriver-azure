@@ -7,7 +7,18 @@
 #include <sstream>
 #include <string>
 
+// Macro added to fix quickly compilation errors on old Linux distros.
+// Anyway, this file will be deleted because, to conform with our development
+// policies, we should not throw any exceptions.
+#define concatenate(what)                                                      \
+  [=]() {                                                                      \
+    std::ostringstream oss;                                                    \
+    oss << what;                                                               \
+    return oss.str();                                                          \
+  }()
+
 namespace az {
+
 class Error : public std::exception {
 public:
   inline Error(std::string sMessage) : sMessage(sMessage) {}
@@ -22,16 +33,15 @@ protected:
 class NullArgError : public Error {
 public:
   inline NullArgError(const char *sFuncname, const char *sArgname)
-      : Error((std::ostringstream()
-               << "error passing null pointer as '" << sArgname
-               << "' argument to function '" << sFuncname << "'")
-                  .str()) {}
+      : Error(concatenate("error passing null pointer as '"
+                          << sArgname << "' argument to function '" << sFuncname
+                          << "'")) {}
 };
 
 class InvalidDomainError : public Error {
 public:
   inline InvalidDomainError(const std::string &sDomain)
-      : Error((std::ostringstream() << "invalid domain: " << sDomain).str()) {}
+      : Error(concatenate("invalid domain: " << sDomain)) {}
 };
 
 class NotConnectedError : public Error {
@@ -54,14 +64,13 @@ public:
 class InvalidUrlError : public Error {
 public:
   inline InvalidUrlError(const std::string &sUrl)
-      : Error((std::stringstream() << "invalid URL: " << sUrl).str()) {}
+      : Error(concatenate("invalid URL: " << sUrl)) {}
 };
 
 class InvalidObjectPathError : public Error {
 public:
   inline InvalidObjectPathError(const std::string &sPath)
-      : Error(
-            (std::ostringstream() << "invalid object path: " << sPath).str()) {}
+      : Error(concatenate("invalid object path: " << sPath)) {}
 };
 
 enum class FileOperation { MKDIR, RMDIR };
@@ -74,17 +83,15 @@ inline std::string FormatOperation(FileOperation operation) {
     return "removing directory";
   default:
     throw std::invalid_argument(
-        (std::ostringstream() << "invalid FileOperation: " << (int)operation)
-            .str());
+        concatenate("invalid FileOperation: " << (int)operation));
   }
 }
 
 class InvalidOperationForFileError : public Error {
 public:
   inline InvalidOperationForFileError(FileOperation operation)
-      : Error((std::ostringstream() << "files do not support this operation: "
-                                    << FormatOperation(operation))
-                  .str()) {}
+      : Error(concatenate("files do not support this operation: "
+                          << FormatOperation(operation))) {}
 };
 
 enum class DirOperation { GET_SIZE, READ, WRITE, APPEND, REMOVE, COPY };
@@ -105,86 +112,75 @@ inline std::string FormatOperation(DirOperation operation) {
     return "copying";
   default:
     throw std::invalid_argument(
-        (std::ostringstream() << "invalid DirOperation: " << (int)operation)
-            .str());
+        concatenate("invalid DirOperation: " << (int)operation));
   }
 }
 
 class InvalidOperationForDirError : public Error {
 public:
   inline InvalidOperationForDirError(DirOperation operation)
-      : Error((std::ostringstream()
-               << "directories do not support this operation: "
-               << FormatOperation(operation))
-                  .str()) {}
+      : Error(concatenate("directories do not support this operation: "
+                          << FormatOperation(operation))) {}
 };
 
 class NoFileError : public Error {
 public:
   inline NoFileError(const std::string &sUrl)
-      : Error(
-            (std::ostringstream() << "no file exists at URL " << sUrl).str()) {}
+      : Error(concatenate("no file exists at URL " << sUrl)) {}
 };
 
 class DeletionError : public Error {
 public:
   inline DeletionError(const std::string &sUrl)
-      : Error((std::ostringstream() << "failed to delete " << sUrl).str()) {}
+      : Error(concatenate("failed to delete " << sUrl)) {}
 };
 
 class InvalidFileStreamModeError : public Error {
 public:
   inline InvalidFileStreamModeError(const std::string &sUrl, char mode)
-      : Error((std::ostringstream() << "tried to open file " << sUrl
-                                    << " with invalid mode " << mode)
-                  .str()) {}
+      : Error(concatenate("tried to open file " << sUrl << " with invalid mode "
+                                                << mode)) {}
 };
 
 class InvalidSeekOriginError : public Error {
 public:
   inline InvalidSeekOriginError(int nOrigin)
-      : Error((std::ostringstream()
-               << "tried to seek from invalid origin '" << nOrigin << "'")
-                  .str()) {}
+      : Error(concatenate("tried to seek from invalid origin '" << nOrigin
+                                                                << "'")) {}
 };
 
 class InvalidSeekOffsetError : public Error {
 public:
   inline InvalidSeekOffsetError(long long int nOffset, int nOrigin)
-      : Error((std::ostringstream()
-               << "tried to seek " << nOffset << " bytes from origin '"
-               << nOrigin << "' which is outside the file")
-                  .str()) {}
+      : Error(concatenate("tried to seek " << nOffset << " bytes from origin '"
+                                           << nOrigin
+                                           << "' which is outside the file")) {}
 };
 
 class FileStreamNotFoundError : public Error {
 public:
   inline FileStreamNotFoundError(const void *handle)
-      : Error((std::ostringstream()
-               << "file stream with handle '" << handle << "' not found")
-                  .str()) {}
+      : Error(concatenate("file stream with handle '" << handle
+                                                      << "' not found")) {}
 };
 
 class IntermediateDirNotFoundError : public Error {
 public:
   inline IntermediateDirNotFoundError(const std::string &sUrl)
-      : Error((std::ostringstream()
-               << "intermediate directory '" << sUrl << "' not found")
-                  .str()) {}
+      : Error(
+            concatenate("intermediate directory '" << sUrl << "' not found")) {}
 };
 
 class DirAlreadyExistsError : public Error {
 public:
   inline DirAlreadyExistsError(const std::string &sUrl)
-      : Error((std::ostringstream()
-               << "directory '" << sUrl << "' already exists")
-                  .str()) {}
+      : Error(concatenate("directory '" << sUrl << "' already exists")) {}
 };
 
 class CreationError : public Error {
 public:
   inline CreationError(const std::string &sUrl)
-      : Error((std::ostringstream() << "failed to create " << sUrl).str()) {}
+      : Error(concatenate("failed to create " << sUrl)) {}
 };
 
 class ReadAtEOFError : public Error {
