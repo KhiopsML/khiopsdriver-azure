@@ -4,7 +4,6 @@
 #pragma once
 
 #include "exception.hpp"
-#include "filestream.hpp"
 #include "fragmentedfile.hpp"
 #include "objectclient.hpp"
 #include "storagetype.hpp"
