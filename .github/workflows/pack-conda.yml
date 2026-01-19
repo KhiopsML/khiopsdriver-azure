@@ -56,9 +56,18 @@ jobs:
           fi
           echo "AZURE_DRIVER_VERSION=$AZURE_DRIVER_VERSION" >> "$GITHUB_ENV"
 
-      - name: Build conda packages 
+      - name: Build conda packages (not Windows)
+        if: ${{ runner.os != 'Windows' }}
         run: |
           conda build conda --output-folder ./builds/packages
+      - name: Build conda packages (Windows)
+        if: ${{ runner.os == 'Windows' }}
+        run: |
+          conda build conda --output-folder ./builds/packages
+        env:  # We have to shorten the paths on Windows...
+          CONDA_BLD_PATH: C:\bld
+          CONDA_ENVS_PATH: C:\envs
+          CONDA_PKGS_DIRS: C:\pkgs
       - name: Upload conda packages artifact
         uses: actions/upload-artifact@v4
         with:

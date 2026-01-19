@@ -23,8 +23,6 @@ requirements:
     - libboost-headers
     - fmt
     - spdlog
-  run:
-    # - aws-crt-cpp  # REPLACE WITH AZURE CRT FOR C++
 
 files:
   - lib/libkhiopsdriver_file_azure.so* [linux]
