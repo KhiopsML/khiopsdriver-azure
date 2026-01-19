@@ -1,0 +1,38 @@
+{% set version = os.environ.get('AZURE_DRIVER_VERSION').replace("-", "") %}
+
+package:
+  name: khiops-driver-azure
+  version: {{ version }}
+
+source:
+  path: ../
+
+build:
+  number: 0
+requirements:
+  build:
+    - {{ compiler('cxx') }}
+    - cmake
+    - ninja
+  host:
+    # - aws-sdk-cpp  # REPLACE WITH AZURE SDK FOR C++
+    - zlib
+    - libboost-devel
+    - libboost-headers
+    - fmt
+    - spdlog
+  run:
+    # - aws-crt-cpp  # REPLACE WITH AZURE CRT FOR C++
+
+files:
+  - lib/libkhiopsdriver_file_azure.so* [linux]
+  - lib/libkhiopsdriver_file_azure*.dylib [osx]
+  - lib/*.dll [win]
+  - lib/*.dll [win]
+
+about:
+  home: https://khiops.org
+  license: BSD+3-clause
+  summary: Khiops driver to access files on Microsoft Azure
+  doc_url: https://khiops.org
+  dev_url: https://github.com/khiopsml/khiopsdriver_azure
