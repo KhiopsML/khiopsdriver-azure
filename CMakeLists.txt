@@ -21,7 +21,8 @@ set(DRIVER_VERSION ${CMAKE_MATCH_1})
 string(REGEX REPLACE "-.*" "" VERSION ${DRIVER_VERSION})
 message(STATUS "Building Khiops driver version: ${DRIVER_VERSION} (CMake version : ${VERSION})")
 
-project(khiops-azure
+project(
+  khiops-azure
   LANGUAGES CXX
   VERSION ${DRIVER_VERSION})
 
