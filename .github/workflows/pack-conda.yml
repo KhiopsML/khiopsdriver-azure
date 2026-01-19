@@ -109,9 +109,13 @@ jobs:
       - name: Install the driver Conda package
         run: |
           conda install --channel ./build/conda khiops-driver-azure
-      - name: Add  CONDA_PREFIX to shared PATH
+      - name: Add CONDA_PREFIX to shared PATH
         run: |
-          echo "$CONDA_PREFIX/bin" >> $GITHUB_PATH         
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            echo "$CONDA_PREFIX/Library/bin" >> $GITHUB_PATH
+          else
+            echo "$CONDA_PREFIX/bin" >> $GITHUB_PATH
+          fi
       - name: Checkout sources
         uses: actions/checkout@v4
       # Retrieve azure credentials through WIF - needed to run tests
