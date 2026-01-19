@@ -15,7 +15,9 @@ requirements:
     - cmake
     - ninja
   host:
-    # - aws-sdk-cpp  # REPLACE WITH AZURE SDK FOR C++
+    - azure-identity-cpp
+    - azure-storage-blobs-cpp
+    - azure-storage-files-shares-cpp
     - zlib
     - libboost-devel
     - libboost-headers
