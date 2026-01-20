@@ -12,6 +12,6 @@ REPO_DIR=$(dirname "$SCRIPT_DIR")
 # - Get the version definition line in the KWKhiopsVersion.h file
 # - Get the third token, it should be something like KHIOPS_STR(10.1.1)
 # - Extract the version
-grep "DRIVER_VERSION" "$REPO_DIR"/src/gcsplugin.h \
+grep "DRIVER_VERSION" "$REPO_DIR"/src/azureplugin.hpp \
   | cut -d' ' -f3 \
   | sed 's/KHIOPS_STR(\(.*\))/\1/'
