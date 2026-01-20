@@ -119,7 +119,9 @@ set_target_properties(
   khiopsdriver_file_azure_testing
   PROPERTIES CXX_VISIBILITY_PRESET default
              VISIBILITY_INLINES_HIDDEN 0
-             WINDOWS_EXPORT_ALL_SYMBOLS ON)
+             SOVERSION ${PROJECT_VERSION_MAJOR}
+             VERSION ${PROJECT_VERSION})
+
 target_include_directories(khiopsdriver_file_azure_testing PRIVATE src/contrib)
 target_link_options(khiopsdriver_file_azure_testing PRIVATE $<$<CONFIG:RELEASE>:-s>) # stripping
 if(WIN32)
