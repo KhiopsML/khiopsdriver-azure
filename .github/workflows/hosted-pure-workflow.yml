@@ -37,6 +37,9 @@ jobs:
             triplet: arm64-osx
           - os: macos-15
             triplet: arm64-osx
+    defaults:
+      run:
+        shell: bash
     permissions:
       contents: 'read'
       id-token: 'write'         
@@ -54,7 +57,6 @@ jobs:
       VCPKG_DEFAULT_TRIPLET: ${{ matrix.triplet }}
 
     steps:
-
       # Set env vars needed for vcpkg to leverage the GitHub Action cache as a storage
       # for Binary Caching.
       - uses: actions/github-script@v7
@@ -67,10 +69,22 @@ jobs:
         with:
           submodules: true
           fetch-depth: 0
+
+      # Set AZURE_CONFIG_DIR before any Azure-cloud-related action so that only one Azure
+      # config directory will be used even if using both bash and powershell steps.
+      # This is necessary on runners that uses both bash and powershell, such as the
+      # windows ones. Otherwise the driver will not be able to authenticate to Azure.
+      - name: Export adjusted HOME and AZURE_CONFIG_DIR
+        run: |
+          if [ -n "$USERPROFILE" ]; then
+            export HOME="$USERPROFILE"
+          fi
+          export AZURE_CONFIG_DIR="$HOME/.azure"
+          echo "HOME=$HOME" >> $GITHUB_ENV
+          echo "AZURE_CONFIG_DIR=$AZURE_CONFIG_DIR" >> $GITHUB_ENV
           
       - name: "Create directory '${{ env.VCPKG_DEFAULT_BINARY_CACHE }}'"
         run: mkdir -p $VCPKG_DEFAULT_BINARY_CACHE
-        shell: bash
 
       - name: Install Azurite
         id: azuright
@@ -80,35 +94,19 @@ jobs:
 
       - name: Set Azurite env for later use
         run: echo "AZURE_STORAGE_CONNECTION_STRING=${{ steps.azuright.outputs.connstring }}" >> $GITHUB_ENV
-        shell: bash
 
       # Populate storage emulator
       - name:  Install test data in Azurite
-        run:   |
-            if [ "$RUNNER_OS" == "Linux" ]; then
-              curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
-            elif [ "$RUNNER_OS" == "Windows" ]; then
-              pwsh scripts\\install_azurecli.ps1
-            else
-              brew update && brew install azure-cli
-            fi
-            az storage container create -n data-test-khiops-driver-azure --connection-string "${{ steps.azuright.outputs.connstring }}"
-            az storage blob upload-batch --destination data-test-khiops-driver-azure/khiops_data --source $PWD/khiops_data --connection-string "${{ steps.azuright.outputs.connstring }}"
-        shell: bash
-    
-#      # Uncomment to debug login issues...
-#      - name: Azure CLI script
-#        uses: azure/cli@v2
-#        with:
-#          azcliversion: latest
-#          inlineScript: |
-#            echo az account show
-#            az account show
-#            # You can write your Azure CLI inline scripts here.
-#            echo az resource list
-#            az resource list
-#            echo az storage account list
-#            az storage account list
+        run: |
+          if [ "$RUNNER_OS" == "Linux" ]; then
+            curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+          elif [ "$RUNNER_OS" == "Windows" ]; then
+            pwsh scripts\\install_azurecli.ps1
+          else
+            brew update && brew install azure-cli
+          fi
+          az storage container create -n data-test-khiops-driver-azure --connection-string "${{ steps.azuright.outputs.connstring }}"
+          az storage blob upload-batch --destination data-test-khiops-driver-azure/khiops_data --source $PWD/khiops_data --connection-string "${{ steps.azuright.outputs.connstring }}"
 
       # Setup the build machine with the most recent versions of CMake and Ninja. Both are cached if not already: on subsequent runs both will be quickly restored from GitHub cache service.
       - uses: lukka/get-cmake@v3.30.1
@@ -139,6 +137,7 @@ jobs:
 
       # Retrieve azure credentials through WIF - needed to run tests
       - name: Azure CLI Login
+        if: matrix.os == 'ubuntu-latest'
         uses: azure/login@v2.3.0
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
@@ -174,8 +173,7 @@ jobs:
       # This step also runs vcpkg with Binary Caching leveraging GitHub Action cache to
       # store the built packages artifacts.
       - name: Restore from cache the dependencies and generate project files
-        run: |
-          cmake --preset ninja-multi-vcpkg -DCMAKE_BUILD_TYPE=Release
+        run: cmake --preset ninja-multi-vcpkg -DCMAKE_BUILD_TYPE=Release
 
       # Build (Release configuration only) the whole project with Ninja (which is spawn by CMake).
       #
@@ -183,8 +181,7 @@ jobs:
       # configuration with the `--config` flag, e.g.:
       # run: cmake --build --preset ninja-vcpkg --config Release
       - name: Build (Release configuration)
-        run: |
-          cmake --build --preset ninja-vcpkg-release
+        run: cmake --build --preset ninja-vcpkg-release
 
       # Retrieve azure credentials through WIF - needed to run tests
       - name: Azure CLI Login
@@ -193,11 +190,10 @@ jobs:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
+      
       # Test the whole project with CTest, again Release configuration only.
       - name: Test (Release configuration)
-        run: |
-          ctest --preset test-release --output-on-failure --output-junit test_results.xml
+        run: ctest --preset test-release --output-on-failure --output-junit test_results.xml
 
       - name: Upload results of cloud storage tests
         if: always()
