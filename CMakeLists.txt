@@ -115,7 +115,7 @@ target_compile_options(
   PRIVATE $<$<CXX_COMPILER_ID:MSVC>:-Wall;/wd4582;/wd4583;/wd4625;/wd4626;/wd4710;/wd4711;/wd4820;/wd4868;/permissive->
   PRIVATE $<$<CXX_COMPILER_ID:AppleClang,Clang,GNU>:-Wall;-Wextra;-pedantic>)
 
-add_library(khiopsdriver_file_azure_testing SHARED ${SourceList})
+add_library(khiopsdriver_file_azure_testing STATIC ${SourceList})
 set_target_properties(khiopsdriver_file_azure_testing PROPERTIES CXX_VISIBILITY_PRESET default VISIBILITY_INLINES_HIDDEN
                                                                                                0)
 
