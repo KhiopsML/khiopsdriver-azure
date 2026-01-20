@@ -102,29 +102,13 @@ list(TRANSFORM SourceList PREPEND src/)
 add_library(khiopsdriver_file_azure SHARED ${SourceList})
 target_include_directories(khiopsdriver_file_azure PRIVATE src/contrib)
 target_link_options(khiopsdriver_file_azure PRIVATE $<$<CONFIG:RELEASE>:-s>) # stripping
+set_target_properties(khiopsdriver_file_azure PROPERTIES SOVERSION ${PROJECT_VERSION_MAJOR} VERSION ${PROJECT_VERSION})
 if(WIN32)
-  target_link_libraries(
-    khiopsdriver_file_azure
-    PRIVATE Azure::azure-identity
-            Azure::azure-storage-blobs
-            Azure::azure-storage-files-shares
-            spdlog::spdlog
-            bcrypt
-            SOVERSION
-            ${PROJECT_VERSION_MAJOR}
-            VERSION
-            ${PROJECT_VERSION})
+  target_link_libraries(khiopsdriver_file_azure PRIVATE Azure::azure-identity Azure::azure-storage-blobs
+                                                        Azure::azure-storage-files-shares spdlog::spdlog bcrypt)
 else()
-  target_link_libraries(
-    khiopsdriver_file_azure
-    PRIVATE Azure::azure-identity
-            Azure::azure-storage-blobs
-            Azure::azure-storage-files-shares
-            spdlog::spdlog
-            SOVERSION
-            ${PROJECT_VERSION_MAJOR}
-            VERSION
-            ${PROJECT_VERSION})
+  target_link_libraries(khiopsdriver_file_azure PRIVATE Azure::azure-identity Azure::azure-storage-blobs
+                                                        Azure::azure-storage-files-shares spdlog::spdlog)
 endif()
 target_compile_options(
   khiopsdriver_file_azure
