@@ -112,7 +112,20 @@ jobs:
           # Make it available to subsequent steps
           echo "AZURE_CONFIG_DIR=$env:AZURE_CONFIG_DIR" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
-            
+      - name: Install coverage tools
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install lcov gcovr
+  
+      - name: Build debug version and run sanitizer checks.
+        if: matrix.os == 'ubuntu-latest'
+        uses: lukka/run-cmake@v10
+        with:
+          configurePreset: 'ninja-multi-vcpkg'
+          configurePresetAdditionalArgs: "['-DCMAKE_BUILD_TYPE=Debug']"
+          buildPreset: 'ninja-vcpkg-debug'
+
       # Retrieve azure credentials through WIF - needed to run tests
       - name: Azure CLI Login
         uses: azure/login@v2.3.0
@@ -131,20 +144,6 @@ jobs:
             Get-AzResource | Format-Table
             Get-AzStorageAccount | Format-Table
 
-      - name: Install coverage tools
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          sudo apt-get update
-          sudo apt-get install lcov gcovr
-  
-      - name: Build debug version and run sanitizer checks.
-        if: matrix.os == 'ubuntu-latest'
-        uses: lukka/run-cmake@v10
-        with:
-          configurePreset: 'ninja-multi-vcpkg'
-          configurePresetAdditionalArgs: "['-DCMAKE_BUILD_TYPE=Debug']"
-          buildPreset: 'ninja-vcpkg-debug'
-
       - name: Run tests with emulated storage - debug mode
         if: matrix.os == 'ubuntu-latest'
         run: |
@@ -158,6 +157,15 @@ jobs:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        
+      # Retrieve azure credentials through WIF - needed to run tests
+      - name: Azure CLI Login
+        uses: azure/login@v2.3.0
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          enable-AzPSSession: true
          
       - name: Run tests with cloud storage - debug mode
         if: matrix.os == 'ubuntu-latest'

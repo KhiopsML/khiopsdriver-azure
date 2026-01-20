@@ -95,14 +95,6 @@ jobs:
             az storage container create -n data-test-khiops-driver-azure --connection-string "${{ steps.azuright.outputs.connstring }}"
             az storage blob upload-batch --destination data-test-khiops-driver-azure/khiops_data --source $PWD/khiops_data --connection-string "${{ steps.azuright.outputs.connstring }}"
         shell: bash
-
-      # Retrieve azure credentials through WIF - needed to run tests
-      - name: Azure CLI Login
-        uses: azure/login@v2.3.0
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
     
 #      # Uncomment to debug login issues...
 #      - name: Azure CLI script
@@ -145,6 +137,14 @@ jobs:
         with:
           toolset: 14.0
 
+      # Retrieve azure credentials through WIF - needed to run tests
+      - name: Azure CLI Login
+        uses: azure/login@v2.3.0
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
       - name: Build debug version and run sanitizer checks
         if: matrix.os == 'ubuntu-latest'
         run: |
@@ -186,6 +186,14 @@ jobs:
         run: |
           cmake --build --preset ninja-vcpkg-release
 
+      # Retrieve azure credentials through WIF - needed to run tests
+      - name: Azure CLI Login
+        uses: azure/login@v2.3.0
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
       # Test the whole project with CTest, again Release configuration only.
       - name: Test (Release configuration)
         run: |
@@ -206,5 +214,3 @@ jobs:
             builds/ninja-multi-vcpkg/lib/*.so
             builds/ninja-multi-vcpkg/bin/*.dll
           if-no-files-found: ignore
-
-
