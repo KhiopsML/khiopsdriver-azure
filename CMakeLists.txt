@@ -103,11 +103,28 @@ add_library(khiopsdriver_file_azure SHARED ${SourceList})
 target_include_directories(khiopsdriver_file_azure PRIVATE src/contrib)
 target_link_options(khiopsdriver_file_azure PRIVATE $<$<CONFIG:RELEASE>:-s>) # stripping
 if(WIN32)
-  target_link_libraries(khiopsdriver_file_azure PRIVATE Azure::azure-identity Azure::azure-storage-blobs
-                                                        Azure::azure-storage-files-shares spdlog::spdlog bcrypt)
+  target_link_libraries(
+    khiopsdriver_file_azure
+    PRIVATE Azure::azure-identity
+            Azure::azure-storage-blobs
+            Azure::azure-storage-files-shares
+            spdlog::spdlog
+            bcrypt
+            SOVERSION
+            ${PROJECT_VERSION_MAJOR}
+            VERSION
+            ${PROJECT_VERSION})
 else()
-  target_link_libraries(khiopsdriver_file_azure PRIVATE Azure::azure-identity Azure::azure-storage-blobs
-                                                        Azure::azure-storage-files-shares spdlog::spdlog)
+  target_link_libraries(
+    khiopsdriver_file_azure
+    PRIVATE Azure::azure-identity
+            Azure::azure-storage-blobs
+            Azure::azure-storage-files-shares
+            spdlog::spdlog
+            SOVERSION
+            ${PROJECT_VERSION_MAJOR}
+            VERSION
+            ${PROJECT_VERSION})
 endif()
 target_compile_options(
   khiopsdriver_file_azure
@@ -115,12 +132,8 @@ target_compile_options(
   PRIVATE $<$<CXX_COMPILER_ID:AppleClang,Clang,GNU>:-Wall;-Wextra;-pedantic>)
 
 add_library(khiopsdriver_file_azure_testing SHARED ${SourceList})
-set_target_properties(
-  khiopsdriver_file_azure_testing
-  PROPERTIES CXX_VISIBILITY_PRESET default
-             VISIBILITY_INLINES_HIDDEN 0
-             SOVERSION ${PROJECT_VERSION_MAJOR}
-             VERSION ${PROJECT_VERSION})
+set_target_properties(khiopsdriver_file_azure_testing PROPERTIES CXX_VISIBILITY_PRESET default VISIBILITY_INLINES_HIDDEN
+                                                                                               0)
 
 target_include_directories(khiopsdriver_file_azure_testing PRIVATE src/contrib)
 target_link_options(khiopsdriver_file_azure_testing PRIVATE $<$<CONFIG:RELEASE>:-s>) # stripping
