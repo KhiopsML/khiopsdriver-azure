@@ -116,8 +116,6 @@ target_compile_options(
   PRIVATE $<$<CXX_COMPILER_ID:AppleClang,Clang,GNU>:-Wall;-Wextra;-pedantic>)
 
 add_library(khiopsdriver_file_azure_testing STATIC ${SourceList})
-set_target_properties(khiopsdriver_file_azure_testing PROPERTIES CXX_VISIBILITY_PRESET default VISIBILITY_INLINES_HIDDEN
-                                                                                               0)
 
 target_include_directories(khiopsdriver_file_azure_testing PRIVATE src/contrib)
 target_link_options(khiopsdriver_file_azure_testing PRIVATE $<$<CONFIG:RELEASE>:-s>) # stripping
