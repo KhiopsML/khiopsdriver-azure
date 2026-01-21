@@ -9,6 +9,7 @@ struct ServiceRequest;
 class Driver;
 } // namespace az
 
+#include "azureplugin.hpp"
 #include "filestream.hpp"
 #include "macro.hpp"
 #include <azure/storage/blobs/blob_client.hpp>
@@ -21,13 +22,6 @@ class Driver;
 #include <memory>
 #include <string>
 #include <unordered_map>
-
-// Release versions must have 3 digits, for example STRINGIFY(1.2.0)
-// Alpha, beta ou release candidates have an extra suffix, for example :
-// - STRINGIFY(1.2.0-a.1)
-// - STRINGIFY(1.2.0-b.3)
-// - STRINGIFY(1.2.0-rc.2)
-#define DRIVER_VERSION STRINGIFY(0.1.0)
 
 namespace az {
 static const std::string sName = "Azure driver";
