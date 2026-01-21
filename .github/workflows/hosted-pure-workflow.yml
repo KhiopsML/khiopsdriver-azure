@@ -20,23 +20,17 @@ on:
 
 jobs:
   job:
-    name: ${{ matrix.os }}-${{ github.workflow }}
-    runs-on: ${{ matrix.os }}
+    name: ${{ matrix.platform.os }}-${{ github.workflow }}
+    runs-on: ${{ matrix.platform.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-15-intel, macos-14, macos-15, windows-latest]
-        include:
-          - os: windows-latest
-            triplet: x64-windows
-          - os: ubuntu-latest
-            triplet: x64-linux
-          - os: macos-15-intel
-            triplet: x64-osx
-          - os: macos-14
-            triplet: arm64-osx
-          - os: macos-15
-            triplet: arm64-osx
+        platform:
+          - {os: ubuntu-latest, triplet: x64-linux}
+          - {os: macos-latest, triplet: arm64-osx}
+          - {os: macos-15-intel, triplet: x64-osx}
+          - {os: macos-14, triplet: arm64-osx}
+          - {os: windows-latest, triplet: x64-windows}
     defaults:
       run:
         shell: bash
@@ -54,7 +48,7 @@ jobs:
       # Let's use GitHub Action cache as storage for the vcpkg Binary Caching feature.
       VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
       # Allow setting triplet to something else than platform's default
-      VCPKG_DEFAULT_TRIPLET: ${{ matrix.triplet }}
+      VCPKG_DEFAULT_TRIPLET: ${{ matrix.platform.triplet }}
 
     steps:
       # Set env vars needed for vcpkg to leverage the GitHub Action cache as a storage
@@ -137,7 +131,7 @@ jobs:
 
       # Retrieve azure credentials through WIF - needed to run tests
       - name: Azure CLI Login
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.platform.os == 'ubuntu-latest'
         uses: azure/login@v2.3.0
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
@@ -145,7 +139,7 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Build debug version and run sanitizer checks
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.platform.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
           sudo apt-get install lcov gcovr
@@ -159,7 +153,7 @@ jobs:
       
       # - name: Upload coverage results
       #   uses: actions/upload-artifact@v4
-      #   if: matrix.os == 'ubuntu-latest'
+      #   if: matrix.platform.os == 'ubuntu-latest'
       #   with:
       #     name: coverage
       #     path: |
@@ -204,7 +198,7 @@ jobs:
       - name: Upload the packages as artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: binary-${{ matrix.os }}
+          name: binary-${{ matrix.platform.os }}
           path: |
             builds/ninja-multi-vcpkg/lib/*.dylib
             builds/ninja-multi-vcpkg/lib/*.so

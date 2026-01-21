@@ -23,23 +23,17 @@ on:
 
 jobs:
   job:
-    name: ${{ matrix.os }}-${{ github.workflow }}
-    runs-on: ${{ matrix.os }}
+    name: ${{ matrix.platform.os }}-${{ github.workflow }}
+    runs-on: ${{ matrix.platform.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-15-intel, macos-14, macos-15, windows-latest]
-        include:
-          - os: windows-latest
-            triplet: x64-windows
-          - os: ubuntu-latest
-            triplet: x64-linux
-          - os: macos-15-intel
-            triplet: x64-osx
-          - os: macos-14
-            triplet: arm64-osx
-          - os: macos-15
-            triplet: arm64-osx
+        platform:
+          - {os: ubuntu-latest, triplet: x64-linux}
+          - {os: macos-latest, triplet: arm64-osx}
+          - {os: macos-15-intel, triplet: x64-osx}
+          - {os: macos-14, triplet: arm64-osx}
+          - {os: windows-latest, triplet: x64-windows}
     permissions:
       contents: 'read'
       id-token: 'write'
@@ -50,7 +44,7 @@ jobs:
     # for the hosting system will be automatically
     # choosen (x64 is the default on all platforms, 
     # e.g. x64-osx).
-      VCPKG_DEFAULT_TRIPLET: ${{ matrix.triplet }} 
+      VCPKG_DEFAULT_TRIPLET: ${{ matrix.platform.triplet }} 
 
     steps:        
       - uses: actions/checkout@v4
@@ -66,20 +60,20 @@ jobs:
           vcpkgJsonGlob: 'vcpkg.json'
 
       - name: Install Azurite
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.platform.os == 'ubuntu-latest'
         id: azuright
         uses: sgouache/azuright@v1.2
         with:
           skip-api-version-check: true
 
       - name: Set Azurite env for later use
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.platform.os == 'ubuntu-latest'
         run: echo AZURE_STORAGE_CONNECTION_STRING='${{ steps.azuright.outputs.connstring }}' >> $GITHUB_ENV
         shell: bash
 
       # Populate storage emulator
       - name:  Install test data in Azurite
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.platform.os == 'ubuntu-latest'
         run:   |
             if [ "$RUNNER_OS" == "Linux" ]; then
               curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
@@ -113,13 +107,13 @@ jobs:
           echo "AZURE_CONFIG_DIR=$env:AZURE_CONFIG_DIR" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
       - name: Install coverage tools
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.platform.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
           sudo apt-get install lcov gcovr
   
       - name: Build debug version and run sanitizer checks.
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.platform.os == 'ubuntu-latest'
         uses: lukka/run-cmake@v10
         with:
           configurePreset: 'ninja-multi-vcpkg'
@@ -145,13 +139,13 @@ jobs:
             Get-AzStorageAccount | Format-Table
 
       - name: Run tests with emulated storage - debug mode
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.platform.os == 'ubuntu-latest'
         run: |
           AZURE_EMULATED_STORAGE=true ctest --preset test-debug --output-on-failure
 
       # Retrieve azure credentials through WIF - needed to run tests
       - name: Azure CLI Login
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.platform.os == 'ubuntu-latest'
         uses: azure/login@v2.3.0
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
@@ -168,7 +162,7 @@ jobs:
           enable-AzPSSession: true
          
       - name: Run tests with cloud storage - debug mode
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.platform.os == 'ubuntu-latest'
         run: |
           AZURE_EMULATED_STORAGE=false ctest --preset test-debug --output-on-failure
 
@@ -177,7 +171,7 @@ jobs:
 
       # - name: Upload coverage results
       #   uses: actions/upload-artifact@v4
-      #   if: matrix.os == 'ubuntu-latest'
+      #   if: matrix.platform.os == 'ubuntu-latest'
       #   with:
       #     name: coverage
       #     path: |
@@ -222,7 +216,7 @@ jobs:
       - name: Upload the packages as artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: binary-${{ matrix.os }}
+          name: binary-${{ matrix.platform.os }}
           path: |
             builds/ninja-multi-vcpkg/lib/*.dylib
             builds/ninja-multi-vcpkg/lib/*.so

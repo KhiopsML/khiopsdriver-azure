@@ -10,11 +10,9 @@ jobs:
       run:
         shell: bash
     strategy:
-      fail-fast: false
       matrix:
-        image: ['rockylinux:9']
-    container:
-      image: ${{ matrix.image }}
+        os: [{name: rockylinux, version: "9"}]
+    container: ${{ matrix.os.name }}:${{ matrix.os.version }}
     steps:
       - name: Install packages
         run: |
@@ -76,15 +74,13 @@ jobs:
     defaults:
       run:
         shell: bash
-    strategy:
-      fail-fast: false
-      matrix:
-        rocky_version: [9]
     permissions:
       contents: 'read'
       id-token: 'write'            
-    container:
-      image: rockylinux:${{ matrix.rocky_version }}
+    strategy:
+      matrix:
+        os: [{name: rockylinux, version: "9"}]
+    container: ${{ matrix.os.name }}:${{ matrix.os.version }}
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
@@ -120,7 +116,7 @@ jobs:
       - name: Install packages
         run: |
           dnf upgrade -y
-          dnf install -y https://packages.microsoft.com/config/rhel/${{ matrix.rocky_version }}/packages-microsoft-prod.rpm
+          dnf install -y https://packages.microsoft.com/config/rhel/${{ matrix.os.version }}/packages-microsoft-prod.rpm
           dnf install -y azure-cli
       - name: Azure CLI Login
         uses: azure/login@v2.3.0
@@ -133,13 +129,13 @@ jobs:
       - name: Test Khiops on Iris dataset
         uses: ./.github/actions/test-khiops-on-iris
         with:
-          os-decription: ${{ env.ID }}-${{ matrix.rocky_version }}
+          os-decription: ${{ env.ID }}-${{ matrix.os.version }}
 
   # Release is only executed on tags
   release:
     if: github.ref_type == 'tag'
     # We release even if the tests fail (we delete from the release whatever fails manually)
-    needs: build
+    needs: test
     permissions:
       contents: write
     runs-on: ubuntu-latest

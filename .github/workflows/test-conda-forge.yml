@@ -12,12 +12,13 @@
           fail-fast: false
           matrix:
             env:
+              - {os: ubuntu-latest, os-family: linux-x64}
               - {os: ubuntu-22.04, os-family: linux-x64}
-              - {os: ubuntu-24.04, os-family: linux-x64}
-              - {os: windows-2022, os-family: win-64}
-              #- {os: macos-12, os-family: osx-64}
-              - {os: macos-13, os-family: osx-64}
+              - {os: macos-latest, os-family: osx-arm64}
+              - {os: macos-15-intel, os-family: osx-64}
               - {os: macos-14, os-family: osx-arm64}
+              - {os: windows-latest, os-family: win-64}
+              - {os: windows-2022, os-family: win-64}
         runs-on: ${{ matrix.env.os }}
         permissions:
           contents: 'read'
@@ -30,8 +31,10 @@
               python-version: '3.12'
               channels: conda-forge
               conda-remove-defaults: true
+              
           - name: Install the khiops-core and driver Conda packages
-            run: conda install -c conda-forge khiops-core==11.0.0b.0 khiops-driver-azure
+            run: conda install -c conda-forge khiops-core==11.0.0 khiops-driver-azure
+
           - name: Add CONDA binary dir to PATH
             run: |
               if [[ $RUNNER_OS == "Windows" ]]
@@ -40,6 +43,7 @@
               else
                 echo "$CONDA_PREFIX/bin" >> "$GITHUB_PATH"
               fi
+
           - name: Checkout sources
             uses: actions/checkout@v4
 
@@ -53,6 +57,7 @@
         
           - name: Test that the executables are installed
             uses: ./.github/actions/test-khiops-install
+
           - name: Test that khiops works on Iris dataset
             uses: ./.github/actions/test-khiops-on-iris
             with:

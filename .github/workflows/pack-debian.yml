@@ -12,14 +12,14 @@ jobs:
       fail-fast: false
       matrix:
         setup:
-        - {os: ubuntu-latest, image: debian11}
-        - {os: ubuntu-latest, image: debian12}
-        - {os: ubuntu-latest, image: debian13}
-        - {os: ubuntu-latest, image: ubuntu20.04}
-        - {os: ubuntu-latest, image: ubuntu22.04}
-        - {os: ubuntu-latest, image: ubuntu24.04}
-        - {os: ubuntu-24.04-arm, image: ubuntu22.04-arm}
-        - {os: ubuntu-24.04-arm, image: ubuntu24.04-arm}
+          - {os: ubuntu-latest, image: debian13}
+          - {os: ubuntu-latest, image: debian12}
+          - {os: ubuntu-latest, image: debian11}
+          - {os: ubuntu-latest, image: ubuntu24.04}
+          - {os: ubuntu-latest, image: ubuntu22.04}
+          - {os: ubuntu-latest, image: ubuntu20.04}
+          - {os: ubuntu-24.04-arm, image: ubuntu24.04-arm}
+          - {os: ubuntu-24.04-arm, image: ubuntu22.04-arm}
     runs-on: ${{ matrix.setup.os }}
     container:
       image: ghcr.io/khiopsml/khiops/khiopsdev-${{ matrix.setup.image }}:latest
@@ -149,7 +149,7 @@ jobs:
   release:
     if: github.ref_type == 'tag'
     # We release even if the tests fail (we delete from the release whatever fails manually)
-    needs: build
+    needs: test
     permissions:
       contents: write
     runs-on: ubuntu-latest
