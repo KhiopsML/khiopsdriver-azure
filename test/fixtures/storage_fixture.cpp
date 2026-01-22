@@ -1,4 +1,4 @@
-#include "storage_test.hpp"
+#include "storage_fixture.hpp"
 #include "azureplugin.hpp"
 #include "returnval.hpp"
 #include <boost/algorithm/string/case_conv.hpp>

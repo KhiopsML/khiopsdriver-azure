@@ -3,6 +3,7 @@
 #include "util.hpp"
 #include <chrono>
 #include <cstdlib>
+#include <memory>
 #include <random>
 #include <regex>
 #include <spdlog/spdlog.h>
@@ -122,8 +123,18 @@ void ErrorLogger::LogException(const exception &exc) { LogError(exc.what()); }
 } // namespace errlog
 
 namespace connstr {
+ConnectionString::ConnectionString()
+    : sAccountName(""), sAccountKey(""), blobEndpointPtr(nullptr),
+      fileEndpointPtr(nullptr) {}
+
+ConnectionString::ConnectionString(const string &sAccountName,
+                                   const string &sAccountKey)
+    : sAccountName(sAccountName), sAccountKey(sAccountKey),
+      blobEndpointPtr(nullptr), fileEndpointPtr(nullptr) {}
+
 ConnectionString
-ConnectionString::ParseConnectionString(const string &sConnectionString) {
+ConnectionString::ParseConnectionString(const string &sConnectionString,
+                                        bool bIsEmulatedStorage) {
   smatch match;
   if (!regex_match(sConnectionString, match, regex("(?:[^=]+=[^;]+;)+"))) {
     throw ParsingError("ill-formed connection string");
@@ -136,25 +147,100 @@ ConnectionString::ParseConnectionString(const string &sConnectionString) {
   for (sregex_iterator it = begin; it != end; it++) {
     kvPairs[(*it)[1]] = (*it)[2];
   }
-  auto accountNameIt = kvPairs.find("AccountName");
+
+  auto accountNameIt = kvPairs.find("AccountName"); // Mandatory
   if (accountNameIt == kvPairs.end()) {
     throw ParsingError("connection string is missing AccountName");
   }
-  auto accountKeyIt = kvPairs.find("AccountKey");
+
+  auto accountKeyIt = kvPairs.find("AccountKey"); // Mandatory
   if (accountKeyIt == kvPairs.end()) {
     throw ParsingError("connection string is missing AccountKey");
   }
-  auto blobEndpointIt = kvPairs.find("BlobEndpoint");
-  if (blobEndpointIt == kvPairs.end()) {
+
+  ConnectionString connectionString(accountNameIt->second,
+                                    accountKeyIt->second);
+
+  auto blobEndpointIt =
+      kvPairs.find("BlobEndpoint"); // Optional for read Azure cloud storage,
+                                    // mandatory for emulated storage
+  if (blobEndpointIt != kvPairs.end()) {
+    connectionString.SetBlobEndpoint(blobEndpointIt->second);
+  } else if (bIsEmulatedStorage) {
     throw ParsingError("connection string is missing BlobEndpoint");
   }
-  return ConnectionString{accountNameIt->second, accountKeyIt->second,
-                          Azure::Core::Url(blobEndpointIt->second)};
+
+  auto fileEndpointIt = kvPairs.find("FileEndpoint"); // Optional
+  if (fileEndpointIt != kvPairs.end()) {
+    connectionString.SetFileEndpoint(fileEndpointIt->second);
+  }
+
+  return connectionString;
+}
+
+ConnectionString &ConnectionString::SetBlobEndpoint(const string &sUrl) {
+  blobEndpointPtr = make_unique<Azure::Core::Url>(sUrl);
+  return *this;
+}
+
+ConnectionString &ConnectionString::SetFileEndpoint(const string &sUrl) {
+  fileEndpointPtr = make_unique<Azure::Core::Url>(sUrl);
+  return *this;
+}
+
+void ConnectionString::CheckAgainstUrl(const Azure::Core::Url &url,
+                                       StorageType storageType) const {
+  // For real Azure cloud storage access, endpoints are optional, but if
+  // present, check them
+  if (blobEndpointPtr && storageType == BLOB &&
+      !util::str::StartsWith(url.GetAbsoluteUrl(),
+                             blobEndpointPtr->GetAbsoluteUrl())) {
+    throw IncompatibleConnectionStringError();
+  }
+  if (fileEndpointPtr && storageType == SHARE &&
+      !util::str::StartsWith(url.GetAbsoluteUrl(),
+                             fileEndpointPtr->GetAbsoluteUrl())) {
+    throw IncompatibleConnectionStringError();
+  }
 }
 
 bool operator==(const ConnectionString &a, const ConnectionString &b) {
-  return a.sAccountName == b.sAccountName && a.sAccountKey == b.sAccountKey &&
-         a.blobEndpoint.GetAbsoluteUrl() == b.blobEndpoint.GetAbsoluteUrl();
+  // Check basic properties
+  if (a.sAccountName != b.sAccountName || a.sAccountKey != b.sAccountKey) {
+    return false;
+  }
+
+  // Check blob enpoint
+  if (a.blobEndpointPtr ||
+      b.blobEndpointPtr) // If one blob endpoint is defined...
+  {
+    if (!a.blobEndpointPtr || !b.blobEndpointPtr) // ... both must be defined...
+    {
+      return false;
+    }
+    if (a.blobEndpointPtr->GetAbsoluteUrl() !=
+        b.blobEndpointPtr->GetAbsoluteUrl()) // ... and they must match.
+    {
+      return false;
+    }
+  }
+
+  // Check file endpoint
+  if (a.fileEndpointPtr ||
+      b.fileEndpointPtr) // If one file endpoint is defined...
+  {
+    if (!a.fileEndpointPtr || !b.fileEndpointPtr) // ... both must be defined...
+    {
+      return false;
+    }
+    if (a.fileEndpointPtr->GetAbsoluteUrl() !=
+        b.fileEndpointPtr->GetAbsoluteUrl()) // ... and they must match.
+    {
+      return false;
+    }
+  }
+
+  return true;
 }
 } // namespace connstr
 

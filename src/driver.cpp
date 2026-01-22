@@ -10,6 +10,7 @@
 #include <azure/storage/blobs/blob_options.hpp>
 #include <azure/storage/blobs/block_blob_client.hpp>
 #include <azure/storage/files/shares/share_options.hpp>
+#include <cstdlib>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -591,8 +592,9 @@ bool Driver::IsEmulatedStorage() const {
 }
 
 ServiceRequest Driver::ParseUrl(const string &sUrl) const {
-  const string sBlobDomain = ".blob.core.windows.net";
-  const string sFileDomain = ".file.core.windows.net";
+  // Basic URL parsing
+  const static string sBlobDomain = ".blob.core.windows.net";
+  const static string sFileDomain = ".file.core.windows.net";
   Azure::Core::Url url;
   try {
     url = Azure::Core::Url(sUrl);
@@ -601,33 +603,81 @@ ServiceRequest Driver::ParseUrl(const string &sUrl) const {
   }
   const string &sHost = url.GetHost();
   const string &sPath = url.GetPath();
+
+  // Determine some properties about the requested resource
   bool bDir = util::str::EndsWith(sPath, "/");
-  if (IsEmulatedStorage()) // Can only be a blob storage as only blob storages
-                           // are supported by the emulator
+  bool bIsEmulatedStorage = IsEmulatedStorage();
+  bool bAzureBlobUrl = util::str::EndsWith(sHost, sBlobDomain);
+  bool bAzureFileUrl =
+      !bAzureBlobUrl && util::str::EndsWith(sHost, sFileDomain);
+  if (!bIsEmulatedStorage && !bAzureBlobUrl && !bAzureFileUrl) {
+    throw InvalidDomainError(sHost);
+  }
+
+  // Determine storage type
+  StorageType storageType;
+  if (bIsEmulatedStorage) {
+    storageType = BLOB; // The emulator supports only blob storages
+  } else if (bAzureBlobUrl) {
+    storageType = BLOB;
+  } else {
+    storageType = SHARE;
+  }
+
+  // Connection string parsing
+  string sConnectionString = util::env::GetEnvironmentVariableOrDefault(
+      "AZURE_STORAGE_CONNECTION_STRING", "");
+  bool bConnectionStringDefined = !sConnectionString.empty();
+  util::connstr::ConnectionString connectionString;
+  if (bConnectionStringDefined) {
+    connectionString = util::connstr::ConnectionString::ParseConnectionString(
+        sConnectionString, bIsEmulatedStorage);
+    connectionString.CheckAgainstUrl(url, storageType);
+  }
+
+  // Credentials
+  shared_ptr<Azure::Storage::StorageSharedKeyCredential>
+      connectionStringCredential;
+  shared_ptr<Azure::Identity::ChainedTokenCredential>
+      noConnectionStringCredential;
+  if (bConnectionStringDefined) {
+    connectionStringCredential =
+        make_shared<Azure::Storage::StorageSharedKeyCredential>(
+            connectionString.sAccountName, connectionString.sAccountKey);
+  } else {
+    noConnectionStringCredential =
+        make_shared<Azure::Identity::ChainedTokenCredential>(
+            Azure::Identity::ChainedTokenCredential::Sources{
+                std::make_shared<
+                    Azure::Identity::
+                        EnvironmentCredential>(), // for Client ID + Client
+                                                  // Secret or Certificate
+                                                  // environment variables
+                std::make_shared<Azure::Identity::WorkloadIdentityCredential>(),
+                std::make_shared<Azure::Identity::ManagedIdentityCredential>(),
+                std::make_shared<Azure::Identity::AzureCliCredential>()});
+  }
+
+  // Split stored object path
+  if (bIsEmulatedStorage) // Emulated BLOB storage
   {
+    if (!bConnectionStringDefined) {
+      throw util::env::EnvironmentVariableNotFoundError(
+          "AZURE_STORAGE_CONNECTION_STRING");
+    }
     smatch match;
     if (!regex_match(
             sPath, match,
-            regex("([^/]+)/([^/]+)/(.+)"))) //  accountname/container/object or
+            regex("([^/]+)/([^/]+)/(.+)"))) //  accountname/container/object  or
                                             //  accountname/container/object/
     {
       throw InvalidObjectPathError(sPath);
     }
-    auto connectionString =
-        util::connstr::ConnectionString::ParseConnectionString(
-            util::env::GetEnvironmentVariableOrThrow(
-                "AZURE_STORAGE_CONNECTION_STRING"));
-    if (!util::str::StartsWith(
-            url.GetAbsoluteUrl(),
-            connectionString.blobEndpoint.GetAbsoluteUrl())) {
-      throw IncompatibleConnectionStringError();
-    }
-    auto credential = make_shared<Azure::Storage::StorageSharedKeyCredential>(
-        connectionString.sAccountName, connectionString.sAccountKey);
     return ServiceRequest(
         url, BLOB, bDir,
-        BlobInfo{match[1].str(), match[2].str(), match[3].str()}, credential);
-  } else if (util::str::EndsWith(sHost, sBlobDomain)) {
+        BlobInfo{match[1].str(), match[2].str(), match[3].str()},
+        connectionStringCredential);
+  } else if (bAzureBlobUrl) { // Real Azure cloud BLOB storage
     smatch match;
     if (!regex_match(
             sPath, match,
@@ -635,21 +685,10 @@ ServiceRequest Driver::ParseUrl(const string &sUrl) const {
     {
       throw InvalidObjectPathError(sPath);
     }
-    auto credential = make_shared<Azure::Identity::ChainedTokenCredential>(
-        Azure::Identity::ChainedTokenCredential::Sources{
-            std::make_shared<
-                Azure::Identity::EnvironmentCredential>(), // for Client ID +
-                                                           // Client Secret or
-                                                           // Certificate
-                                                           // environment
-                                                           // variables
-            std::make_shared<Azure::Identity::WorkloadIdentityCredential>(),
-            std::make_shared<Azure::Identity::ManagedIdentityCredential>(),
-            std::make_shared<Azure::Identity::AzureCliCredential>()});
     return ServiceRequest(url, BLOB, bDir,
                           BlobInfo{string(), match[1].str(), match[2].str()},
-                          credential);
-  } else if (util::str::EndsWith(sHost, sFileDomain)) {
+                          noConnectionStringCredential);
+  } else { // Real Azure cloud SHARE storage
     smatch match;
     if (!regex_match(
             sPath, match,
@@ -660,45 +699,26 @@ ServiceRequest Driver::ParseUrl(const string &sUrl) const {
     }
     vector<string> fileOrDirPath =
         util::str::Split(match[2].str(), '/', -1, true);
-    auto credential = make_shared<Azure::Identity::ChainedTokenCredential>(
-        Azure::Identity::ChainedTokenCredential::Sources{
-            std::make_shared<
-                Azure::Identity::EnvironmentCredential>(), // for Client ID +
-                                                           // Client Secret or
-                                                           // Certificate
-                                                           // environment
-                                                           // variables
-            std::make_shared<Azure::Identity::WorkloadIdentityCredential>(),
-            std::make_shared<Azure::Identity::ManagedIdentityCredential>(),
-            std::make_shared<Azure::Identity::AzureCliCredential>()});
     return ServiceRequest(url, SHARE, bDir,
-                          ShareInfo{match[1].str(), fileOrDirPath}, credential);
-  } else {
-    throw InvalidDomainError(sHost);
+                          ShareInfo{match[1].str(), fileOrDirPath},
+                          noConnectionStringCredential);
   }
 }
 
 string Driver::GetServiceUrl(const ServiceRequest &request) const {
-  if (request.storageType == BLOB) {
-    if (request.bEmulated) {
-      ostringstream oss;
-      oss << request.azureUrl.GetScheme() << "://" << request.azureUrl.GetHost()
-          << ":" << request.azureUrl.GetPort() << "/"
-          << request.blob.sAccountName;
-      return oss.str();
-    } else {
-      ostringstream oss;
-      oss << request.azureUrl.GetScheme() << "://" << request.azureUrl.GetHost()
-          << ":" << request.azureUrl.GetPort();
-      return oss.str();
-    }
-  } else // SHARE
-  {
-    ostringstream oss;
+  ostringstream oss;
+  if (request.bEmulated) { // Emulated BLOB storage
+    oss << request.azureUrl.GetScheme() << "://" << request.azureUrl.GetHost()
+        << ":" << request.azureUrl.GetPort() << "/"
+        << request.blob.sAccountName;
+  } else if (request.storageType == BLOB) { // Real Azure cloud BLOB storage
     oss << request.azureUrl.GetScheme() << "://" << request.azureUrl.GetHost()
         << ":" << request.azureUrl.GetPort();
-    return oss.str();
+  } else { // Real Azure cloud FILE storage
+    oss << request.azureUrl.GetScheme() << "://" << request.azureUrl.GetHost()
+        << ":" << request.azureUrl.GetPort();
   }
+  return oss.str();
 }
 
 string Driver::GetBlobContainerUrl(const ServiceRequest &request) const {

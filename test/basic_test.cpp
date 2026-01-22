@@ -1,6 +1,6 @@
 #include "azureplugin.hpp"
 #include "driver.hpp"
-#include "fixtures/storage_test.hpp"
+#include "fixtures/storage_fixture.hpp"
 #include "returnval.hpp"
 
 #include <cstring>

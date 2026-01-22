@@ -3,7 +3,9 @@
 #pragma once
 
 #include "exception.hpp"
+#include "storagetype.hpp"
 #include <azure/core/url.hpp>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -57,10 +59,19 @@ class ParsingError : public Error {
 struct ConnectionString {
   std::string sAccountName;
   std::string sAccountKey;
-  Azure::Core::Url blobEndpoint;
+  std::unique_ptr<Azure::Core::Url> blobEndpointPtr; // Optional
+  std::unique_ptr<Azure::Core::Url> fileEndpointPtr; // Optional
 
+  ConnectionString();
+  ConnectionString(const std::string &sAccountName,
+                   const std::string &sAccountKey);
   static ConnectionString
-  ParseConnectionString(const std::string &sConnectionString);
+  ParseConnectionString(const std::string &sConnectionString,
+                        bool bIsEmulatedStorage);
+  ConnectionString &SetBlobEndpoint(const std::string &sUrl);
+  ConnectionString &SetFileEndpoint(const std::string &sUrl);
+  void CheckAgainstUrl(const Azure::Core::Url &url,
+                       StorageType storageType) const;
 
   friend bool operator==(const ConnectionString &a, const ConnectionString &b);
 };

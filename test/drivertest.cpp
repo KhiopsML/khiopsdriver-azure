@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
 #include "azureplugin.hpp"
-#include "fixtures/storage_test.hpp"
+#include "fixtures/storage_fixture.hpp"
 #include "returnval.hpp"
 
 #include <iostream>

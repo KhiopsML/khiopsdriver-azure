@@ -23,8 +23,8 @@ add_executable(
   basic_test.cpp
   io_test.cpp
   drivertest.cpp
-  fixtures/storage_test.hpp
-  fixtures/storage_test.cpp
+  fixtures/storage_fixture.hpp
+  fixtures/storage_fixture.cpp
   ../src/returnval.hpp
   storagetype.hpp
   storagetype.cpp
