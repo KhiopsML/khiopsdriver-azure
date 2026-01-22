@@ -28,9 +28,8 @@ ServiceRequest::ServiceRequest(
         connectionStringCredential)
     : azureUrl(azureUrl), bEmulated(bEmulated), storageType(storageType),
       bUsingConnectionString(true), bDir(bDir),
-      connectionStringCredential(move(connectionStringCredential)) {
-  new (&this->blob) BlobInfo{blob.sAccountName, blob.sContainer, blob.sBlob};
-}
+      blob{blob.sAccountName, blob.sContainer, blob.sBlob},
+      connectionStringCredential(move(connectionStringCredential)) {}
 
 ServiceRequest::ServiceRequest(
     const Azure::Core::Url azureUrl, bool bEmulated, StorageType storageType,
@@ -39,9 +38,8 @@ ServiceRequest::ServiceRequest(
         noConnectionStringCredential)
     : azureUrl(azureUrl), bEmulated(bEmulated), storageType(storageType),
       bUsingConnectionString(false), bDir(bDir),
-      noConnectionStringCredential(move(noConnectionStringCredential)) {
-  new (&this->blob) BlobInfo{blob.sAccountName, blob.sContainer, blob.sBlob};
-}
+      blob{blob.sAccountName, blob.sContainer, blob.sBlob},
+      noConnectionStringCredential(move(noConnectionStringCredential)) {}
 
 ServiceRequest::ServiceRequest(
     const Azure::Core::Url azureUrl, bool bEmulated, StorageType storageType,
@@ -49,10 +47,8 @@ ServiceRequest::ServiceRequest(
     shared_ptr<Azure::Storage::StorageSharedKeyCredential>
         connectionStringCredential)
     : azureUrl(azureUrl), bEmulated(bEmulated), storageType(storageType),
-      bUsingConnectionString(true), bDir(bDir),
-      connectionStringCredential(move(connectionStringCredential)) {
-  new (&this->share) ShareInfo{share.sShare, share.path};
-}
+      bUsingConnectionString(true), bDir(bDir), share{share.sShare, share.path},
+      connectionStringCredential(move(connectionStringCredential)) {}
 
 ServiceRequest::ServiceRequest(
     const Azure::Core::Url azureUrl, bool bEmulated, StorageType storageType,
@@ -61,29 +57,16 @@ ServiceRequest::ServiceRequest(
         noConnectionStringCredential)
     : azureUrl(azureUrl), bEmulated(bEmulated), storageType(storageType),
       bUsingConnectionString(false), bDir(bDir),
-      noConnectionStringCredential(move(noConnectionStringCredential)) {
-  new (&this->share) ShareInfo{share.sShare, share.path};
-}
+      share{share.sShare, share.path},
+      noConnectionStringCredential(move(noConnectionStringCredential)) {}
 
 ServiceRequest::ServiceRequest(const ServiceRequest &other)
     : azureUrl(other.azureUrl), bEmulated(other.bEmulated),
       storageType(other.storageType),
       bUsingConnectionString(other.bUsingConnectionString), bDir(other.bDir),
+      blob(other.blob), share(other.share),
       connectionStringCredential(other.connectionStringCredential),
-      noConnectionStringCredential(other.noConnectionStringCredential) {
-  if (storageType == BLOB) {
-    new (&this->blob) BlobInfo(other.blob);
-  } else {
-    new (&this->share) ShareInfo(other.share);
-  }
-}
-
-ServiceRequest::~ServiceRequest() {
-  if (storageType == BLOB)
-    blob.~BlobInfo();
-  else
-    share.~ShareInfo();
-}
+      noConnectionStringCredential(other.noConnectionStringCredential) {}
 
 Driver::Driver() : bIsConnected(false) {
   try {
@@ -98,11 +81,20 @@ Driver::Driver() : bIsConnected(false) {
 
 Driver::~Driver() { fileStreams.clear(); }
 
-const string &Driver::GetName() const { return sName; }
+const string &Driver::GetName() const {
+  static string sName = "Azure driver";
+  return sName;
+}
 
-const string &Driver::GetVersion() const { return sVersion; }
+const string &Driver::GetVersion() const {
+  static string sVersion = DRIVER_VERSION;
+  return sVersion;
+}
 
-const string &Driver::GetScheme() const { return sScheme; }
+const string &Driver::GetScheme() const {
+  static string sScheme = "https";
+  return sScheme;
+}
 
 bool Driver::IsReadOnly() const { return false; }
 
@@ -580,8 +572,6 @@ bool Driver::IsEmulatedStorage() const {
 
 ServiceRequest Driver::ParseUrl(const string &sUrl) const {
   // Basic URL parsing
-  const static string sBlobDomain = ".blob.core.windows.net";
-  const static string sFileDomain = ".file.core.windows.net";
   Azure::Core::Url url;
   try {
     url = Azure::Core::Url(sUrl);
@@ -594,9 +584,9 @@ ServiceRequest Driver::ParseUrl(const string &sUrl) const {
   // Determine some properties about the requested resource
   bool bDir = util::str::EndsWith(sPath, "/");
   bool bIsEmulatedStorage = IsEmulatedStorage();
-  bool bAzureBlobUrl = util::str::EndsWith(sHost, sBlobDomain);
+  bool bAzureBlobUrl = util::str::EndsWith(sHost, ".blob.core.windows.net");
   bool bAzureFileUrl =
-      !bAzureBlobUrl && util::str::EndsWith(sHost, sFileDomain);
+      !bAzureBlobUrl && util::str::EndsWith(sHost, ".file.core.windows.net");
   if (!bIsEmulatedStorage && !bAzureBlobUrl && !bAzureFileUrl) {
     throw InvalidDomainError(sHost);
   }

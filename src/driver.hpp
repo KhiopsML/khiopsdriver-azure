@@ -24,9 +24,6 @@ class Driver;
 #include <unordered_map>
 
 namespace az {
-static const std::string sName = "Azure driver";
-static const std::string sVersion = DRIVER_VERSION;
-static const std::string sScheme = "https";
 static constexpr size_t nDefaultPreferredBufferSize = 4 * 1024 * 1024;
 
 struct BlobInfo {
@@ -46,10 +43,8 @@ struct ServiceRequest {
   StorageType storageType;
   bool bUsingConnectionString;
   bool bDir;
-  union {
-    BlobInfo blob;
-    ShareInfo share;
-  };
+  BlobInfo blob;
+  ShareInfo share;
   std::shared_ptr<Azure::Storage::StorageSharedKeyCredential>
       connectionStringCredential;
   std::shared_ptr<Azure::Core::Credentials::TokenCredential>
@@ -71,7 +66,6 @@ struct ServiceRequest {
                  std::shared_ptr<Azure::Core::Credentials::TokenCredential>
                      noConnectionStringCredential);
   ServiceRequest(const ServiceRequest &other);
-  ~ServiceRequest();
 };
 
 class Driver {
