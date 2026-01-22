@@ -42,35 +42,34 @@ struct ShareInfo {
 
 struct ServiceRequest {
   Azure::Core::Url azureUrl;
-  StorageType storageType;
   bool bEmulated;
+  StorageType storageType;
+  bool bUsingConnectionString;
   bool bDir;
   union {
     BlobInfo blob;
     ShareInfo share;
   };
-  union {
-    std::shared_ptr<Azure::Storage::StorageSharedKeyCredential>
-        emulatedStorageCredential;
-    std::shared_ptr<Azure::Core::Credentials::TokenCredential>
-        cloudStorageCredential;
-  };
-  ServiceRequest(const Azure::Core::Url azureUrl, StorageType storageType,
-                 bool bDir, const BlobInfo &blob,
+  std::shared_ptr<Azure::Storage::StorageSharedKeyCredential>
+      connectionStringCredential;
+  std::shared_ptr<Azure::Core::Credentials::TokenCredential>
+      noConnectionStringCredential;
+  ServiceRequest(const Azure::Core::Url azureUrl, bool bEmulated,
+                 StorageType storageType, bool bDir, const BlobInfo &blob,
                  std::shared_ptr<Azure::Storage::StorageSharedKeyCredential>
-                     emulatedStorageCredential);
-  ServiceRequest(const Azure::Core::Url azureUrl, StorageType storageType,
-                 bool bDir, const BlobInfo &blob,
+                     connectionStringCredential);
+  ServiceRequest(const Azure::Core::Url azureUrl, bool bEmulated,
+                 StorageType storageType, bool bDir, const BlobInfo &blob,
                  std::shared_ptr<Azure::Core::Credentials::TokenCredential>
-                     cloudStorageCredential);
-  ServiceRequest(const Azure::Core::Url azureUrl, StorageType storageType,
-                 bool bDir, const ShareInfo &share,
+                     noConnectionStringCredential);
+  ServiceRequest(const Azure::Core::Url azureUrl, bool bEmulated,
+                 StorageType storageType, bool bDir, const ShareInfo &share,
                  std::shared_ptr<Azure::Storage::StorageSharedKeyCredential>
-                     emulatedStorageCredential);
-  ServiceRequest(const Azure::Core::Url azureUrl, StorageType storageType,
-                 bool bDir, const ShareInfo &share,
+                     connectionStringCredential);
+  ServiceRequest(const Azure::Core::Url azureUrl, bool bEmulated,
+                 StorageType storageType, bool bDir, const ShareInfo &share,
                  std::shared_ptr<Azure::Core::Credentials::TokenCredential>
-                     cloudStorageCredential);
+                     noConnectionStringCredential);
   ServiceRequest(const ServiceRequest &other);
   ~ServiceRequest();
 };

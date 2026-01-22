@@ -22,73 +22,59 @@ using namespace std;
 
 namespace az {
 ServiceRequest::ServiceRequest(
-    const Azure::Core::Url azureUrl, StorageType storageType, bool bDir,
-    const BlobInfo &blob,
+    const Azure::Core::Url azureUrl, bool bEmulated, StorageType storageType,
+    bool bDir, const BlobInfo &blob,
     shared_ptr<Azure::Storage::StorageSharedKeyCredential>
-        emulatedStorageCredential)
-    : azureUrl(azureUrl), storageType(storageType), bEmulated(true),
-      bDir(bDir) {
+        connectionStringCredential)
+    : azureUrl(azureUrl), bEmulated(bEmulated), storageType(storageType),
+      bUsingConnectionString(true), bDir(bDir),
+      connectionStringCredential(move(connectionStringCredential)) {
   new (&this->blob) BlobInfo{blob.sAccountName, blob.sContainer, blob.sBlob};
-  new (&this->emulatedStorageCredential)
-      std::shared_ptr<Azure::Storage::StorageSharedKeyCredential>(
-          emulatedStorageCredential);
 }
 
 ServiceRequest::ServiceRequest(
-    const Azure::Core::Url azureUrl, StorageType storageType, bool bDir,
-    const BlobInfo &blob,
+    const Azure::Core::Url azureUrl, bool bEmulated, StorageType storageType,
+    bool bDir, const BlobInfo &blob,
     shared_ptr<Azure::Core::Credentials::TokenCredential>
-        cloudStorageCredential)
-    : azureUrl(azureUrl), storageType(storageType), bEmulated(false),
-      bDir(bDir) {
+        noConnectionStringCredential)
+    : azureUrl(azureUrl), bEmulated(bEmulated), storageType(storageType),
+      bUsingConnectionString(false), bDir(bDir),
+      noConnectionStringCredential(move(noConnectionStringCredential)) {
   new (&this->blob) BlobInfo{blob.sAccountName, blob.sContainer, blob.sBlob};
-  new (&this->cloudStorageCredential)
-      std::shared_ptr<Azure::Core::Credentials::TokenCredential>(
-          cloudStorageCredential);
 }
 
 ServiceRequest::ServiceRequest(
-    const Azure::Core::Url azureUrl, StorageType storageType, bool bDir,
-    const ShareInfo &share,
+    const Azure::Core::Url azureUrl, bool bEmulated, StorageType storageType,
+    bool bDir, const ShareInfo &share,
     shared_ptr<Azure::Storage::StorageSharedKeyCredential>
-        emulatedStorageCredential)
-    : azureUrl(azureUrl), storageType(storageType), bEmulated(true),
-      bDir(bDir) {
+        connectionStringCredential)
+    : azureUrl(azureUrl), bEmulated(bEmulated), storageType(storageType),
+      bUsingConnectionString(true), bDir(bDir),
+      connectionStringCredential(move(connectionStringCredential)) {
   new (&this->share) ShareInfo{share.sShare, share.path};
-  new (&this->emulatedStorageCredential)
-      std::shared_ptr<Azure::Storage::StorageSharedKeyCredential>(
-          emulatedStorageCredential);
 }
 
 ServiceRequest::ServiceRequest(
-    const Azure::Core::Url azureUrl, StorageType storageType, bool bDir,
-    const ShareInfo &share,
+    const Azure::Core::Url azureUrl, bool bEmulated, StorageType storageType,
+    bool bDir, const ShareInfo &share,
     shared_ptr<Azure::Core::Credentials::TokenCredential>
-        cloudStorageCredential)
-    : azureUrl(azureUrl), storageType(storageType), bEmulated(false),
-      bDir(bDir) {
+        noConnectionStringCredential)
+    : azureUrl(azureUrl), bEmulated(bEmulated), storageType(storageType),
+      bUsingConnectionString(false), bDir(bDir),
+      noConnectionStringCredential(move(noConnectionStringCredential)) {
   new (&this->share) ShareInfo{share.sShare, share.path};
-  new (&this->cloudStorageCredential)
-      std::shared_ptr<Azure::Core::Credentials::TokenCredential>(
-          cloudStorageCredential);
 }
 
 ServiceRequest::ServiceRequest(const ServiceRequest &other)
-    : azureUrl(other.azureUrl), storageType(other.storageType),
-      bEmulated(other.bEmulated), bDir(other.bDir) {
+    : azureUrl(other.azureUrl), bEmulated(other.bEmulated),
+      storageType(other.storageType),
+      bUsingConnectionString(other.bUsingConnectionString), bDir(other.bDir),
+      connectionStringCredential(other.connectionStringCredential),
+      noConnectionStringCredential(other.noConnectionStringCredential) {
   if (storageType == BLOB) {
     new (&this->blob) BlobInfo(other.blob);
   } else {
     new (&this->share) ShareInfo(other.share);
-  }
-  if (bEmulated) {
-    new (&this->emulatedStorageCredential)
-        std::shared_ptr<Azure::Storage::StorageSharedKeyCredential>(
-            other.emulatedStorageCredential);
-  } else {
-    new (&this->cloudStorageCredential)
-        std::shared_ptr<Azure::Core::Credentials::TokenCredential>(
-            other.cloudStorageCredential);
   }
 }
 
@@ -97,10 +83,6 @@ ServiceRequest::~ServiceRequest() {
     blob.~BlobInfo();
   else
     share.~ShareInfo();
-  if (bEmulated)
-    emulatedStorageCredential.~shared_ptr();
-  else
-    cloudStorageCredential.~shared_ptr();
 }
 
 Driver::Driver() : bIsConnected(false) {
@@ -156,9 +138,11 @@ bool Driver::Exists(const string &sUrl) const {
 }
 
 size_t Driver::GetSize(const string &sUrl) const {
+  std::cout << "GetSize\n";
   CheckConnected();
   ServiceRequest request = ParseUrl(sUrl);
   if (request.storageType == BLOB) {
+    std::cout << "BLOB storage\n";
     if (request.bDir) {
       throw InvalidOperationForDirError(DirOperation::GET_SIZE);
     } else {
@@ -166,10 +150,12 @@ size_t Driver::GetSize(const string &sUrl) const {
       if (blobs.empty()) {
         throw NoFileError(sUrl);
       }
+      std::cout << "/GetSize\n";
       return FragmentedFile(std::move(blobs)).GetSize();
     }
   } else // SHARE
   {
+    std::cout << "FILE storage\n";
     if (request.bDir) {
       throw InvalidOperationForDirError(DirOperation::GET_SIZE);
     } else {
@@ -177,6 +163,7 @@ size_t Driver::GetSize(const string &sUrl) const {
       if (files.empty()) {
         throw NoFileError(sUrl);
       }
+      std::cout << "/GetSize\n";
       return FragmentedFile(std::move(files)).GetSize();
     }
   }
@@ -638,7 +625,7 @@ ServiceRequest Driver::ParseUrl(const string &sUrl) const {
   // Credentials
   shared_ptr<Azure::Storage::StorageSharedKeyCredential>
       connectionStringCredential;
-  shared_ptr<Azure::Identity::ChainedTokenCredential>
+  shared_ptr<Azure::Core::Credentials::TokenCredential>
       noConnectionStringCredential;
   if (bConnectionStringDefined) {
     connectionStringCredential =
@@ -674,7 +661,7 @@ ServiceRequest Driver::ParseUrl(const string &sUrl) const {
       throw InvalidObjectPathError(sPath);
     }
     return ServiceRequest(
-        url, BLOB, bDir,
+        url, bIsEmulatedStorage, BLOB, bDir,
         BlobInfo{match[1].str(), match[2].str(), match[3].str()},
         connectionStringCredential);
   } else if (bAzureBlobUrl) { // Real Azure cloud BLOB storage
@@ -685,9 +672,15 @@ ServiceRequest Driver::ParseUrl(const string &sUrl) const {
     {
       throw InvalidObjectPathError(sPath);
     }
-    return ServiceRequest(url, BLOB, bDir,
-                          BlobInfo{string(), match[1].str(), match[2].str()},
-                          noConnectionStringCredential);
+    if (bConnectionStringDefined) {
+      return ServiceRequest(url, bIsEmulatedStorage, BLOB, bDir,
+                            BlobInfo{string(), match[1].str(), match[2].str()},
+                            connectionStringCredential);
+    } else {
+      return ServiceRequest(url, bIsEmulatedStorage, BLOB, bDir,
+                            BlobInfo{string(), match[1].str(), match[2].str()},
+                            noConnectionStringCredential);
+    }
   } else { // Real Azure cloud SHARE storage
     smatch match;
     if (!regex_match(
@@ -699,9 +692,15 @@ ServiceRequest Driver::ParseUrl(const string &sUrl) const {
     }
     vector<string> fileOrDirPath =
         util::str::Split(match[2].str(), '/', -1, true);
-    return ServiceRequest(url, SHARE, bDir,
-                          ShareInfo{match[1].str(), fileOrDirPath},
-                          noConnectionStringCredential);
+    if (bConnectionStringDefined) {
+      return ServiceRequest(url, bIsEmulatedStorage, SHARE, bDir,
+                            ShareInfo{match[1].str(), fileOrDirPath},
+                            connectionStringCredential);
+    } else {
+      return ServiceRequest(url, bIsEmulatedStorage, SHARE, bDir,
+                            ShareInfo{match[1].str(), fileOrDirPath},
+                            noConnectionStringCredential);
+    }
   }
 }
 
@@ -729,34 +728,35 @@ string Driver::GetBlobContainerUrl(const ServiceRequest &request) const {
 
 Azure::Storage::Blobs::BlobServiceClient
 Driver::GetBlobServiceClient(const ServiceRequest &request) const {
-  if (request.bEmulated) {
+  if (request.bUsingConnectionString) {
     return Azure::Storage::Blobs::BlobServiceClient(
-        GetServiceUrl(request), request.emulatedStorageCredential);
+        GetServiceUrl(request), request.connectionStringCredential);
   } else {
     return Azure::Storage::Blobs::BlobServiceClient(
-        GetServiceUrl(request), request.cloudStorageCredential);
+        GetServiceUrl(request), request.noConnectionStringCredential);
   }
 }
 
 Azure::Storage::Blobs::BlobContainerClient
 Driver::GetBlobContainerClient(const ServiceRequest &request) const {
-  if (request.bEmulated) {
+  if (request.bUsingConnectionString) {
     return Azure::Storage::Blobs::BlobContainerClient(
-        GetBlobContainerUrl(request), request.emulatedStorageCredential);
+        GetBlobContainerUrl(request), request.connectionStringCredential);
   } else {
     return Azure::Storage::Blobs::BlobContainerClient(
-        GetBlobContainerUrl(request), request.cloudStorageCredential);
+        GetBlobContainerUrl(request), request.noConnectionStringCredential);
   }
 }
 
 Azure::Storage::Blobs::BlobClient
 Driver::GetBlobClient(const ServiceRequest &request) const {
-  if (request.bEmulated) {
-    return Azure::Storage::Blobs::BlobClient(request.azureUrl.GetAbsoluteUrl(),
-                                             request.emulatedStorageCredential);
+  if (request.bUsingConnectionString) {
+    return Azure::Storage::Blobs::BlobClient(
+        request.azureUrl.GetAbsoluteUrl(), request.connectionStringCredential);
   } else {
-    return Azure::Storage::Blobs::BlobClient(request.azureUrl.GetAbsoluteUrl(),
-                                             request.cloudStorageCredential);
+    return Azure::Storage::Blobs::BlobClient(
+        request.azureUrl.GetAbsoluteUrl(),
+        request.noConnectionStringCredential);
   }
 }
 
@@ -774,8 +774,13 @@ string Driver::GetFileShareUrl(const ServiceRequest &request) const {
 
 Azure::Storage::Files::Shares::ShareServiceClient
 Driver::GetFileShareServiceClient(const ServiceRequest &request) const {
-  return Azure::Storage::Files::Shares::ShareServiceClient(
-      GetServiceUrl(request), request.cloudStorageCredential);
+  if (request.bUsingConnectionString) {
+    return Azure::Storage::Files::Shares::ShareServiceClient(
+        GetServiceUrl(request), request.connectionStringCredential);
+  } else {
+    return Azure::Storage::Files::Shares::ShareServiceClient(
+        GetServiceUrl(request), request.noConnectionStringCredential);
+  }
 }
 
 Azure::Storage::Files::Shares::ShareClient
@@ -783,8 +788,13 @@ Driver::GetShareClient(const ServiceRequest &request) const {
   Azure::Storage::Files::Shares::ShareClientOptions opts;
   opts.ShareTokenIntent =
       Azure::Storage::Files::Shares::Models::ShareTokenIntent::Backup;
-  return Azure::Storage::Files::Shares::ShareClient(
-      GetFileShareUrl(request), request.cloudStorageCredential, opts);
+  if (request.bUsingConnectionString) {
+    return Azure::Storage::Files::Shares::ShareClient(
+        GetFileShareUrl(request), request.connectionStringCredential, opts);
+  } else {
+    return Azure::Storage::Files::Shares::ShareClient(
+        GetFileShareUrl(request), request.noConnectionStringCredential, opts);
+  }
 }
 
 Azure::Storage::Files::Shares::ShareDirectoryClient
@@ -797,8 +807,15 @@ Driver::GetFileClient(const ServiceRequest &request) const {
   Azure::Storage::Files::Shares::ShareClientOptions opts;
   opts.ShareTokenIntent =
       Azure::Storage::Files::Shares::Models::ShareTokenIntent::Backup;
-  return Azure::Storage::Files::Shares::ShareFileClient(
-      request.azureUrl.GetAbsoluteUrl(), request.cloudStorageCredential, opts);
+  if (request.bUsingConnectionString) {
+    return Azure::Storage::Files::Shares::ShareFileClient(
+        request.azureUrl.GetAbsoluteUrl(), request.connectionStringCredential,
+        opts);
+  } else {
+    return Azure::Storage::Files::Shares::ShareFileClient(
+        request.azureUrl.GetAbsoluteUrl(), request.noConnectionStringCredential,
+        opts);
+  }
 }
 
 vector<Azure::Storage::Files::Shares::ShareDirectoryClient>
