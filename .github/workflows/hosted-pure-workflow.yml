@@ -153,11 +153,21 @@ jobs:
       #       builds/ninja-multi-vcpkg/coverage.*
       #     if-no-files-found: ignore
       
-      - name: Run CMake+vcpkg+Ninja to generate/build the code.
-        uses: lukka/run-cmake@v10
-        with:
-          configurePreset: 'ninja-multi-vcpkg-release'
-          buildPreset: 'ninja-vcpkg-release'
+      # Run CMake to generate Ninja project files, using the vcpkg's toolchain file to resolve and install
+      # the dependencies as specified in vcpkg.json. Note that the vcpkg's toolchain is specified
+      # in the CMakePresets.json file.
+      # This step also runs vcpkg with Binary Caching leveraging GitHub Action cache to
+      # store the built packages artifacts.
+      - name: Restore from cache the dependencies and generate project files
+        run: cmake --preset ninja-multi-vcpkg-release
+
+      # Build (Release configuration only) the whole project with Ninja (which is spawn by CMake).
+      #
+      # Note: if the preset misses the "configuration", it is possible to explicitly select the
+      # configuration with the `--config` flag, e.g.:
+      # run: cmake --build --preset ninja-vcpkg --config Release
+      - name: Build (Release configuration)
+        run: cmake --build --preset ninja-vcpkg-release
 
       # Retrieve azure credentials through WIF - needed to run tests
       - name: Azure CLI Login
