@@ -66,10 +66,10 @@ jobs:
         with:
           skip-api-version-check: true
 
-      - name: Set Azurite env for later use
+      - name: Register Azurite storage connection string
         if: matrix.platform.os == 'ubuntu-latest'
-        run: echo AZURE_STORAGE_CONNECTION_STRING='${{ steps.azuright.outputs.connstring }}' >> $GITHUB_ENV
         shell: bash
+        run: echo AZURE_STORAGE_CONNECTION_STRING='${{ steps.azuright.outputs.connstring }}' >> $GITHUB_ENV
 
       # Populate storage emulator
       - name:  Install test data in Azurite
@@ -120,46 +120,50 @@ jobs:
           configurePresetAdditionalArgs: "['-DCMAKE_BUILD_TYPE=Debug']"
           buildPreset: 'ninja-vcpkg-debug'
 
-      # Retrieve azure credentials through WIF - needed to run tests
-      - name: Azure CLI Login
-        uses: azure/login@v2.3.0
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          enable-AzPSSession: true
+      # # Retrieve azure credentials through WIF - needed to run tests
+      # - name: Azure CLI Login
+      #   uses: azure/login@v2.3.0
+      #   with:
+      #     client-id: ${{ secrets.AZURE_CLIENT_ID }}
+      #     tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+      #     subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      #     enable-AzPSSession: true
 
-      - name: Azure PowerShell script
-        uses: azure/powershell@v2
-        with:
-          azPSVersion: "latest"
-          inlineScript: |
-            Get-AzContext
-            Get-AzResource | Format-Table
-            Get-AzStorageAccount | Format-Table
+      - name: Register Azure storage connection string
+        shell: bash
+        run: echo AZURE_STORAGE_CONNECTION_STRING='${{ secrets.AZURE_CONNECTION_STRING }}' >> $GITHUB_ENV
+
+      # - name: Azure PowerShell script
+      #   uses: azure/powershell@v2
+      #   with:
+      #     azPSVersion: "latest"
+      #     inlineScript: |
+      #       Get-AzContext
+      #       Get-AzResource | Format-Table
+      #       Get-AzStorageAccount | Format-Table
 
       - name: Run tests with emulated storage - debug mode
         if: matrix.platform.os == 'ubuntu-latest'
         run: |
           AZURE_EMULATED_STORAGE=true ctest --preset test-debug --output-on-failure
 
-      # Retrieve azure credentials through WIF - needed to run tests
-      - name: Azure CLI Login
-        if: matrix.platform.os == 'ubuntu-latest'
-        uses: azure/login@v2.3.0
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      # # Retrieve azure credentials through WIF - needed to run tests
+      # - name: Azure CLI Login
+      #   if: matrix.platform.os == 'ubuntu-latest'
+      #   uses: azure/login@v2.3.0
+      #   with:
+      #     client-id: ${{ secrets.AZURE_CLIENT_ID }}
+      #     tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+      #     subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
         
-      # Retrieve azure credentials through WIF - needed to run tests
-      - name: Azure CLI Login
-        uses: azure/login@v2.3.0
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          enable-AzPSSession: true
+      # # Retrieve azure credentials through WIF - needed to run tests
+      # - name: Azure CLI Login
+      #   uses: azure/login@v2.3.0
+      #   with:
+      #     client-id: ${{ secrets.AZURE_CLIENT_ID }}
+      #     tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+      #     subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      #     enable-AzPSSession: true
          
       - name: Run tests with cloud storage - debug mode
         if: matrix.platform.os == 'ubuntu-latest'
@@ -186,14 +190,14 @@ jobs:
           configurePresetAdditionalArgs: "['-DCMAKE_BUILD_TYPE=Release']"
           buildPreset: 'ninja-vcpkg-release'
 
-      # Retrieve azure credentials through WIF - needed to run tests
-      - name: Azure CLI Login
-        uses: azure/login@v2.3.0
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          enable-AzPSSession: true
+      # # Retrieve azure credentials through WIF - needed to run tests
+      # - name: Azure CLI Login
+      #   uses: azure/login@v2.3.0
+      #   with:
+      #     client-id: ${{ secrets.AZURE_CLIENT_ID }}
+      #     tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+      #     subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      #     enable-AzPSSession: true
 
       - name: Run tests with cloud storage
         uses: azure/powershell@v2
