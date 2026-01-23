@@ -64,18 +64,7 @@ jobs:
           submodules: true
           fetch-depth: 0
 
-      # Set AZURE_CONFIG_DIR before any Azure-cloud-related action so that only one Azure
-      # config directory will be used even if using both bash and powershell steps.
-      # This is necessary on runners that uses both bash and powershell, such as the
-      # windows ones. Otherwise the driver will not be able to authenticate to Azure.
-      - name: Export adjusted HOME and AZURE_CONFIG_DIR
-        run: |
-          if [ -n "$USERPROFILE" ]; then
-            export HOME="$USERPROFILE"
-          fi
-          export AZURE_CONFIG_DIR="$HOME/.azure"
-          echo "HOME=$HOME" >> $GITHUB_ENV
-          echo "AZURE_CONFIG_DIR=$AZURE_CONFIG_DIR" >> $GITHUB_ENV
+      - uses: ./.github/actions/fix-azure-config
           
       - name: "Create directory '${{ env.VCPKG_DEFAULT_BINARY_CACHE }}'"
         run: mkdir -p $VCPKG_DEFAULT_BINARY_CACHE
@@ -85,9 +74,6 @@ jobs:
         uses: sgouache/azuright@v1.2
         with:
           skip-api-version-check: true
-
-      - name: Set Azurite env for later use
-        run: echo "AZURE_STORAGE_CONNECTION_STRING=${{ steps.azuright.outputs.connstring }}" >> $GITHUB_ENV
 
       # Populate storage emulator
       - name:  Install test data in Azurite
@@ -99,6 +85,7 @@ jobs:
           else
             brew update && brew install azure-cli
           fi
+          export AZURE_STORAGE_CONNECTION_STRING='${{ steps.azuright.outputs.connstring }}'
           az storage container create -n data-test-khiops-driver-azure --connection-string "${{ steps.azuright.outputs.connstring }}"
           az storage blob upload-batch --destination data-test-khiops-driver-azure/khiops_data --source $PWD/khiops_data --connection-string "${{ steps.azuright.outputs.connstring }}"
 
@@ -129,24 +116,29 @@ jobs:
         with:
           toolset: 14.0
 
-      # Retrieve azure credentials through WIF - needed to run tests
-      - name: Azure CLI Login
-        if: matrix.platform.os == 'ubuntu-latest'
-        uses: azure/login@v2.3.0
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
-      - name: Build debug version and run sanitizer checks
+      - name: Install coverage tools
         if: matrix.platform.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
           sudo apt-get install lcov gcovr
-          cmake --preset ninja-multi-vcpkg -DCMAKE_BUILD_TYPE=Debug
-          cmake --build --preset ninja-vcpkg-debug
-          AZURE_EMULATED_STORAGE=true ctest --preset test-debug --output-on-failure
-          AZURE_EMULATED_STORAGE=false ctest --preset test-debug --output-on-failure
+
+      - name: Build debug version
+        if: matrix.platform.os == 'ubuntu-latest'
+        uses: lukka/run-cmake@v10
+        with:
+          configurePreset: 'ninja-multi-vcpkg-debug'
+          buildPreset: 'ninja-vcpkg-debug'
+
+      - name: Run sanitizer checks
+        if: matrix.platform.os == 'ubuntu-latest'
+        run: |
+          export AZURE_EMULATED_STORAGE=true
+          export AZURE_STORAGE_CONNECTION_STRING='${{ steps.azuright.outputs.connstring }}'
+          ctest --preset test-debug --output-on-failure
+
+          AZURE_EMULATED_STORAGE=false
+          export AZURE_STORAGE_CONNECTION_STRING='${{ secrets.AZURE_CONNECTION_STRING }}'
+          ctest --preset test-debug --output-on-failure
 
       # Disable coverage until we find how to fix the "line mismatch error"
       # cmake --build --preset ninja-vcpkg-debug --target khiops-gcs_coverage --target khiops-gcs_cobertura
@@ -161,29 +153,24 @@ jobs:
       #       builds/ninja-multi-vcpkg/coverage.*
       #     if-no-files-found: ignore
       
-      # Run CMake to generate Ninja project files, using the vcpkg's toolchain file to resolve and install
-      # the dependencies as specified in vcpkg.json. Note that the vcpkg's toolchain is specified
-      # in the CMakePresets.json file.
-      # This step also runs vcpkg with Binary Caching leveraging GitHub Action cache to
-      # store the built packages artifacts.
-      - name: Restore from cache the dependencies and generate project files
-        run: cmake --preset ninja-multi-vcpkg -DCMAKE_BUILD_TYPE=Release
-
-      # Build (Release configuration only) the whole project with Ninja (which is spawn by CMake).
-      #
-      # Note: if the preset misses the "configuration", it is possible to explicitly select the
-      # configuration with the `--config` flag, e.g.:
-      # run: cmake --build --preset ninja-vcpkg --config Release
-      - name: Build (Release configuration)
-        run: cmake --build --preset ninja-vcpkg-release
+      - name: Run CMake+vcpkg+Ninja to generate/build the code.
+        uses: lukka/run-cmake@v10
+        with:
+          configurePreset: 'ninja-multi-vcpkg-release'
+          buildPreset: 'ninja-vcpkg-release'
 
       # Retrieve azure credentials through WIF - needed to run tests
       - name: Azure CLI Login
+        if: github.ref_type != 'tag'
         uses: azure/login@v2.3.0
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - if: github.ref_type == 'tag'
+        shell: bash
+        run: echo "export AZURE_STORAGE_CONNECTION_STRING='${{ secrets.AZURE_CONNECTION_STRING }}'" >> $GITHUB_ENV
       
       # Test the whole project with CTest, again Release configuration only.
       - name: Test (Release configuration)

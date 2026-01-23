@@ -1,0 +1,19 @@
+---
+name: Fix Azure Config
+description: Fix Azure configuration path for jobs using both bash and powershell
+runs:
+  using: composite
+  steps:
+    # Set AZURE_CONFIG_DIR before any Azure-cloud-related action so that only one Azure
+    # config directory will be used even if using both bash and powershell steps.
+    # This is necessary on runners that uses both bash and powershell, such as the
+    # windows ones. Otherwise we would not be able to authenticate to Azure.
+    - name: Export adjusted HOME and AZURE_CONFIG_DIR
+      shell: bash
+      run: |
+        if [ -n "$USERPROFILE" ]; then
+          export HOME="$USERPROFILE"
+        fi
+        export AZURE_CONFIG_DIR="$HOME/.azure"
+        echo "HOME=$HOME" >> $GITHUB_ENV
+        echo "AZURE_CONFIG_DIR=$AZURE_CONFIG_DIR" >> $GITHUB_ENV
