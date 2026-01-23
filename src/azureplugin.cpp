@@ -70,14 +70,8 @@ int driver_isReadOnly() {
 int driver_connect() {
   HANDLE_ERRORS(nFailure, {
     const string loglevel = util::env::GetEnvironmentVariableOrDefault(
-        "AZURE_DRIVER_LOGLEVEL", "info");
-    if (loglevel == "debug") {
-      spdlog::set_level(spdlog::level::debug);
-    } else if (loglevel == "trace") {
-      spdlog::set_level(spdlog::level::trace);
-    } else {
-      spdlog::set_level(spdlog::level::info);
-    }
+        "AZURE_DRIVER_LOGLEVEL", "off");
+    spdlog::set_level(spdlog::level::from_str(loglevel));
     spdlog::debug("Connecting");
     driver.Connect();
     return nSuccess;
