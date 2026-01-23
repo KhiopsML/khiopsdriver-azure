@@ -1,6 +1,6 @@
 ---
-name: Fix Azure Config
-description: Fix Azure configuration path for jobs using both bash and powershell
+name: Fix Azure Config on Windows
+description: Fix Azure configuration path on Windows, for jobs using both bash and powershell
 runs:
   using: composite
   steps:
@@ -8,7 +8,8 @@ runs:
     # config directory will be used even if using both bash and powershell steps.
     # This is necessary on runners that uses both bash and powershell, such as the
     # windows ones. Otherwise we would not be able to authenticate to Azure.
-    - name: Export adjusted HOME and AZURE_CONFIG_DIR
+    - name: Export fixed HOME and AZURE_CONFIG_DIR
+      if: runner.os == 'Windows'
       shell: bash
       run: |
         if [ -n "$USERPROFILE" ]; then

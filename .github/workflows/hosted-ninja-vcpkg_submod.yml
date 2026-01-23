@@ -52,7 +52,7 @@ jobs:
           submodules: true
           fetch-depth: 0
 
-      - uses: ./.github/actions/fix-azure-config
+      - uses: ./.github/actions/fix-win-azure-config
 
       - uses: lukka/get-cmake@v3.30.1
 

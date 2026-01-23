@@ -64,7 +64,7 @@ jobs:
           submodules: true
           fetch-depth: 0
 
-      - uses: ./.github/actions/fix-azure-config
+      - uses: ./.github/actions/fix-win-azure-config
           
       - name: "Create directory '${{ env.VCPKG_DEFAULT_BINARY_CACHE }}'"
         run: mkdir -p $VCPKG_DEFAULT_BINARY_CACHE
