@@ -81,7 +81,7 @@ bool RandomBool() {
 namespace env {
 string GetEnvironmentVariableOrThrow(const string &sVarName) {
   char *sValue = getenv(sVarName.c_str());
-  if (!sValue) {
+  if (!sValue || strlen(sValue) == 0ULL) {
     throw EnvironmentVariableNotFoundError(sVarName);
   }
   return sValue;
