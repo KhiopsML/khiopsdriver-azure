@@ -130,11 +130,9 @@ bool Driver::Exists(const string &sUrl) const {
 }
 
 size_t Driver::GetSize(const string &sUrl) const {
-  std::cout << "GetSize\n";
   CheckConnected();
   ServiceRequest request = ParseUrl(sUrl);
   if (request.storageType == BLOB) {
-    std::cout << "BLOB storage\n";
     if (request.bDir) {
       throw InvalidOperationForDirError(DirOperation::GET_SIZE);
     } else {
@@ -142,12 +140,10 @@ size_t Driver::GetSize(const string &sUrl) const {
       if (blobs.empty()) {
         throw NoFileError(sUrl);
       }
-      std::cout << "/GetSize\n";
       return FragmentedFile(std::move(blobs)).GetSize();
     }
   } else // SHARE
   {
-    std::cout << "FILE storage\n";
     if (request.bDir) {
       throw InvalidOperationForDirError(DirOperation::GET_SIZE);
     } else {
@@ -155,7 +151,6 @@ size_t Driver::GetSize(const string &sUrl) const {
       if (files.empty()) {
         throw NoFileError(sUrl);
       }
-      std::cout << "/GetSize\n";
       return FragmentedFile(std::move(files)).GetSize();
     }
   }
