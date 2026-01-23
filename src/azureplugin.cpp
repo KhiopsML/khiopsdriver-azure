@@ -14,6 +14,7 @@
 
 #include <algorithm>
 #include <assert.h>
+#include <azure/core/diagnostics/logger.hpp>
 #include <cstdio>
 #include <fstream>
 #include <ios>
@@ -72,6 +73,9 @@ int driver_connect() {
     const string loglevel = util::env::GetEnvironmentVariableOrDefault(
         "AZURE_DRIVER_LOGLEVEL", "off");
     spdlog::set_level(spdlog::level::from_str(loglevel));
+    // Disable Azure SDK logging
+    Azure::Core::Diagnostics::Logger::SetListener(
+      [](Azure::Core::Diagnostics::Logger::Level, std::string const&) {});
     spdlog::debug("Connecting");
     driver.Connect();
     return nSuccess;
