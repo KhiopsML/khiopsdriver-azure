@@ -136,10 +136,10 @@ ConnectionString
 ConnectionString::ParseConnectionString(const string &sConnectionString,
                                         bool bIsEmulatedStorage) {
   smatch match;
-  if (!regex_match(sConnectionString, match, regex("(?:[^=]+=[^;]+;)+"))) {
+  if (!regex_match(sConnectionString, match, regex("(?:[^=]+=[^;]+;)*[^=]+=[^;]+;?"))) {
     throw ParsingError("ill-formed connection string");
   }
-  regex kvRegex("([^=]+)=([^;]+);");
+  regex kvRegex("([^=]+)=([^;]+);?");
   sregex_iterator begin(sConnectionString.begin(), sConnectionString.end(),
                         kvRegex);
   sregex_iterator end;
