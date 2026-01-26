@@ -159,7 +159,7 @@ jobs:
 
       - if: github.ref_type == 'tag'
         shell: bash
-        run: echo "export AZURE_STORAGE_CONNECTION_STRING='${{ secrets.AZURE_CONNECTION_STRING }}'" >> $GITHUB_ENV
+        run: echo "AZURE_STORAGE_CONNECTION_STRING='${{ secrets.AZURE_CONNECTION_STRING }}'" >> $GITHUB_ENV
 
       - name: Test Khiops on Iris dataset
         uses: ./.github/actions/test-khiops-on-iris
@@ -196,7 +196,7 @@ jobs:
              mv $PKG_FILE $NEW_PKG_FILE
            fi
          done
-         
+
       - name: Upload packages to the release
         uses: ncipollo/release-action@v1.14.0
         with:

@@ -180,7 +180,7 @@ jobs:
 
       - if: github.ref_type == 'tag'
         shell: bash
-        run: echo "export AZURE_STORAGE_CONNECTION_STRING='${{ secrets.AZURE_CONNECTION_STRING }}'" >> $GITHUB_ENV
+        run: echo "AZURE_STORAGE_CONNECTION_STRING='${{ secrets.AZURE_CONNECTION_STRING }}'" >> $GITHUB_ENV
       
       # Test the whole project with CTest, again Release configuration only.
       - name: Test (Release configuration)
