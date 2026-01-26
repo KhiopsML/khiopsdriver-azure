@@ -87,7 +87,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        setup:
+        include:
         - {os: ubuntu-latest, image: debian11}
         - {os: ubuntu-latest, image: debian12}
         - {os: ubuntu-latest, image: debian13}
