@@ -26,26 +26,29 @@ jobs:
           # Note: We install cmake from kitware's site to have a more recent version 
           curl -LO "https://github.com/Kitware/CMake/releases/download/v3.26.5/cmake-3.26.5-linux-x86_64.sh"
           sh cmake-3.26.5-linux-x86_64.sh --prefix=/usr/local/ --exclude-subdir
+
       - name: Checkout sources
         uses: actions/checkout@v4
         with:
           submodules: recursive
           fetch-depth: 0
+
       - name: Configure CMake
-        run: |
-            cmake -B builds -S . -G 'Ninja'  -D CMAKE_BUILD_TYPE=Release -D CMAKE_TOOLCHAIN_FILE=vcpkg/scripts/buildsystems/vcpkg.cmake
+        run: cmake -B builds -S . -G 'Ninja'  -D CMAKE_BUILD_TYPE=Release -D CMAKE_TOOLCHAIN_FILE=vcpkg/scripts/buildsystems/vcpkg.cmake
+
       - name: Build 
-        run: |
-            cmake --build builds --target khiopsdriver_file_azure
+        run: cmake --build builds --target khiopsdriver_file_azure
+
       - name: Build package with CPack
-        run: |
-            cd builds/ && cpack -G RPM
+        run: cd builds/ && cpack -G RPM
+
       - name: Set environment variables
         run: |
           source /etc/os-release
           echo "ID=$ID" >> "$GITHUB_ENV"
           VERSION_CODENAME=$(echo $PLATFORM_ID | cut -d":" -f2)
           echo "VERSION_CODENAME=$VERSION_CODENAME" >> "$GITHUB_ENV"
+
       - name: Rename packages with codename
         run: |
           source /etc/os-release
@@ -55,6 +58,7 @@ jobs:
           do
             mv -v $filename ${filename%.${ARCH}*}.${{ env.VERSION_CODENAME }}.${ARCH}.rpm
           done
+
       - name: Upload the packages as artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -84,6 +88,7 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
+
       - name: Set Azure Config Directory
         run: |
           # Create the directory if it doesn't exist
@@ -91,6 +96,7 @@ jobs:
           mkdir -p $AZURE_CONFIG_DIR
           # Make it available to subsequent steps
           echo "AZURE_CONFIG_DIR=$AZURE_CONFIG_DIR" >> "$GITHUB_ENV"
+
       - name: Set environment variables
         run: |
           source /etc/os-release
@@ -98,26 +104,32 @@ jobs:
           VERSION=$(echo $PLATFORM_ID | cut -d":" -f2)
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
           echo "MPI_IMPLEMENTATION=${{ inputs.mpi_implementation || 'openmpi' }}" >> "$GITHUB_ENV"
+
       - name: Download and install Khiops core
         run: |
           curl -L https://github.com/KhiopsML/khiops/releases/download/11.0.0/khiops-core-${{ env.MPI_IMPLEMENTATION }}-11.0.0-1.${{ env.VERSION }}.x86_64.rpm --output ./khiops-core.rpm
           yum install -y ./khiops-core*
+
       - name: Download artifacts (driver package)
         uses: actions/download-artifact@v4
         with:
           name: rpm-${{ env.ID }}-${{ env.VERSION }}
           path: artifacts
+
       - name: Install driver
         run: |
           yum install -y ./artifacts/khiops-driver-*.rpm
+
       - name: Check Khiops core installation
         uses: ./.github/actions/test-khiops-install
+
       # Retrieve azure credentials through WIF - needed to run tests
       - name: Install packages
         run: |
           dnf upgrade -y
           dnf install -y https://packages.microsoft.com/config/rhel/${{ matrix.os-version }}/packages-microsoft-prod.rpm
           dnf install -y azure-cli
+
       - name: Azure CLI Login
         if: github.ref_type != 'tag'
         uses: azure/login@v2.3.0
@@ -125,12 +137,15 @@ jobs:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
       - name: Check Azure authentication
         if: github.ref_type != 'tag'
         run: az account show
+
       - if: github.ref_type == 'tag'
         shell: bash
         run: echo "export AZURE_STORAGE_CONNECTION_STRING='${{ secrets.AZURE_CONNECTION_STRING }}'" >> $GITHUB_ENV
+
       - name: Test Khiops on Iris dataset
         uses: ./.github/actions/test-khiops-on-iris
         with:
@@ -151,6 +166,7 @@ jobs:
           # See the upload-artifact step in the build job for the explanation of this pattern
           pattern: rpm-*
           merge-multiple: true
+
       - name: Rename packages with tag version
         run: |
          # Renames the packge only if the source version differs from the tag
@@ -165,6 +181,7 @@ jobs:
              mv $PKG_FILE $NEW_PKG_FILE
            fi
          done
+         
       - name: Upload packages to the release
         uses: ncipollo/release-action@v1.14.0
         with:
