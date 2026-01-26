@@ -20,12 +20,12 @@ on:
 
 jobs:
   job:
-    name: ${{ matrix.platform.os }}-${{ github.workflow }}
-    runs-on: ${{ matrix.platform.os }}
+    name: ${{ matrix.os }}-${{ github.workflow }}
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        platform:
+        include:
           - {os: ubuntu-latest, triplet: x64-linux}
           - {os: macos-latest, triplet: arm64-osx}
           - {os: macos-15-intel, triplet: x64-osx}
@@ -48,7 +48,7 @@ jobs:
       # Let's use GitHub Action cache as storage for the vcpkg Binary Caching feature.
       VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
       # Allow setting triplet to something else than platform's default
-      VCPKG_DEFAULT_TRIPLET: ${{ matrix.platform.triplet }}
+      VCPKG_DEFAULT_TRIPLET: ${{ matrix.triplet }}
 
     steps:
       # Set env vars needed for vcpkg to leverage the GitHub Action cache as a storage
@@ -117,20 +117,20 @@ jobs:
           toolset: 14.0
 
       - name: Install coverage tools
-        if: matrix.platform.os == 'ubuntu-latest'
+        if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
           sudo apt-get install lcov gcovr
 
       - name: Build debug version
-        if: matrix.platform.os == 'ubuntu-latest'
+        if: matrix.os == 'ubuntu-latest'
         uses: lukka/run-cmake@v10
         with:
           configurePreset: 'ninja-multi-vcpkg-debug'
           buildPreset: 'ninja-vcpkg-debug'
 
       - name: Run sanitizer checks
-        if: matrix.platform.os == 'ubuntu-latest'
+        if: matrix.os == 'ubuntu-latest'
         run: |
           export AZURE_EMULATED_STORAGE=true
           export AZURE_STORAGE_CONNECTION_STRING='${{ steps.azuright.outputs.connstring }}'
@@ -145,7 +145,7 @@ jobs:
       
       # - name: Upload coverage results
       #   uses: actions/upload-artifact@v4
-      #   if: matrix.platform.os == 'ubuntu-latest'
+      #   if: matrix.os == 'ubuntu-latest'
       #   with:
       #     name: coverage
       #     path: |
@@ -195,7 +195,7 @@ jobs:
       - name: Upload the packages as artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: binary-${{ matrix.platform.os }}
+          name: binary-${{ matrix.os }}
           path: |
             builds/ninja-multi-vcpkg/lib/*.dylib
             builds/ninja-multi-vcpkg/lib/*.so

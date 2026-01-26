@@ -23,12 +23,12 @@ on:
 
 jobs:
   job:
-    name: ${{ matrix.platform.os }}-${{ github.workflow }}
-    runs-on: ${{ matrix.platform.os }}
+    name: ${{ matrix.os }}-${{ github.workflow }}
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        platform:
+        include:
           - {os: ubuntu-latest, triplet: x64-linux}
           - {os: macos-latest, triplet: arm64-osx}
           - {os: macos-15-intel, triplet: x64-osx}
@@ -44,7 +44,7 @@ jobs:
     # for the hosting system will be automatically
     # choosen (x64 is the default on all platforms, 
     # e.g. x64-osx).
-      VCPKG_DEFAULT_TRIPLET: ${{ matrix.platform.triplet }} 
+      VCPKG_DEFAULT_TRIPLET: ${{ matrix.triplet }} 
 
     steps:        
       - uses: actions/checkout@v4
@@ -62,7 +62,7 @@ jobs:
           vcpkgJsonGlob: 'vcpkg.json'
 
       - name: Install Azurite
-        if: matrix.platform.os == 'ubuntu-latest'
+        if: matrix.os == 'ubuntu-latest'
         id: azuright
         uses: sgouache/azuright@v1.2
         with:
@@ -70,7 +70,7 @@ jobs:
 
       # Populate storage emulator
       - name:  Install test data in Azurite
-        if: matrix.platform.os == 'ubuntu-latest'
+        if: matrix.os == 'ubuntu-latest'
         shell: bash
         run: |
           if [ "$RUNNER_OS" == "Linux" ]; then
@@ -85,27 +85,27 @@ jobs:
           az storage blob upload-batch --destination data-test-khiops-driver-azure/khiops_data --source $PWD/khiops_data --connection-string "${{ steps.azuright.outputs.connstring }}"
 
       - name: Install coverage tools
-        if: matrix.platform.os == 'ubuntu-latest'
+        if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
           sudo apt-get install lcov gcovr
   
       - name: Build debug version
-        if: matrix.platform.os == 'ubuntu-latest'
+        if: matrix.os == 'ubuntu-latest'
         uses: lukka/run-cmake@v10
         with:
           configurePreset: 'ninja-multi-vcpkg-debug'
           buildPreset: 'ninja-vcpkg-debug'
 
       - name: Run tests with emulated storage - debug mode
-        if: matrix.platform.os == 'ubuntu-latest'
+        if: matrix.os == 'ubuntu-latest'
         run: |
           export AZURE_EMULATED_STORAGE=true
           export AZURE_STORAGE_CONNECTION_STRING='${{ steps.azuright.outputs.connstring }}'
           ctest --preset test-debug --output-on-failure
          
       - name: Run tests with cloud storage - debug mode
-        if: matrix.platform.os == 'ubuntu-latest'
+        if: matrix.os == 'ubuntu-latest'
         run: |
           export AZURE_EMULATED_STORAGE=false
           export AZURE_STORAGE_CONNECTION_STRING='${{ secrets.AZURE_CONNECTION_STRING }}'
@@ -116,7 +116,7 @@ jobs:
 
       # - name: Upload coverage results
       #   uses: actions/upload-artifact@v4
-      #   if: matrix.platform.os == 'ubuntu-latest'
+      #   if: matrix.os == 'ubuntu-latest'
       #   with:
       #     name: coverage
       #     path: |
@@ -170,7 +170,7 @@ jobs:
       - name: Upload the packages as artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: binary-${{ matrix.platform.os }}
+          name: binary-${{ matrix.os }}
           path: |
             builds/ninja-multi-vcpkg/lib/*.dylib
             builds/ninja-multi-vcpkg/lib/*.so

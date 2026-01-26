@@ -11,7 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        setup:
+        include:
           - {os: ubuntu-latest, image: debian13}
           - {os: ubuntu-latest, image: debian12}
           - {os: ubuntu-latest, image: debian11}
@@ -20,9 +20,9 @@ jobs:
           - {os: ubuntu-latest, image: ubuntu20.04}
           - {os: ubuntu-24.04-arm, image: ubuntu24.04-arm}
           - {os: ubuntu-24.04-arm, image: ubuntu22.04-arm}
-    runs-on: ${{ matrix.setup.os }}
+    runs-on: ${{ matrix.os }}
     container:
-      image: ghcr.io/khiopsml/khiops/khiopsdev-${{ matrix.setup.image }}:latest
+      image: ghcr.io/khiopsml/khiops/khiopsdev-${{ matrix.image }}:latest
     steps:
       - name: Install packages
         run: |
@@ -89,9 +89,9 @@ jobs:
         - {os: ubuntu-latest, image: ubuntu24.04}
         - {os: ubuntu-24.04-arm, image: ubuntu22.04-arm}
         - {os: ubuntu-24.04-arm, image: ubuntu24.04-arm}
-    runs-on: ${{ matrix.setup.os }}
+    runs-on: ${{ matrix.os }}
     container:
-      image: ghcr.io/khiopsml/khiops/khiopsdev-${{ matrix.setup.image }}:latest
+      image: ghcr.io/khiopsml/khiops/khiopsdev-${{ matrix.image }}:latest
     permissions:
       contents: 'read'
       packages: 'read'
