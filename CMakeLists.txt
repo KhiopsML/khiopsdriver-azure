@@ -32,8 +32,10 @@ set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/modules/)
 set(INSTALL_GTEST OFF)
 set(INSTALL_GMOCK OFF)
 
-include(GoogleTest)
-enable_testing()
+if(BUILD_TESTS)
+  include(GoogleTest)
+  enable_testing()
+endif()
 
 # Find dependencies
 find_package(fmt CONFIG REQUIRED)
@@ -67,11 +69,13 @@ if((CMAKE_SYSTEM_NAME STREQUAL "Linux") AND NOT (CMAKE_BUILD_TYPE STREQUAL "Rele
   message("Build system == Linux, build with sanitizer tools")
   add_compile_options(-fsanitize=undefined -fsanitize=address -fno-sanitize-recover=all)
   add_link_options(-fsanitize=undefined -fsanitize=address -fno-sanitize-recover=all)
-  include(CodeCoverage)
-  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_COVERAGE} ${CMAKE_CXX_FLAGS_DEBUG}")
-  setup_target_for_coverage(${PROJECT_NAME}_coverage basic_test coverage)
-  setup_target_for_coverage_cobertura(${PROJECT_NAME}_cobertura basic_test coverage
-                                      --gtest_output=xml:coverage.junit.xml)
+  if(BUILD_TESTS)
+    include(CodeCoverage)
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_COVERAGE} ${CMAKE_CXX_FLAGS_DEBUG}")
+    setup_target_for_coverage(${PROJECT_NAME}_coverage basic_test coverage)
+    setup_target_for_coverage_cobertura(${PROJECT_NAME}_cobertura basic_test coverage
+                                        --gtest_output=xml:coverage.junit.xml)
+  endif()
 endif()
 
 set(SourceList
@@ -115,31 +119,31 @@ target_compile_options(
   PRIVATE $<$<CXX_COMPILER_ID:MSVC>:-Wall;/wd4582;/wd4583;/wd4625;/wd4626;/wd4710;/wd4711;/wd4820;/wd4868;/permissive->
   PRIVATE $<$<CXX_COMPILER_ID:AppleClang,Clang,GNU>:-Wall;-Wextra;-pedantic>)
 
-add_library(khiopsdriver_file_azure_testing STATIC ${SourceList})
-
-target_include_directories(khiopsdriver_file_azure_testing PRIVATE src/contrib)
-target_link_options(khiopsdriver_file_azure_testing PRIVATE $<$<CONFIG:RELEASE>:-s>) # stripping
-if(WIN32)
-  target_link_libraries(khiopsdriver_file_azure_testing PRIVATE Azure::azure-identity Azure::azure-storage-blobs
-                                                                Azure::azure-storage-files-shares spdlog::spdlog bcrypt)
-else()
-  target_link_libraries(khiopsdriver_file_azure_testing PRIVATE Azure::azure-identity Azure::azure-storage-blobs
-                                                                Azure::azure-storage-files-shares spdlog::spdlog)
-endif()
-target_compile_options(
-  khiopsdriver_file_azure_testing
-  PRIVATE $<$<CXX_COMPILER_ID:MSVC>:-Wall;/wd4582;/wd4583;/wd4625;/wd4626;/wd4710;/wd4711;/wd4820;/wd4868;/permissive->
-  PRIVATE $<$<CXX_COMPILER_ID:AppleClang,Clang,GNU>:-Wall;-Wextra;-pedantic>)
-
 option(BUILD_TESTS "Build test programs" OFF)
 if(BUILD_TESTS)
-  add_executable(KhiopsPluginTest src/khiopsplugintest.cpp)
-  target_link_libraries(KhiopsPluginTest PRIVATE fmt::fmt ${CMAKE_DL_LIBS})
-  add_executable(drivertest src/drivertest.cpp)
-  target_link_libraries(drivertest ${CMAKE_DL_LIBS}) # Link to dl
-endif(BUILD_TESTS)
+  add_library(khiopsdriver_file_azure_testing STATIC ${SourceList})
 
-add_subdirectory(test)
+  target_include_directories(khiopsdriver_file_azure_testing PRIVATE src/contrib)
+  target_link_options(khiopsdriver_file_azure_testing PRIVATE $<$<CONFIG:RELEASE>:-s>) # stripping
+  if(WIN32)
+    target_link_libraries(khiopsdriver_file_azure_testing PRIVATE Azure::azure-identity Azure::azure-storage-blobs
+                                                                  Azure::azure-storage-files-shares spdlog::spdlog bcrypt)
+  else()
+    target_link_libraries(khiopsdriver_file_azure_testing PRIVATE Azure::azure-identity Azure::azure-storage-blobs
+                                                                  Azure::azure-storage-files-shares spdlog::spdlog)
+  endif()
+  target_compile_options(
+    khiopsdriver_file_azure_testing
+    PRIVATE $<$<CXX_COMPILER_ID:MSVC>:-Wall;/wd4582;/wd4583;/wd4625;/wd4626;/wd4710;/wd4711;/wd4820;/wd4868;/permissive->
+    PRIVATE $<$<CXX_COMPILER_ID:AppleClang,Clang,GNU>:-Wall;-Wextra;-pedantic>)
+
+  ### Not working on windows because of unspecified target architecture
+  # add_executable(KhiopsPluginTest src/khiopsplugintest.cpp)
+  # target_link_libraries(KhiopsPluginTest PRIVATE fmt::fmt ${CMAKE_DL_LIBS})
+  # add_executable(drivertest src/drivertest.cpp)
+  # target_link_libraries(drivertest ${CMAKE_DL_LIBS}) # Link to dl
+  add_subdirectory(test)
+endif(BUILD_TESTS)
 
 install(
   TARGETS khiopsdriver_file_azure

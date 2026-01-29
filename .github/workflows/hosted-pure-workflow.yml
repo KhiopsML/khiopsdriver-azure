@@ -127,6 +127,7 @@ jobs:
         uses: lukka/run-cmake@v10
         with:
           configurePreset: 'ninja-multi-vcpkg-debug'
+          configurePresetAdditionalArgs: '["-DBUILD_TESTS=ON"]'
           buildPreset: 'ninja-vcpkg-debug'
 
       - name: Run sanitizer checks
@@ -159,7 +160,7 @@ jobs:
       # This step also runs vcpkg with Binary Caching leveraging GitHub Action cache to
       # store the built packages artifacts.
       - name: Restore from cache the dependencies and generate project files
-        run: cmake --preset ninja-multi-vcpkg-release
+        run: cmake --preset ninja-multi-vcpkg-release -D BUILD_TESTS=ON
 
       # Build (Release configuration only) the whole project with Ninja (which is spawn by CMake).
       #
