@@ -1,0 +1,42 @@
+name: Package for pip
+on: workflow_dispatch
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build-sdist:
+    name: Build sdist
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - run: pipx run build --sdist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pkg-sdist
+          path: dist/*.tar.gz
+
+  build-wheel:
+    name: Build wheel
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, macos-15-intel, windows-latest]
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - uses: ilammy/msvc-dev-cmd@v1
+
+      - uses: pypa/cibuildwheel@v3.3.1
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pkg-wheel-${{ matrix.os }}-${{ strategy.job-index }}
+          path: wheelhouse/*.whl
