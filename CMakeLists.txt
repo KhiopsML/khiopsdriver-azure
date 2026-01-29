@@ -9,7 +9,7 @@ if(DEFINED ENV{VCPKG_DEFAULT_TRIPLET} AND NOT DEFINED VCPKG_TARGET_TRIPLET)
       CACHE STRING "The vcpkg triplet")
 endif()
 
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.21)
 
 # Enforce c++14 standard.
 set(CMAKE_CXX_STANDARD 14)
@@ -151,6 +151,9 @@ install(
   ARCHIVE DESTINATION lib # lib on windows
   RUNTIME DESTINATION bin # dll on windows
 )
+
+# When packaging as a 'Python' wheel, prevent the metadata module from being copied into the wheel
+file(REMOVE "${CMAKE_INSTALL_PREFIX}/metadata.py")
 
 set(CPACK_PACKAGE_VENDOR Orange)
 set(CPACK_PACKAGE_HOMEPAGE_URL https://khiops.org)

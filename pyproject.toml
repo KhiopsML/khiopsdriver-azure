@@ -1,8 +1,10 @@
 # This file is used to package this project as a pip package.
 
+
 [build-system]
-requires = ["scikit-build-core"]
-build-backend = "scikit_build_core.build"
+requires = ["py-build-cmake"]
+build-backend = "py_build_cmake.build"
+
 
 [project]
 name = "khiops-driver-azure"
@@ -13,28 +15,47 @@ license-files = ["LICENSE"]
 maintainers = [{name = "Khiops Team", email = "khiops.team@orange.com"}]
 dynamic = ["version", "description"]
 
-[tool.scikit-build]
-sdist.include = [
-    "/vcpkg/"
-]
-sdist.exclude = [
-    "/.*",  # .github, .gitignore, .gitmodules, .pre-commit-config.yaml...
-    "/scripts/"
-]
-ninja.make-fallback = false
-cmake.args = ["--preset", "ninja-multi-vcpkg-release", "--toolchain", "vcpkg/scripts/buildsystems/vcpkg.cmake"]
-build.targets = ["khiopsdriver_file_azure"]
-wheel.py-api = "py3"  # Our package is compatible with any version of Python since we do not use Python!
 
-[tool.scikit-build.metadata.version]
-provider = "scikit_build_core.metadata.regex"
-input = "src/azureplugin.hpp"
-regex = '#define DRIVER_VERSION KHIOPS_STR\((?P<value>[^)]*)\)'
+[tool.py-build-cmake.module]
+name = "metadata"
 
-[tool.scikit-build.metadata.description]
-provider = "scikit_build_core.metadata.regex"
-input = "CMakeLists.txt"
-regex = 'set\(CPACK_PACKAGE_DESCRIPTION "(?P<value>.*)"\)'
+[tool.py-build-cmake.sdist]
+include = ["*"]
+exclude = [
+    ".*",
+    "__pycache__",
+    "dist",
+    "wheelhouse",
+    "scripts",
+    "test/LearningTest",
+    "test/LearningTestTool",
+    "vcpkg/buildtrees",
+    "vcpkg/downloads",
+    "vcpkg/packages"
+]
+
+[tool.py-build-cmake.cmake]
+minimum_version = "3.21"
+find_python = false   # No need for Python
+find_python3 = false   # No need for Python
+options = {CMAKE_TOOLCHAIN_FILE = "vcpkg/scripts/buildsystems/vcpkg.cmake"}
+build_type = "Release"
+config = ["Release"]
+
+[tool.py-build-cmake.linux.cmake]
+generator = "Ninja"
+
+[tool.py-build-cmake.mac.cmake]
+generator = "Ninja"
+
+[tool.py-build-cmake.windows.cmake]
+generator = "Visual Studio 17 2022"  # We can't use Ninja on windows because we need both 32- and 64-bits wheels; Ninja only builds host-platform binaries
+
+
+[tool.py-build-cmake.wheel]
+python_tag = "py3"  # We do not depend on Python
+python_abi = "none"  # We do not depend on Python
+
 
 [tool.cibuildwheel]
 build = "cp39-*"
