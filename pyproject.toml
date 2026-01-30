@@ -38,19 +38,15 @@ exclude = [
 minimum_version = "3.21"
 find_python = false   # No need for Python
 find_python3 = false   # No need for Python
-options = {CMAKE_TOOLCHAIN_FILE = "vcpkg/scripts/buildsystems/vcpkg.cmake"}
-build_type = "Release"
-config = ["Release"]
 
 [tool.py-build-cmake.linux.cmake]
-generator = "Ninja"
+preset = "configure-ninjamc"
 
 [tool.py-build-cmake.mac.cmake]
-generator = "Ninja"
+preset = "configure-ninjamc"
 
 [tool.py-build-cmake.windows.cmake]
-generator = "Visual Studio 17 2022"  # We can't use Ninja on windows because we need both 32- and 64-bits wheels; Ninja only builds host-platform binaries
-
+preset = "configure-vs2022"  # For 32- and 64-bit wheels
 
 [tool.py-build-cmake.wheel]
 python_tag = "py3"  # We do not depend on Python

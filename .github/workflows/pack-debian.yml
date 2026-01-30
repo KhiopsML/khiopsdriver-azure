@@ -40,11 +40,11 @@ jobs:
 
       - name: Configure CMake
         run: |
-          cmake -B builds -S . -G Ninja -D CMAKE_BUILD_TYPE=Release -D CMAKE_TOOLCHAIN_FILE=vcpkg/scripts/buildsystems/vcpkg.cmake
+          cmake --preset configure-ninjamc
 
       - name: Build 
         run: |
-          cmake --build builds --target khiopsdriver_file_azure
+          cmake --build --preset build-ninjamc-rel --target khiopsdriver_file_azure
 
       - name: Build package with CPack
         run: cd builds/ && cpack -G DEB

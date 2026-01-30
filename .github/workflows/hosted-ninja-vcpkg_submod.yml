@@ -91,28 +91,32 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install lcov gcovr
+
+      - name: Configure
+        uses: lukka/run-cmake@v10
+        with:
+          configurePreset: 'configure-ninjamc'
+          configurePresetAdditionalArgs: '["-DBUILD_TESTS=ON"]'
   
       - name: Build debug version
         if: matrix.os == 'ubuntu-latest'
         uses: lukka/run-cmake@v10
         with:
-          configurePreset: 'ninja-multi-vcpkg-debug'
-          configurePresetAdditionalArgs: '["-DBUILD_TESTS=ON"]'
-          buildPreset: 'ninja-vcpkg-debug'
+          buildPreset: 'build-ninjamc-dbg'
 
       - name: Run tests with emulated storage - debug mode
         if: matrix.os == 'ubuntu-latest'
         run: |
           export AZURE_EMULATED_STORAGE=true
           export AZURE_STORAGE_CONNECTION_STRING='${{ steps.azuright.outputs.connstring }}'
-          ctest --preset test-debug --output-on-failure
+          ctest --preset test-ninjamc-dbg --output-on-failure
          
       - name: Run tests with cloud storage - debug mode
         if: matrix.os == 'ubuntu-latest'
         run: |
           export AZURE_EMULATED_STORAGE=false
           export AZURE_STORAGE_CONNECTION_STRING='${{ secrets.AZURE_CONNECTION_STRING }}'
-          ctest --preset test-debug --output-on-failure
+          ctest --preset test-ninjamc-dbg --output-on-failure
 
       # Disable coverage until we find how to fix the "line mismatch error"
       # cmake --build --preset ninja-vcpkg-debug --target khiops-gcs_coverage --target khiops-gcs_cobertura
@@ -130,9 +134,7 @@ jobs:
       - name: Run CMake+vcpkg+Ninja to generate/build the code.
         uses: lukka/run-cmake@v10
         with:
-          configurePreset: 'ninja-multi-vcpkg-release'
-          configurePresetAdditionalArgs: '["-DBUILD_TESTS=ON"]'
-          buildPreset: 'ninja-vcpkg-release'
+          buildPreset: 'build-ninjamc-rel'
 
       - if: github.ref_type != 'tag'
         uses: azure/login@v2.3.0
