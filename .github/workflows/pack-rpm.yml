@@ -1,5 +1,5 @@
 ---
-name: RPM Packages
+name: RPM Packaging
 on:
   workflow_dispatch:
 

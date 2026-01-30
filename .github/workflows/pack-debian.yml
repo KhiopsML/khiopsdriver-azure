@@ -1,5 +1,5 @@
 ---
-name: DEB Packages
+name: DEB Packaging
 on:
   workflow_dispatch:
 

@@ -1,4 +1,4 @@
-name: Package for pip
+name: pip Packaging
 on: workflow_dispatch
 
 defaults:
