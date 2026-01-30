@@ -17,7 +17,7 @@ dynamic = ["version", "description"]
 
 
 [tool.py-build-cmake.module]
-name = "metadata"
+name = "metadata"  # The metadata.py module will be run to set the package version and description
 
 [tool.py-build-cmake.sdist]
 include = ["*"]
