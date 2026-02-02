@@ -91,32 +91,30 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install lcov gcovr
-
-      - name: Configure
-        uses: lukka/run-cmake@v10
-        with:
-          configurePreset: 'configure-ninjamc'
-          configurePresetAdditionalArgs: '["-DBUILD_TESTS=ON"]'
   
-      - name: Build debug version
+      - name: Test debug (emulated storage)
         if: matrix.os == 'ubuntu-latest'
         uses: lukka/run-cmake@v10
         with:
-          buildPreset: 'build-ninjamc-dbg'
+          configurePreset: 'configure-ninja-dbg'
+          configurePresetAdditionalArgs: '["-DBUILD_TESTS=ON"]'
+          buildPreset: 'build-ninja-dbg'
+          testPreset: 'test-ninja-dbg'
+        env:
+          AZURE_EMULATED_STORAGE: 'true'
+          AZURE_STORAGE_CONNECTION_STRING: '${{ steps.azuright.outputs.connstring }}'
 
-      - name: Run tests with emulated storage - debug mode
+      - name: Test debug (cloud storage)
         if: matrix.os == 'ubuntu-latest'
-        run: |
-          export AZURE_EMULATED_STORAGE=true
-          export AZURE_STORAGE_CONNECTION_STRING='${{ steps.azuright.outputs.connstring }}'
-          ctest --preset test-ninjamc-dbg --output-on-failure
-         
-      - name: Run tests with cloud storage - debug mode
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          export AZURE_EMULATED_STORAGE=false
-          export AZURE_STORAGE_CONNECTION_STRING='${{ secrets.AZURE_CONNECTION_STRING }}'
-          ctest --preset test-ninjamc-dbg
+        uses: lukka/run-cmake@v10
+        with:
+          configurePreset: 'configure-ninja-dbg'
+          configurePresetAdditionalArgs: '["-DBUILD_TESTS=ON"]'
+          buildPreset: 'build-ninja-dbg'
+          testPreset: 'test-ninja-dbg'
+        env:
+          AZURE_EMULATED_STORAGE: 'false'
+          AZURE_STORAGE_CONNECTION_STRING: '${{ secrets.AZURE_CONNECTION_STRING }}'
 
       # Disable coverage until we find how to fix the "line mismatch error"
       # cmake --build --preset ninja-vcpkg-debug --target khiops-gcs_coverage --target khiops-gcs_cobertura
@@ -131,11 +129,6 @@ jobs:
       #       builds/ninja-multi-vcpkg/coverage.*
       #     if-no-files-found: ignore
 
-      - name: Run CMake+vcpkg+Ninja to generate/build the code.
-        uses: lukka/run-cmake@v10
-        with:
-          buildPreset: 'build-ninjamc-rel'
-
       - if: github.ref_type != 'tag'
         uses: azure/login@v2.3.0
         with:
@@ -146,8 +139,15 @@ jobs:
       - if: github.ref_type == 'tag'
         run: echo "AZURE_STORAGE_CONNECTION_STRING='${{ secrets.AZURE_CONNECTION_STRING }}'" >> $GITHUB_ENV
 
-      - name: Run tests with cloud storage
-        run: ctest --preset test-ninjamc-rel --output-junit test_results.xml
+      - name: Test release (cloud storage)
+        if: matrix.os == 'ubuntu-latest'
+        uses: lukka/run-cmake@v10
+        with:
+          configurePreset: 'configure-ninja-rel'
+          configurePresetAdditionalArgs: '["-DBUILD_TESTS=ON"]'
+          buildPreset: 'build-ninja-rel'
+          testPreset: 'test-ninja-rel'
+          testPresetAdditionalArgs: '["--output-junit", "test_results.xml"]'
 
       - name: Upload results of cloud storage tests
         if: always()
@@ -160,7 +160,7 @@ jobs:
         with:
           name: binary-${{ matrix.os }}
           path: |
-            builds/lib/*.dylib
-            builds/lib/*.so
-            builds/bin/*.dll
+            build/release/lib/*.dylib
+            build/release/lib/*.so
+            build/release/bin/*.dll
           if-no-files-found: ignore

@@ -39,13 +39,13 @@ jobs:
           fetch-depth: 0
 
       - name: Configure CMake
-        run: cmake --preset configure-ninjamc
+        run: cmake --preset configure-ninja-rel
 
       - name: Build 
-        run: cmake --build --preset build-ninjamc-rel --target khiopsdriver_file_azure
+        run: cmake --build --preset build-ninja-rel --target khiopsdriver_file_azure
 
       - name: Build package with CPack
-        run: cd builds/ && cpack -G DEB
+        run: cd build/release && cpack -G DEB
 
       - name: Set environment variables
         run: |

@@ -2,84 +2,39 @@
   "version": 3,
   "configurePresets": [
     {
-      "name": "configure",
-      "displayName": "Configure",
-      "description": "Configure with vcpkg toolchain",
-      "hidden": true,
-      "binaryDir": "${sourceDir}/builds",
+      "name": "configure-ninja-dbg",
+      "generator": "Ninja",
+      "cacheVariables": {"CMAKE_BUILD_TYPE": "Debug"},
+      "binaryDir": "${sourceDir}/build/debug",
       "toolchainFile": "${sourceDir}/vcpkg/scripts/buildsystems/vcpkg.cmake"
     },
     {
-      "name": "configure-ninjamc",
-      "displayName": "Configure - Ninja Multi-Config",
-      "inherits": "configure",
-      "generator": "Ninja Multi-Config"
-    },
-    {
-      "name": "configure-vs2022",
-      "displayName": "Configure - Visual Studio 17 2022",
-      "inherits": "configure",
-      "condition": {"lhs": "${hostSystemName}", "type": "equals", "rhs": "Windows"},
-      "generator": "Visual Studio 17 2022"
+      "name": "configure-ninja-rel",
+      "generator": "Ninja",
+      "cacheVariables": {"CMAKE_BUILD_TYPE": "Release"},
+      "binaryDir": "${sourceDir}/build/release",
+      "toolchainFile": "${sourceDir}/vcpkg/scripts/buildsystems/vcpkg.cmake"
     }
   ],
   "buildPresets": [
     {
-      "name": "build-ninjamc-dbg",
-      "displayName": "Build - Ninja Multi-Config - Debug",
-      "configurePreset": "configure-ninjamc",
-      "configuration": "Debug"
+      "name": "build-ninja-dbg",
+      "configurePreset": "configure-ninja-dbg"
     },
     {
-      "name": "build-ninjamc-rel",
-      "displayName": "Build - Ninja Multi-Config - Release",
-      "configurePreset": "configure-ninjamc",
-      "configuration": "Release"
-    },
-    {
-      "name": "build-vs2022-dbg",
-      "displayName": "Build - Visual Studio 17 2022 - Debug",
-      "condition": {"lhs": "${hostSystemName}", "type": "equals", "rhs": "Windows"},
-      "configurePreset": "configure-vs2022",
-      "configuration": "Debug"
-    },
-    {
-      "name": "build-vs2022-rel",
-      "displayName": "Build - Visual Studio 17 2022 - Release",
-      "condition": {"lhs": "${hostSystemName}", "type": "equals", "rhs": "Windows"},
-      "configurePreset": "configure-vs2022",
-      "configuration": "Release"
+      "name": "build-ninja-rel",
+      "configurePreset": "configure-ninja-rel"
     }
   ],
   "testPresets": [
     {
-      "name": "test-ninjamc-dbg",
-      "displayName": "Test - Ninja Multi-Config - Debug",
-      "configurePreset": "configure-ninjamc",
-      "configuration": "Debug",
+      "name": "test-ninja-dbg",
+      "configurePreset": "configure-ninja-dbg",
       "output": {"outputOnFailure": true}
     },
     {
-      "name": "test-ninjamc-rel",
-      "displayName": "Test - Ninja Multi-Config - Release",
-      "configurePreset": "configure-ninjamc",
-      "configuration": "Release",
-      "output": {"outputOnFailure": true}
-    },
-    {
-      "name": "test-vs2022-dbg",
-      "displayName": "Test - Visual Studio 17 2022 - Debug",
-      "condition": {"lhs": "${hostSystemName}", "type": "equals", "rhs": "Windows"},
-      "configurePreset": "configure-vs2022",
-      "configuration": "Debug",
-      "output": {"outputOnFailure": true}
-    },
-    {
-      "name": "test-vs2022-rel",
-      "displayName": "Test - Visual Studio 17 2022 - Release",
-      "condition": {"lhs": "${hostSystemName}", "type": "equals", "rhs": "Windows"},
-      "configurePreset": "configure-vs2022",
-      "configuration": "Release",
+      "name": "test-ninja-rel",
+      "configurePreset": "configure-ninja-rel",
       "output": {"outputOnFailure": true}
     }
   ]
