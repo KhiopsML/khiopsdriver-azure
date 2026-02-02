@@ -39,12 +39,10 @@ jobs:
           fetch-depth: 0
 
       - name: Configure CMake
-        run: |
-          cmake --preset configure-ninjamc
+        run: cmake --preset configure-ninjamc
 
       - name: Build 
-        run: |
-          cmake --build --preset build-ninjamc-rel --target khiopsdriver_file_azure
+        run: cmake --build --preset build-ninjamc-rel --target khiopsdriver_file_azure
 
       - name: Build package with CPack
         run: cd builds/ && cpack -G DEB

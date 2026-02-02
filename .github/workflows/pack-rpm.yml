@@ -117,8 +117,7 @@ jobs:
           path: artifacts
 
       - name: Install driver
-        run: |
-          yum install -y ./artifacts/khiops-driver-*.rpm
+        run: yum install -y ./artifacts/khiops-driver-*.rpm
 
       - name: Check Khiops core installation
         uses: ./.github/actions/test-khiops-install
