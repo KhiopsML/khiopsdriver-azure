@@ -61,27 +61,31 @@
       "name": "test-ninjamc-dbg",
       "displayName": "Test - Ninja Multi-Config - Debug",
       "configurePreset": "configure-ninjamc",
-      "configuration": "Debug"
+      "configuration": "Debug",
+      "outputOnFailure": true
     },
     {
       "name": "test-ninjamc-rel",
       "displayName": "Test - Ninja Multi-Config - Release",
       "configurePreset": "configure-ninjamc",
-      "configuration": "Release"
+      "configuration": "Release",
+      "outputOnFailure": true
     },
     {
       "name": "test-vs2022-dbg",
       "displayName": "Test - Visual Studio 17 2022 - Debug",
       "condition": {"lhs": "${hostSystemName}", "type": "equals", "rhs": "Windows"},
       "configurePreset": "configure-vs2022",
-      "configuration": "Debug"
+      "configuration": "Debug",
+      "outputOnFailure": true
     },
     {
       "name": "test-vs2022-rel",
       "displayName": "Test - Visual Studio 17 2022 - Release",
       "condition": {"lhs": "${hostSystemName}", "type": "equals", "rhs": "Windows"},
       "configurePreset": "configure-vs2022",
-      "configuration": "Release"
+      "configuration": "Release",
+      "outputOnFailure": true
     }
   ]
 }

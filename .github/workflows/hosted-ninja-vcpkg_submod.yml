@@ -116,7 +116,7 @@ jobs:
         run: |
           export AZURE_EMULATED_STORAGE=false
           export AZURE_STORAGE_CONNECTION_STRING='${{ secrets.AZURE_CONNECTION_STRING }}'
-          ctest --preset test-ninjamc-dbg --output-on-failure
+          ctest --preset test-ninjamc-dbg
 
       # Disable coverage until we find how to fix the "line mismatch error"
       # cmake --build --preset ninja-vcpkg-debug --target khiops-gcs_coverage --target khiops-gcs_cobertura
@@ -147,7 +147,7 @@ jobs:
         run: echo "AZURE_STORAGE_CONNECTION_STRING='${{ secrets.AZURE_CONNECTION_STRING }}'" >> $GITHUB_ENV
 
       - name: Run tests with cloud storage
-        run: ctest --preset test-release --output-on-failure --output-junit test_results.xml
+        run: ctest --preset test-ninjamc-rel --output-junit test_results.xml
 
       - name: Upload results of cloud storage tests
         if: always()
