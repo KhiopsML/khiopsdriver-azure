@@ -16,8 +16,9 @@ dynamic = ["version", "description"]
 
 
 [tool.py-build-cmake.module]
-name = "metadata"  # The metadata.py module will be run to set the package version and description
+name = "metadata"  # The metadata module will be run by py-build-cmake to set the package version and description
 
+# In the source distribution, only keep the files that are needed to build the program
 [tool.py-build-cmake.sdist]
 include = ["*"]
 exclude = [
@@ -35,22 +36,25 @@ exclude = [
 
 [tool.py-build-cmake.cmake]
 minimum_version = "3.21"
-find_python = false   # No need for Python
-find_python3 = false   # No need for Python
+find_python = false   # C++-only package
+find_python3 = false   # C++-only package
 preset = "configure-ninja-rel"
 build_presets = ["build-ninja-rel"]
-build_path = "build/release"
+generator = "Ninja"  # This is already set in the preset but py-build-cmake has to be told what generator we use, so that it does not force the platform specification
+build_path = "build/release"  # Avoid creation of a custom directory by py-build-cmake (which does not use the one specified in the preset)
 
 [tool.py-build-cmake.wheel]
-python_tag = "py3"  # We do not depend on Python
-python_abi = "none"  # We do not depend on Python
+python_tag = "py3"  # C++-only package
+python_abi = "none"  # C++-only package
 
 
 [tool.cibuildwheel]
 build = "cp39-*"
 skip = "*musllinux*"  # Khiops itself does not compile under musl linuxes, so there is no need for musl linux Khiops drivers
-archs = "auto64"
+archs = "auto64"  # Do not build 32-bit wheels
 
+# Install build-time dependencies in containers created by cibuildwheel
+# This is compatible with Debian-like and Fedora-like distributions
 [tool.cibuildwheel.linux]
 before-all = [
     "DEB_NEEDS='zip perl ninja-build'",

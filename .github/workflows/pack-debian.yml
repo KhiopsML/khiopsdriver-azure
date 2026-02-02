@@ -56,7 +56,7 @@ jobs:
 
       - name: Rename the packages to include the ubuntu codename
         run: |
-          cd builds/packages/
+          cd build/release/packages/
           for filename in *.deb
           do
             mv -v $filename ${filename%_*}-${VERSION_CODENAME}.${filename##*_}
@@ -68,7 +68,7 @@ jobs:
           # We add a `deb-` prefix so we can later recover all artifacts with the pattern `deb-*`
           # Note: The more natural pattern `*-deb` or `*` does not work
           name: deb-${{ env.ID }}-${{ env.VERSION_CODENAME }}-${{ env.ARCH }}
-          path: builds/packages/*.deb
+          path: build/release/packages/*.deb
           if-no-files-found: error
  
   # Test packages on a brand new runner to check:
