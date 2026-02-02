@@ -38,20 +38,23 @@ exclude = [
 minimum_version = "3.21"
 find_python = false   # No need for Python
 find_python3 = false   # No need for Python
+build_path = "builds"
 
 [tool.py-build-cmake.linux.cmake]
 preset = "configure-ninjamc"
+build_presets = ["build-ninjamc-rel"]
 
 [tool.py-build-cmake.mac.cmake]
 preset = "configure-ninjamc"
+build_presets = ["build-ninjamc-rel"]
 
 [tool.py-build-cmake.windows.cmake]
 preset = "configure-vs2022"  # For 32- and 64-bit wheels
+build_presets = ["build-vs2022-rel"]
 
 [tool.py-build-cmake.wheel]
 python_tag = "py3"  # We do not depend on Python
 python_abi = "none"  # We do not depend on Python
-
 
 [tool.cibuildwheel]
 build = "cp39-*"
