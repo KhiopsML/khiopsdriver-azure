@@ -140,7 +140,6 @@ jobs:
         run: echo "AZURE_STORAGE_CONNECTION_STRING='${{ secrets.AZURE_CONNECTION_STRING }}'" >> $GITHUB_ENV
 
       - name: Test release (cloud storage)
-        if: matrix.os == 'ubuntu-latest'
         uses: lukka/run-cmake@v10
         with:
           configurePreset: 'configure-ninja-rel'
