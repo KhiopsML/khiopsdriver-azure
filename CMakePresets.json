@@ -57,14 +57,14 @@
       "displayName": "Test - Ninja Multi-Config - Debug",
       "configurePreset": "configure-ninjamc",
       "configuration": "Debug",
-      "outputOnFailure": true
+      "output": {"outputOnFailure": true}
     },
     {
       "name": "test-ninjamc-rel",
       "displayName": "Test - Ninja Multi-Config - Release",
       "configurePreset": "configure-ninjamc",
       "configuration": "Release",
-      "outputOnFailure": true
+      "output": {"outputOnFailure": true}
     },
     {
       "name": "test-vs2022-dbg",
@@ -72,7 +72,7 @@
       "condition": {"lhs": "${hostSystemName}", "type": "equals", "rhs": "Windows"},
       "configurePreset": "configure-vs2022",
       "configuration": "Debug",
-      "outputOnFailure": true
+      "output": {"outputOnFailure": true}
     },
     {
       "name": "test-vs2022-rel",
@@ -80,7 +80,7 @@
       "condition": {"lhs": "${hostSystemName}", "type": "equals", "rhs": "Windows"},
       "configurePreset": "configure-vs2022",
       "configuration": "Release",
-      "outputOnFailure": true
+      "output": {"outputOnFailure": true}
     }
   ]
 }
