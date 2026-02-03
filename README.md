@@ -37,6 +37,7 @@ This driver is distributed as multiple package formats:
 - DEB package ([GitHub Actions workflow](.github/workflows/pack-debian.yml))
 - RPM package ([GitHub Actions workflow](.github/workflows/pack-rpm.yml))
 - pip package ([GitHub Actions workflow](.github/workflows/pack-pip.yml))
+- conda package ([recipe repository](https://github.com/KhiopsML/recipe-khiopsdriver-azure))
 
 
 Technical information
