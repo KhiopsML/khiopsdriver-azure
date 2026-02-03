@@ -38,12 +38,14 @@ if(BUILD_TESTS)
 endif()
 
 # Find dependencies
-find_package(fmt CONFIG REQUIRED)
 find_package(azure-identity-cpp CONFIG REQUIRED)
 find_package(azure-storage-blobs-cpp CONFIG REQUIRED)
 find_package(azure-storage-files-shares-cpp CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
-find_package(Boost REQUIRED)
+if(BUILD_TESTS)
+  find_package(fmt CONFIG REQUIRED)
+  find_package(Boost REQUIRED)
+endif()
 
 # Hide symbols in the shared libraries
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)
