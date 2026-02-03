@@ -20,7 +20,7 @@ Storage service authentication
 The table below shows the supported methods of authentication.
 
 | Authentication method         | Azurite storage emulator | Azure cloud storage |
-| ----------------------------- | ------------------------ | ------------------- |
+| ----------------------------- | :----------------------: | :-----------------: |
 | Connection string             | ✔                        | ✔                   |
 | Environment credentials *     |                          | ✔                   |
 | Workload identity credentials |                          | ✔                   |
