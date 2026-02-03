@@ -7,6 +7,7 @@
 #include <memory>
 #include <numeric>
 #include <string>
+#include <vector>
 
 using namespace std;
 using HttpRange = Azure::Core::Http::HttpRange;
@@ -162,24 +163,18 @@ size_t FragmentedFile::GetFragmentIndexOfUserOffset(size_t nUserOffset) const {
 
 static string ReadHeaderFromBodyStream(unique_ptr<BodyStream> &&bodyStream) {
   string sHeader;
-  size_t nBufferSize = (size_t)bodyStream->Length();
-  uint8_t *bufferEnd;
+  size_t nBufferSize = static_cast<size_t>(bodyStream->Length());
+  vector<uint8_t> buffer(nBufferSize);
+  uint8_t *bufferBegin = buffer.data();
+  uint8_t *bufferEnd = bufferBegin + nBufferSize;
   uint8_t *foundLineFeed;
   bool bFoundLineFeed;
 
-  uint8_t *buffer = new uint8_t[nBufferSize];
-  try {
-    bodyStream->ReadToCount(buffer, nBufferSize);
-    bufferEnd = buffer + nBufferSize;
-    bFoundLineFeed =
-        (foundLineFeed = find(buffer, bufferEnd, '\n')) < bufferEnd;
-    sHeader.append((const char *)buffer,
-                   bFoundLineFeed ? foundLineFeed + 1 - buffer : nBufferSize);
-  } catch (...) {
-    delete[] buffer;
-    throw;
-  }
-  delete[] buffer;
+  bodyStream->ReadToCount(bufferBegin, nBufferSize);
+  foundLineFeed = find(bufferBegin, bufferEnd, '\n');
+  bFoundLineFeed = foundLineFeed < bufferEnd;
+  sHeader.append(reinterpret_cast<const char *>(bufferBegin),
+                  bFoundLineFeed ? foundLineFeed + 1 - bufferBegin : nBufferSize);
 
   return bFoundLineFeed ? sHeader : "";
 }
