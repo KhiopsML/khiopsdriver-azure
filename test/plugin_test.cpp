@@ -31,7 +31,7 @@
 #elif defined(__is_mac__)
 #define LIBRARY_NAME "libkhiopsdriver_file_azure.dylib"
 #else
-#define LIBRARY_NAME "khiopsdriver_file_azure.dll"
+#define LIBRARY_NAME "libkhiopsdriver_file_azure.dll"
 #endif
 
 /* API functions definition, that must be defined in the library */
