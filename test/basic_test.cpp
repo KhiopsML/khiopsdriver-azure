@@ -1,15 +1,6 @@
 #include "azureplugin.hpp"
-#include "driver.hpp"
 #include "fixtures/storage_fixture.hpp"
 #include "returnval.hpp"
-
-#include <cstring>
-#include <fstream>
-#include <functional>
-#include <iostream>
-#include <limits>
-#include <memory>
-#include <sstream>
 
 #include <boost/process/v2/environment.hpp>
 

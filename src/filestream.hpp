@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "exception.hpp"
 #include "fragmentedfile.hpp"
 #include "objectclient.hpp"
 #include "storagetype.hpp"
@@ -20,37 +19,41 @@ public:
   enum class Mode { READ, WRITE };
   enum class OutputMode { WRITE, APPEND };
 
-  static FileStream
-  OpenForReading(const std::vector<Azure::Storage::Blobs::BlobClient> &clients);
-  static FileStream OpenForReading(
+  static int
+  OpenForReading(FileStream *result,
+                 const std::vector<Azure::Storage::Blobs::BlobClient> &clients);
+  static int OpenForReading(
+      FileStream *result,
       const std::vector<Azure::Storage::Files::Shares::ShareFileClient>
           &clients);
-  static FileStream OpenForReading(const std::vector<ObjectClient> &clients);
-  static FileStream
-  OpenForWriting(OutputMode mode,
-                 const Azure::Storage::Blobs::BlobClient &client);
-  static FileStream
-  OpenForWriting(OutputMode mode,
+  static int OpenForReading(FileStream *result,
+                            const std::vector<ObjectClient> &clients);
+  static void OpenForWriting(FileStream *result, OutputMode mode,
+                             const Azure::Storage::Blobs::BlobClient &client);
+  static void
+  OpenForWriting(FileStream *result, OutputMode mode,
                  const Azure::Storage::Files::Shares::ShareFileClient &client);
-  static FileStream OpenForWriting(OutputMode mode, const ObjectClient &client);
+  static void OpenForWriting(FileStream *result, OutputMode mode,
+                             const ObjectClient &client);
+  FileStream();
   FileStream(FileStream &&source);
+  FileStream &operator=(FileStream &&other);
   ~FileStream();
 
   void *GetHandle() const;
+  Mode GetMode() const;
 
   void Close();
 
   // Reader-only operations
-  size_t Read(void *dest, size_t nSize, size_t nCount);
-  void Seek(long long int nOffset, int nOrigin);
+  int Read(size_t *nRead, void *dest, size_t nSize, size_t nCount);
+  int Seek(long long int nOffset, int nOrigin);
 
   // Writer-only operations
-  size_t Write(const void *source, size_t nSize, size_t nCount);
-  void Flush();
+  int Write(size_t *nWritten, const void *source, size_t nSize, size_t nCount);
+  int Flush();
 
 private:
-  FileStream();
-
   void *handle;
 
   StorageType storageType;
@@ -71,16 +74,5 @@ private:
     FragmentedFile readInfo; // Reader-only attributes
     WriteInfo writeInfo;     // Writer-only attributes
   };
-};
-
-class InvalidOperationForStreamModeError : public Error {
-public:
-  inline InvalidOperationForStreamModeError(const std::string &operation,
-                                            FileStream::Mode mode)
-      : Error(concatenate("operation '"
-                          << operation << "' is invalid for stream mode '"
-                          << (mode == FileStream::Mode::READ ? "reader"
-                                                             : "writer")
-                          << "'")) {}
 };
 } // namespace az

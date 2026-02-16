@@ -51,6 +51,7 @@ if(WIN32)
             ${Boost_LIBRARIES}
             Azure::azure-identity
             Azure::azure-storage-blobs
+            fmt::fmt
             khiopsdriver_file_azure
             bcrypt)
 else()
@@ -62,6 +63,7 @@ else()
             ${Boost_LIBRARIES}
             Azure::azure-identity
             Azure::azure-storage-blobs
+            fmt::fmt
             khiopsdriver_file_azure)
 endif()
 

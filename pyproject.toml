@@ -38,10 +38,10 @@ exclude = [
 minimum_version = "3.21"
 find_python = false   # C++-only package
 find_python3 = false   # C++-only package
-preset = "configure-ninja-rel"
-build_presets = ["build-ninja-rel"]
+preset = "ninja-rel"
+build_presets = ["ninja-rel"]
 generator = "Ninja"  # This is already set in the preset but py-build-cmake has to be told what generator we use, so that it does not force the platform specification
-build_path = "build/release"  # Avoid creation of a custom directory by py-build-cmake (which does not use the one specified in the preset)
+build_path = "build/ninja-rel"  # Avoid creation of a custom directory by py-build-cmake (which does not use the one specified in the preset)
 
 [tool.py-build-cmake.wheel]
 python_tag = "py3"  # C++-only package

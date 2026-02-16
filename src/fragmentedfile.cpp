@@ -6,6 +6,7 @@
 #include <azure/storage/files/shares/share_responses.hpp>
 #include <memory>
 #include <numeric>
+#include <spdlog/spdlog.h>
 #include <string>
 #include <vector>
 
@@ -150,15 +151,19 @@ FragmentedFile::GetFragment(size_t nIndex) const {
   return fragments.at(nIndex);
 }
 
-size_t FragmentedFile::GetFragmentIndexOfUserOffset(size_t nUserOffset) const {
+int FragmentedFile::GetFragmentIndexOfUserOffset(size_t *nFragmentIndex,
+                                                 size_t nUserOffset) const {
   if (fragments.empty()) {
-    throw NoFragmentError();
+    spdlog::error("No fragment found.");
+    return -1;
   }
-  return (size_t)(find_if(fragments.begin(), fragments.end(),
-                          [nUserOffset](const auto &fragment) {
-                            return nUserOffset < fragment.nUserOffset;
-                          }) -
-                  1 - fragments.begin());
+  *nFragmentIndex =
+      (size_t)(find_if(fragments.begin(), fragments.end(),
+                       [nUserOffset](const auto &fragment) {
+                         return nUserOffset < fragment.nUserOffset;
+                       }) -
+               1 - fragments.begin());
+  return 0;
 }
 
 static string ReadHeaderFromBodyStream(unique_ptr<BodyStream> &&bodyStream) {
@@ -174,7 +179,8 @@ static string ReadHeaderFromBodyStream(unique_ptr<BodyStream> &&bodyStream) {
   foundLineFeed = find(bufferBegin, bufferEnd, '\n');
   bFoundLineFeed = foundLineFeed < bufferEnd;
   sHeader.append(reinterpret_cast<const char *>(bufferBegin),
-                  bFoundLineFeed ? foundLineFeed + 1 - bufferBegin : nBufferSize);
+                 bFoundLineFeed ? foundLineFeed + 1 - bufferBegin
+                                : nBufferSize);
 
   return bFoundLineFeed ? sHeader : "";
 }

@@ -4,7 +4,6 @@
 
 #pragma once
 
-#include "exception.hpp"
 #include "objectclient.hpp"
 #include "storagetype.hpp"
 #include <azure/core/io/body_stream.hpp>
@@ -28,11 +27,6 @@ public:
     Fragment &operator=(Fragment &&source);
   };
 
-  class NoFragmentError : public Error {
-  public:
-    inline NoFragmentError() : Error("no fragment found in fragmented file") {}
-  };
-
   FragmentedFile();
   FragmentedFile(const std::vector<Azure::Storage::Blobs::BlobClient> &clients);
   FragmentedFile(
@@ -44,7 +38,8 @@ public:
   size_t GetSize() const;
   size_t GetHeaderLen() const;
   const Fragment &GetFragment(size_t nIndex) const;
-  size_t GetFragmentIndexOfUserOffset(size_t nUserOffset) const;
+  int GetFragmentIndexOfUserOffset(size_t *nFragmentIndex,
+                                   size_t nUserOffset) const;
 
 private:
   StorageType storageType;

@@ -96,15 +96,15 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         uses: lukka/run-cmake@v10
         with:
-          configurePreset: 'configure-ninja-dbg'
+          configurePreset: 'ninja-dbg'
           configurePresetAdditionalArgs: '["-DBUILD_TESTS=ON"]'
-          buildPreset: 'build-ninja-dbg'
+          buildPreset: 'ninja-dbg'
   
       - name: Test debug (emulated storage)
         if: matrix.os == 'ubuntu-latest'
         uses: lukka/run-cmake@v10
         with:
-          testPreset: 'test-ninja-dbg'
+          testPreset: 'ninja-dbg'
         env:
           AZURE_EMULATED_STORAGE: 'true'
           AZURE_STORAGE_CONNECTION_STRING: '${{ steps.azuright.outputs.connstring }}'
@@ -113,7 +113,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         uses: lukka/run-cmake@v10
         with:
-          testPreset: 'test-ninja-dbg'
+          testPreset: 'ninja-dbg'
         env:
           AZURE_EMULATED_STORAGE: 'false'
           AZURE_STORAGE_CONNECTION_STRING: '${{ secrets.AZURE_CONNECTION_STRING }}'
@@ -134,9 +134,9 @@ jobs:
       - name: Build release
         uses: lukka/run-cmake@v10
         with:
-          configurePreset: 'configure-ninja-rel'
+          configurePreset: 'ninja-rel'
           configurePresetAdditionalArgs: '["-DBUILD_TESTS=ON"]'
-          buildPreset: 'build-ninja-rel'
+          buildPreset: 'ninja-rel'
 
       - if: github.ref_type != 'tag'
         uses: azure/login@v2.3.0
@@ -151,14 +151,14 @@ jobs:
       - name: Test release (cloud storage)
         uses: lukka/run-cmake@v10
         with:
-          testPreset: 'test-ninja-rel'
+          testPreset: 'ninja-rel'
           testPresetAdditionalArgs: '["--output-junit", "test_results.xml"]'
 
       - name: Upload results of cloud storage tests
         if: always()
         uses: test-summary/action@v2
         with:
-          paths: ${{ github.workspace }}/build/release/test_results.xml
+          paths: ${{ github.workspace }}/build/ninja-rel/test_results.xml
   
       - name: Upload the packages as artifacts
         uses: actions/upload-artifact@v4
