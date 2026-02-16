@@ -87,11 +87,9 @@ set(SourceList
     driver.cpp
     contrib.hpp
     contrib.cpp
-    macro.hpp
     util.hpp
     util.cpp
     returnval.hpp
-    exception.hpp
     objectclient.hpp
     objectclient.cpp
     storagetype.hpp
@@ -108,15 +106,10 @@ list(TRANSFORM SourceList PREPEND src/)
 add_library(khiopsdriver_file_azure SHARED ${SourceList})
 target_include_directories(khiopsdriver_file_azure PRIVATE src/contrib)
 target_link_options(khiopsdriver_file_azure PRIVATE $<$<CONFIG:RELEASE>:-s>) # stripping
-set_target_properties(khiopsdriver_file_azure PROPERTIES
-  SOVERSION ${PROJECT_VERSION_MAJOR}
-  VERSION ${PROJECT_VERSION}
-)
+set_target_properties(khiopsdriver_file_azure PROPERTIES SOVERSION ${PROJECT_VERSION_MAJOR} VERSION ${PROJECT_VERSION})
 if(WIN32)
-  set_target_properties(khiopsdriver_file_azure PROPERTIES
-    RUNTIME_OUTPUT_NAME "libkhiopsdriver_file_azure"
-    ARCHIVE_OUTPUT_NAME "libkhiopsdriver_file_azure"
-  )
+  set_target_properties(khiopsdriver_file_azure PROPERTIES RUNTIME_OUTPUT_NAME "libkhiopsdriver_file_azure"
+                                                           ARCHIVE_OUTPUT_NAME "libkhiopsdriver_file_azure")
 endif()
 if(WIN32)
   target_link_libraries(khiopsdriver_file_azure PRIVATE Azure::azure-identity Azure::azure-storage-blobs
@@ -137,22 +130,22 @@ if(BUILD_TESTS)
   target_include_directories(khiopsdriver_file_azure_testing PRIVATE src/contrib)
   target_link_options(khiopsdriver_file_azure_testing PRIVATE $<$<CONFIG:RELEASE>:-s>) # stripping
   if(WIN32)
-    target_link_libraries(khiopsdriver_file_azure_testing PRIVATE Azure::azure-identity Azure::azure-storage-blobs
-                                                                  Azure::azure-storage-files-shares spdlog::spdlog bcrypt)
+    target_link_libraries(
+      khiopsdriver_file_azure_testing PRIVATE Azure::azure-identity Azure::azure-storage-blobs
+                                              Azure::azure-storage-files-shares spdlog::spdlog bcrypt)
   else()
     target_link_libraries(khiopsdriver_file_azure_testing PRIVATE Azure::azure-identity Azure::azure-storage-blobs
                                                                   Azure::azure-storage-files-shares spdlog::spdlog)
   endif()
   target_compile_options(
     khiopsdriver_file_azure_testing
-    PRIVATE $<$<CXX_COMPILER_ID:MSVC>:-Wall;/wd4582;/wd4583;/wd4625;/wd4626;/wd4710;/wd4711;/wd4820;/wd4868;/permissive->
+    PRIVATE
+      $<$<CXX_COMPILER_ID:MSVC>:-Wall;/wd4582;/wd4583;/wd4625;/wd4626;/wd4710;/wd4711;/wd4820;/wd4868;/permissive->
     PRIVATE $<$<CXX_COMPILER_ID:AppleClang,Clang,GNU>:-Wall;-Wextra;-pedantic>)
 
-  ### Not working on windows because of unspecified target architecture
-  # add_executable(KhiopsPluginTest src/khiopsplugintest.cpp)
-  # target_link_libraries(KhiopsPluginTest PRIVATE fmt::fmt ${CMAKE_DL_LIBS})
-  # add_executable(drivertest src/drivertest.cpp)
-  # target_link_libraries(drivertest ${CMAKE_DL_LIBS}) # Link to dl
+  # Not working on windows because of unspecified target architecture add_executable(KhiopsPluginTest
+  # src/khiopsplugintest.cpp) target_link_libraries(KhiopsPluginTest PRIVATE fmt::fmt ${CMAKE_DL_LIBS})
+  # add_executable(drivertest src/drivertest.cpp) target_link_libraries(drivertest ${CMAKE_DL_LIBS}) # Link to dl
   add_subdirectory(test)
 endif(BUILD_TESTS)
 

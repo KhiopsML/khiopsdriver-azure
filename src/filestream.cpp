@@ -1,50 +1,59 @@
 #include "filestream.hpp"
+#include "util.hpp"
 #include <azure/storage/blobs/block_blob_client.hpp>
 #include <azure/storage/common/storage_exception.hpp>
 #include <chrono>
 #include <iomanip>
+#include <spdlog/spdlog.h>
 #include <sstream>
 
 using namespace std;
+using namespace az::util;
 
 namespace az {
-FileStream FileStream::OpenForReading(
+int FileStream::OpenForReading(
+    FileStream *result,
     const std::vector<Azure::Storage::Blobs::BlobClient> &clients) {
-  return OpenForReading(vector<ObjectClient>(clients.begin(), clients.end()));
+  return OpenForReading(result,
+                        vector<ObjectClient>(clients.begin(), clients.end()));
 }
 
-FileStream FileStream::OpenForReading(
+int FileStream::OpenForReading(
+    FileStream *result,
     const std::vector<Azure::Storage::Files::Shares::ShareFileClient>
         &clients) {
-  return OpenForReading(vector<ObjectClient>(clients.begin(), clients.end()));
+  return OpenForReading(result,
+                        vector<ObjectClient>(clients.begin(), clients.end()));
 }
 
-FileStream
-FileStream::OpenForReading(const std::vector<ObjectClient> &clients) {
-  if (clients.empty())
-    throw invalid_argument(
-        "cannot open a file for reading with no storage clients");
+int FileStream::OpenForReading(FileStream *result,
+                               const std::vector<ObjectClient> &clients) {
+  if (clients.empty()) {
+    spdlog::error("No object client found.");
+    return -1;
+  }
   FileStream fs;
   fs.storageType = clients.front().tag;
   fs.mode = Mode::READ;
   new (&fs.readInfo) FragmentedFile(clients);
-  return fs;
+  *result = move(fs);
+  return 0;
 }
 
-FileStream
-FileStream::OpenForWriting(OutputMode mode,
-                           const Azure::Storage::Blobs::BlobClient &client) {
-  return OpenForWriting(mode, ObjectClient(client));
+void FileStream::OpenForWriting(
+    FileStream *result, OutputMode mode,
+    const Azure::Storage::Blobs::BlobClient &client) {
+  OpenForWriting(result, mode, ObjectClient(client));
 }
 
-FileStream FileStream::OpenForWriting(
-    OutputMode mode,
+void FileStream::OpenForWriting(
+    FileStream *result, OutputMode mode,
     const Azure::Storage::Files::Shares::ShareFileClient &client) {
-  return OpenForWriting(mode, ObjectClient(client));
+  OpenForWriting(result, mode, ObjectClient(client));
 }
 
-FileStream FileStream::OpenForWriting(OutputMode mode,
-                                      const ObjectClient &client) {
+void FileStream::OpenForWriting(FileStream *result, OutputMode mode,
+                                const ObjectClient &client) {
   FileStream fs;
   fs.storageType = client.tag;
   fs.mode = Mode::WRITE;
@@ -71,31 +80,48 @@ FileStream FileStream::OpenForWriting(OutputMode mode,
       fs.nCurrentPos =
           (size_t)fs.writeInfo.client.shareFile.GetProperties().Value.FileSize;
   }
-  return fs;
+  *result = move(fs);
 }
+
+FileStream::FileStream()
+    : handle((void *)chrono::steady_clock::now().time_since_epoch().count()),
+      nCurrentPos(0ULL) {}
 
 FileStream::FileStream(FileStream &&source)
     : handle(std::move(source.handle)),
       storageType(std::move(source.storageType)), mode(std::move(source.mode)),
       nCurrentPos(std::move(source.nCurrentPos)) {
-  if (mode == Mode::READ)
+  if (mode == Mode::READ) {
     new (&readInfo) FragmentedFile(std::move(source.readInfo));
-  else
+  } else {
     new (&writeInfo) WriteInfo(std::move(source.writeInfo));
+  }
+}
+
+FileStream &FileStream::operator=(FileStream &&other) {
+  handle = std::move(other.handle);
+  storageType = std::move(other.storageType);
+  mode = std::move(other.mode);
+  nCurrentPos = std::move(other.nCurrentPos);
+  if (mode == Mode::READ) {
+    new (&readInfo) FragmentedFile(std::move(other.readInfo));
+  } else {
+    new (&writeInfo) WriteInfo(std::move(other.writeInfo));
+  }
+  return *this;
 }
 
 FileStream::~FileStream() {
-  if (mode == Mode::READ)
+  if (mode == Mode::READ) {
     readInfo.~FragmentedFile();
-  else
+  } else {
     writeInfo.~WriteInfo();
+  }
 }
 
 void *FileStream::GetHandle() const { return handle; }
 
-FileStream::FileStream()
-    : handle((void *)chrono::steady_clock::now().time_since_epoch().count()),
-      nCurrentPos(0ULL) {}
+FileStream::Mode FileStream::GetMode() const { return mode; }
 
 FileStream::WriteInfo::WriteInfo(OutputMode mode, const ObjectClient &client,
                                  const std::vector<std::string> &blockIds)
@@ -112,15 +138,22 @@ void FileStream::Close() {
     Flush();
 }
 
-size_t FileStream::Read(void *dest, size_t nSize, size_t nCount) {
-  if (mode != Mode::READ)
-    throw InvalidOperationForStreamModeError("read", mode);
+int FileStream::Read(size_t *nRead, void *dest, size_t nSize, size_t nCount) {
+  if (mode != Mode::READ) {
+    spdlog::error("Operation 'read' is invalid for stream mode.");
+    return -1;
+  }
 
   size_t nTotalFileSize = readInfo.GetSize();
   size_t nToRead = nSize * nCount;
-  size_t nRead = 0;
+  size_t nRead_ = 0;
   size_t nTotalRead = 0;
-  size_t nFragmentIndex = readInfo.GetFragmentIndexOfUserOffset(nCurrentPos);
+  size_t nFragmentIndex;
+  int nStatus;
+  if ((nStatus = readInfo.GetFragmentIndexOfUserOffset(&nFragmentIndex,
+                                                       nCurrentPos))) {
+    return nStatus;
+  }
 
   while (nToRead != 0) {
     const FragmentedFile::Fragment &fragment =
@@ -150,41 +183,53 @@ size_t FileStream::Read(void *dest, size_t nSize, size_t nCount) {
         opts.Range = range;
         auto downloadResult =
             std::move(fragment.client.shareFile.Download(opts).Value);
-        if (downloadResult.Details.ETag != fragment.etag)
-          throw ReadingUpdatedFileError();
+        if (downloadResult.Details.ETag != fragment.etag) {
+          spdlog::error("The file has been updated while reading it.");
+          return -1;
+        }
         bodyStream = std::move(downloadResult.BodyStream);
       }
     } catch (const Azure::Storage::StorageException &exc) {
       if (exc.StatusCode ==
-          Azure::Core::Http::HttpStatusCode::RangeNotSatisfiable)
-        throw ReadAtEOFError();
+          Azure::Core::Http::HttpStatusCode::RangeNotSatisfiable) {
+        spdlog::error("Cannot read after end of file.");
+        *nRead = 0;
+        return -2;
+      }
       if (exc.StatusCode ==
-          Azure::Core::Http::HttpStatusCode::PreconditionFailed)
-        throw ReadingUpdatedFileError();
+          Azure::Core::Http::HttpStatusCode::PreconditionFailed) {
+        spdlog::error("The file has been updated while reading it.");
+        return -1;
+      }
       throw;
     }
-    nRead = bodyStream->ReadToCount((uint8_t *)dest, nToRead);
+    nRead_ = bodyStream->ReadToCount((uint8_t *)dest, nToRead);
 
-    if (nToRead > 0 && nRead == 0) {
+    if (nToRead > 0 && nRead_ == 0) {
       // Handle emulator special behavior that gracefully
       // accepts read beyond file size
-      throw ReadAtEOFError();
+      spdlog::error("Cannot read after end of file.");
+      *nRead = 0;
+      return -2;
     }
 
-    nToRead -= nRead;
-    nTotalRead += nRead;
-    nCurrentPos += nRead;
-    dest = (uint8_t *)dest + nRead;
+    nToRead -= nRead_;
+    nTotalRead += nRead_;
+    nCurrentPos += nRead_;
+    dest = (uint8_t *)dest + nRead_;
     if (nCurrentPos == nTotalFileSize)
       break;
     nFragmentIndex++;
   }
-  return nTotalRead;
+  *nRead = nTotalRead;
+  return 0;
 }
 
-void FileStream::Seek(long long int nOffset, int nOrigin) {
-  if (mode != Mode::READ)
-    throw InvalidOperationForStreamModeError("seek", mode);
+int FileStream::Seek(long long int nOffset, int nOrigin) {
+  if (mode != Mode::READ) {
+    spdlog::error("Operation 'seek' is invalid for stream mode.");
+    return -1;
+  }
 
   size_t nTotalFileSize = readInfo.GetSize();
   long long int nSignedDest;
@@ -200,25 +245,32 @@ void FileStream::Seek(long long int nOffset, int nOrigin) {
     nSignedDest = (long long int)nTotalFileSize + nOffset;
     break;
   default:
-    throw InvalidSeekOriginError(nOrigin);
+    spdlog::error("Invalid seek origin {}.", nOrigin);
+    return -1;
   }
 
   if (nSignedDest < 0 || nSignedDest >= (long long int)nTotalFileSize) {
-    throw InvalidSeekOffsetError(nOffset, nOrigin);
+    spdlog::error("Invalid seek offset {} for origin {}.", nOffset, nOrigin);
+    return -1;
   }
 
   nCurrentPos = (size_t)nSignedDest;
+
+  return 0;
 }
 
-size_t FileStream::Write(const void *source, size_t nSize, size_t nCount) {
-  if (mode != Mode::WRITE)
-    throw InvalidOperationForStreamModeError("write", mode);
+int FileStream::Write(size_t *nWritten, const void *source, size_t nSize,
+                      size_t nCount) {
+  if (mode != Mode::WRITE) {
+    spdlog::error("Operation 'write' is invalid for stream mode.");
+    return -1;
+  }
+
+  size_t nToWrite = nSize * nCount;
 
   if (storageType == BLOB) {
     Azure::Storage::Blobs::BlockBlobClient bbclient =
         writeInfo.client.blob.AsBlockBlobClient();
-
-    size_t nToWrite = nSize * nCount;
 
     ostringstream oss;
     oss << setfill('0') << setw(64) << writeInfo.blockIds.size();
@@ -232,15 +284,11 @@ size_t FileStream::Write(const void *source, size_t nSize, size_t nCount) {
                                                  nToWrite);
     bbclient.StageBlock(sBlockIdInBase64, bodyStream);
     writeInfo.blockIds.push_back(sBlockIdInBase64);
-
-    return nToWrite;
   } else // SHARE storage
   {
     Azure::Storage::Files::Shares::Models::FileHttpHeaders httpHeaders;
     Azure::Storage::Files::Shares::Models::FileSmbProperties smbProperties;
     Azure::Storage::Files::Shares::SetFilePropertiesOptions opts;
-
-    size_t nToWrite = nSize * nCount;
 
     Azure::Core::IO::MemoryBodyStream bodyStream((const uint8_t *)source,
                                                  nToWrite);
@@ -248,14 +296,17 @@ size_t FileStream::Write(const void *source, size_t nSize, size_t nCount) {
     writeInfo.client.shareFile.SetProperties(httpHeaders, smbProperties, opts);
     writeInfo.client.shareFile.UploadRange((int64_t)nCurrentPos, bodyStream);
     nCurrentPos += nToWrite;
-
-    return nToWrite;
   }
+
+  *nWritten = nToWrite;
+  return 0;
 }
 
-void FileStream::Flush() {
-  if (mode != Mode::WRITE)
-    throw InvalidOperationForStreamModeError("flush", mode);
+int FileStream::Flush() {
+  if (mode != Mode::WRITE) {
+    spdlog::error("Operation 'flush' is invalid for stream mode.");
+    return -1;
+  }
 
   if (storageType == BLOB) {
     writeInfo.client.blob.AsBlockBlobClient().CommitBlockList(
@@ -263,5 +314,7 @@ void FileStream::Flush() {
   } else {
     writeInfo.client.shareFile.ForceCloseAllHandles();
   }
+
+  return 0;
 }
 } // namespace az

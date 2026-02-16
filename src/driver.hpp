@@ -11,7 +11,7 @@ class Driver;
 
 #include "azureplugin.hpp"
 #include "filestream.hpp"
-#include "macro.hpp"
+#include "util.hpp"
 #include <azure/storage/blobs/blob_client.hpp>
 #include <azure/storage/blobs/blob_container_client.hpp>
 #include <azure/storage/blobs/blob_service_client.hpp>
@@ -20,8 +20,13 @@ class Driver;
 #include <azure/storage/files/shares/share_file_client.hpp>
 #include <azure/storage/files/shares/share_service_client.hpp>
 #include <memory>
+#include <spdlog/spdlog.h>
+#include <spdlog/sinks/basic_file_sink.h>
+#include <spdlog/sinks/ostream_sink.h>
+#include <spdlog/sinks/stdout_sinks.h>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 namespace az {
 static constexpr size_t nDefaultPreferredBufferSize = 4 * 1024 * 1024;
@@ -66,12 +71,16 @@ struct ServiceRequest {
                  std::shared_ptr<Azure::Core::Credentials::TokenCredential>
                      noConnectionStringCredential);
   ServiceRequest(const ServiceRequest &other);
+  ServiceRequest();
+  ServiceRequest &operator=(ServiceRequest &&other);
+  void Info();
 };
 
 class Driver {
 public:
   Driver();
   ~Driver();
+  void InitializeLogging();
 
   const std::string &GetName() const;
   const std::string &GetVersion() const;
@@ -80,35 +89,40 @@ public:
   size_t GetPreferredBufferSize() const;
 
   void Connect();
-  void Disconnect();
+  int Disconnect();
   bool IsConnected() const;
 
-  bool Exists(const std::string &sUrl) const;
-  size_t GetSize(const std::string &sUrl) const;
-  FileStream &OpenForReading(const std::string &sUrl);
-  FileStream &OpenForWriting(const std::string &sUrl);
-  FileStream &OpenForAppending(const std::string &sUrl);
-  void Close(void *handle);
-  size_t Read(void *handle, void *dest, size_t nSize, size_t nCount);
-  void Seek(void *handle, long long int nOffset, int nOrigin);
-  size_t Write(void *handle, const void *source, size_t nSize, size_t nCount);
-  void Flush(void *handle);
-  void Remove(const std::string &sUrl) const;
-  void MkDir(const std::string &sUrl) const;
-  void RmDir(const std::string &sUrl) const;
-  size_t GetFreeDiskSpace() const;
-  void CopyTo(const std::string &sUrl, const std::string &destUrl);
-  void CopyFrom(const std::string &sUrl, const std::string &sourceUrl);
-  void Concatenate(const std::vector<std::string> &inputUrls,
-                   const std::string &sDestUrl);
+  int Exists(bool *result, const std::string &sUrl) const;
+  int GetSize(size_t *result, const std::string &sUrl) const;
+  int OpenForReading(FileStream **result, const std::string &sUrl);
+  int OpenForWriting(FileStream **result, const std::string &sUrl);
+  int OpenForAppending(FileStream **result, const std::string &sUrl);
+  int Close(void *handle);
+  int Read(size_t *nRead, void *handle, void *dest, size_t nSize,
+           size_t nCount);
+  int Seek(void *handle, long long int nOffset, int nOrigin);
+  void GetLastError(std::string **result);
+  int Write(size_t *nWritten, void *handle, const void *source, size_t nSize,
+            size_t nCount);
+  int Flush(void *handle);
+  int Remove(const std::string &sUrl) const;
+  int MkDir(const std::string &sUrl) const;
+  int RmDir(const std::string &sUrl) const;
+  int GetFreeDiskSpace(size_t *result) const;
+  int CopyTo(const std::string &sUrl, const std::string &destUrl);
+  int CopyFrom(const std::string &sUrl, const std::string &sourceUrl);
+  int Concatenate(const std::vector<std::string> &inputUrls,
+                  const std::string &sDestUrl);
 
 private:
-  void CheckConnected() const;
   bool IsEmulatedStorage() const;
 
-  ServiceRequest ParseUrl(const std::string &sUrl) const;
+  int ParseUrl(ServiceRequest *result, const std::string &sUrl) const;
 
+  /*** Generic URL Retrieval ************************************************************************/
   std::string GetServiceUrl(const ServiceRequest &request) const;
+
+  /*** Blob URL retrieval ***************************************************************************/
   std::string GetBlobContainerUrl(const ServiceRequest &request) const;
   Azure::Storage::Blobs::BlobServiceClient
   GetBlobServiceClient(const ServiceRequest &request) const;
@@ -119,6 +133,7 @@ private:
   std::vector<Azure::Storage::Blobs::BlobClient>
   ListBlobs(const ServiceRequest &request) const;
 
+  /*** File URL Retrieval ***************************************************************************/
   std::string GetFileShareUrl(const ServiceRequest &request) const;
   Azure::Storage::Files::Shares::ShareServiceClient
   GetFileShareServiceClient(const ServiceRequest &request) const;
@@ -132,17 +147,25 @@ private:
   ListDirs(const ServiceRequest &request) const;
   std::vector<Azure::Storage::Files::Shares::ShareFileClient>
   ListFiles(const ServiceRequest &request) const;
-  Azure::Storage::Files::Shares::ShareDirectoryClient
-  GetParentDir(const ServiceRequest &request) const;
-  void CheckParentDirExists(const ServiceRequest &request) const;
+  int GetParentDir(Azure::Storage::Files::Shares::ShareDirectoryClient *result,
+                   const ServiceRequest &request) const;
 
-  FileStream &RegisterFileStream(FileStream &&fileStream);
-  FileStream &RetrieveFileStream(void *handle) const;
+  /*** File Stream Management ***********************************************************************/
+  FileStream *RegisterFileStream(FileStream &&fileStream);
+  int RetrieveFileStream(FileStream **result, void *handle) const;
+  std::unordered_map<void *, std::unique_ptr<FileStream>> fileStreams;
 
   bool bIsConnected;
 
   size_t nPreferredBufferSize;
 
-  std::unordered_map<void *, std::unique_ptr<FileStream>> fileStreams;
+  /*** Logging **************************************************************************************/
+  std::string logstring;
+  std::ostringstream logstringstream;
+  std::shared_ptr<spdlog::sinks::ostream_sink_st> stringstreamsink;
+  std::shared_ptr<spdlog::sinks::stderr_sink_st> stderrsink;
+  std::shared_ptr<spdlog::sinks::basic_file_sink_st> filesink;
+  std::vector<std::shared_ptr<spdlog::sinks::sink>> defaultloggersinks;
+  std::shared_ptr<spdlog::logger> defaultlogger;
 };
 } // namespace az

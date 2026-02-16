@@ -2,7 +2,6 @@
 
 #pragma once
 
-#include "exception.hpp"
 #include "storagetype.hpp"
 #include <azure/core/url.hpp>
 #include <memory>
@@ -25,37 +24,12 @@ bool RandomBool();
 }
 
 namespace env {
-class EnvironmentVariableNotFoundError : public Error {
-public:
-  inline EnvironmentVariableNotFoundError(const std::string &sVarName)
-      : Error(concatenate("environment variable '" << sVarName
-                                                   << "' not found")) {}
-};
-
-std::string GetEnvironmentVariableOrThrow(const std::string &sVarName);
+std::string GetEnvironmentVariable(const std::string &sVarName);
 std::string GetEnvironmentVariableOrDefault(const std::string &sVarName,
                                             const std::string &sDefaultValue);
 } // namespace env
 
-namespace errlog {
-class ErrorLogger {
-public:
-  ErrorLogger();
-
-  const std::string &GetLastError() const;
-  void LogError(const std::string &error);
-  void LogException(const std::exception &exc);
-
-protected:
-  std::string sLastError;
-};
-} // namespace errlog
-
 namespace connstr {
-class ParsingError : public Error {
-  using Error::Error;
-};
-
 struct ConnectionString {
   std::string sAccountName;
   std::string sAccountKey;
@@ -65,13 +39,13 @@ struct ConnectionString {
   ConnectionString();
   ConnectionString(const std::string &sAccountName,
                    const std::string &sAccountKey);
-  static ConnectionString
-  ParseConnectionString(const std::string &sConnectionString,
-                        bool bIsEmulatedStorage);
-  ConnectionString &SetBlobEndpoint(const std::string &sUrl);
-  ConnectionString &SetFileEndpoint(const std::string &sUrl);
-  void CheckAgainstUrl(const Azure::Core::Url &url,
-                       StorageType storageType) const;
+  ConnectionString(ConnectionString &&other);
+  ConnectionString &operator=(ConnectionString &&other);
+  static int ParseConnectionString(ConnectionString *result,
+                                   const std::string &sConnectionString,
+                                   bool bIsEmulatedStorage);
+  int CheckAgainstUrl(const Azure::Core::Url &url,
+                      StorageType storageType) const;
 
   friend bool operator==(const ConnectionString &a, const ConnectionString &b);
 };
