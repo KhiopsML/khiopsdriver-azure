@@ -1,6 +1,7 @@
 #define _CRT_SECURE_NO_WARNINGS // getenv would be more secure in C++ than in C
                                 // and thus getenv_s would not be available in
                                 // C++?
+#include "logging.hpp"
 #include "util.hpp"
 #include <chrono>
 #include <cstdarg>
@@ -13,6 +14,7 @@
 #include <unordered_map>
 
 using namespace std;
+using az::logging::getLogger;
 
 namespace az {
 namespace util {
@@ -85,18 +87,18 @@ string GetEnvVar(const string &sVarName, bool bForbidLogging) {
   char *sValue = getenv(sVarName.c_str());
   if (!sValue) {
     if (!bForbidLogging) {
-      spdlog::debug("Environment variable {} is not set.", sVarName);
+      getLogger()->debug("Environment variable {} is not set.", sVarName);
     }
     return "";
   }
   if (strlen(sValue) == 0ULL) {
     if (!bForbidLogging) {
-      spdlog::debug("Environment variable {} is empty.", sVarName);
+      getLogger()->debug("Environment variable {} is empty.", sVarName);
     }
     return "";
   }
   if (!bForbidLogging) {
-    spdlog::debug("Environment variable {} is set to: {}.", sVarName, sValue);
+    getLogger()->debug("Environment variable {} is set to: {}.", sVarName, sValue);
   }
   return sValue;
 }
@@ -140,7 +142,7 @@ int ConnectionString::ParseConnectionString(ConnectionString *result,
   smatch match;
   if (!regex_match(sConnectionString, match,
                    regex("(?:[^=]+=[^;]+;)*[^=]+=[^;]+;?"))) {
-    spdlog::error("Connection string '{}' does not match expected pattern.",
+    getLogger()->error("Connection string '{}' does not match expected pattern.",
                   sConnectionString);
     return -1;
   }
@@ -155,14 +157,14 @@ int ConnectionString::ParseConnectionString(ConnectionString *result,
 
   auto accountNameIt = kvPairs.find("AccountName"); // Mandatory
   if (accountNameIt == kvPairs.end()) {
-    spdlog::error("Connection string '{}' misses 'AccountName' field.",
+    getLogger()->error("Connection string '{}' misses 'AccountName' field.",
                   sConnectionString);
     return -1;
   }
 
   auto accountKeyIt = kvPairs.find("AccountKey"); // Mandatory
   if (accountKeyIt == kvPairs.end()) {
-    spdlog::error("Connection string '{}' misses 'AccountKey' field.",
+    getLogger()->error("Connection string '{}' misses 'AccountKey' field.",
                   sConnectionString);
     return -1;
   }
@@ -177,7 +179,7 @@ int ConnectionString::ParseConnectionString(ConnectionString *result,
     connectionString.blobEndpointPtr =
         make_unique<Azure::Core::Url>(blobEndpointIt->second);
   } else if (bIsEmulatedStorage) {
-    spdlog::error("Connection string '{}' misses 'BlobEndpoint' field.",
+    getLogger()->error("Connection string '{}' misses 'BlobEndpoint' field.",
                   sConnectionString);
     return -1;
   }
@@ -188,14 +190,14 @@ int ConnectionString::ParseConnectionString(ConnectionString *result,
         make_unique<Azure::Core::Url>(fileEndpointIt->second);
   }
 
-  spdlog::debug("Parsed connection string:");
-  spdlog::debug("  account name: {}", connectionString.sAccountName);
-  spdlog::debug("  account key: ***REDACTED***");
-  spdlog::debug("  blob endpoint: {}",
+  getLogger()->debug("Parsed connection string:");
+  getLogger()->debug("  account name: {}", connectionString.sAccountName);
+  getLogger()->debug("  account key: ***REDACTED***");
+  getLogger()->debug("  blob endpoint: {}",
                 connectionString.blobEndpointPtr
                     ? connectionString.blobEndpointPtr->GetAbsoluteUrl()
                     : "<none>");
-  spdlog::debug("  file endpoint: {}",
+  getLogger()->debug("  file endpoint: {}",
                 connectionString.fileEndpointPtr
                     ? connectionString.fileEndpointPtr->GetAbsoluteUrl()
                     : "<none>");
@@ -210,14 +212,14 @@ int ConnectionString::CheckAgainstUrl(const Azure::Core::Url &url,
   if (blobEndpointPtr && storageType == BLOB &&
       !util::str::StartsWith(url.GetAbsoluteUrl(),
                              blobEndpointPtr->GetAbsoluteUrl())) {
-    spdlog::error("URL {} does not start with expected blob endpoint {}.",
+    getLogger()->error("URL {} does not start with expected blob endpoint {}.",
                   url.GetAbsoluteUrl(), blobEndpointPtr->GetAbsoluteUrl());
     return -1;
   }
   if (fileEndpointPtr && storageType == SHARE &&
       !util::str::StartsWith(url.GetAbsoluteUrl(),
                              fileEndpointPtr->GetAbsoluteUrl())) {
-    spdlog::error("URL {} does not start with expected file endpoint {}.",
+    getLogger()->error("URL {} does not start with expected file endpoint {}.",
                   url.GetAbsoluteUrl(), fileEndpointPtr->GetAbsoluteUrl());
     return -1;
   }

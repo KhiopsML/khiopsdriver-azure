@@ -20,8 +20,8 @@
 
 using namespace std;
 using namespace az;
+using az::logging::getLogger;
 
-static logging::LogInitializer _;
 static unique_ptr<Driver> driver = nullptr;
 static bool IsConnected() { return driver != nullptr; }
 
@@ -35,99 +35,99 @@ static const char *ERR_INVALID_SEEK_ORIGIN =
 
 const char *driver_getDriverName() {
   try {
-    spdlog::info("Retrieving driver name...");
+    getLogger()->info("Retrieving driver name...");
     return "Azure driver";
   } catch (...) {
-    spdlog::error(ERR_EXC_RAISED);
+    getLogger()->error(ERR_EXC_RAISED);
   }
   return nullptr;
 }
 
 const char *driver_getVersion() {
   try {
-    spdlog::info("Retrieving driver version...");
+    getLogger()->info("Retrieving driver version...");
     return DRIVER_VERSION;
   } catch (...) {
-    spdlog::error(ERR_EXC_RAISED);
+    getLogger()->error(ERR_EXC_RAISED);
   }
   return nullptr;
 }
 
 const char *driver_getScheme() {
   try {
-    spdlog::info("Retrieving driver scheme...");
+    getLogger()->info("Retrieving driver scheme...");
     return "https";
   } catch (...) {
-    spdlog::error(ERR_EXC_RAISED);
+    getLogger()->error(ERR_EXC_RAISED);
   }
   return nullptr;
 }
 
 int driver_isReadOnly() {
   try {
-    spdlog::info("Retrieving read-only state...");
+    getLogger()->info("Retrieving read-only state...");
     return nFalse;
   } catch (...) {
-    spdlog::error(ERR_EXC_RAISED);
+    getLogger()->error(ERR_EXC_RAISED);
   }
   return nGenericFailure;
 }
 
 int driver_connect() {
   try {
-    spdlog::info("Connecting...");
+    getLogger()->info("Connecting...");
     driver = make_unique<Driver>();
     return nSuccess;
   } catch (...) {
-    spdlog::error(ERR_EXC_RAISED);
+    getLogger()->error(ERR_EXC_RAISED);
   }
   return nFailure;
 }
 
 int driver_disconnect() {
   try {
-    spdlog::info("Disconnecting...");
+    getLogger()->info("Disconnecting...");
     if (!IsConnected()) {
-      spdlog::error("Cannot disconnect when already disconnected.");
+      getLogger()->error("Cannot disconnect when already disconnected.");
       return nFailure;
     }
     driver = nullptr;
     return nSuccess;
   } catch (...) {
-    spdlog::error(ERR_EXC_RAISED);
+    getLogger()->error(ERR_EXC_RAISED);
   }
   return nFailure;
 }
 
 int driver_isConnected() {
   try {
-    spdlog::info("Retrieving connection state...");
+    getLogger()->info("Retrieving connection state...");
     return IsConnected() ? nTrue : nFalse;
   } catch (...) {
-    spdlog::error(ERR_EXC_RAISED);
+    getLogger()->error(ERR_EXC_RAISED);
   }
   return nGenericFailure;
 }
 
 long long int driver_getSystemPreferredBufferSize() {
   try {
-    spdlog::info("Retrieving preferred buffer size...");
+    getLogger()->info("Retrieving preferred buffer size...");
     return DEFAULT_PREFERRED_BUFFER_SIZE;
   } catch (...) {
-    spdlog::error(ERR_EXC_RAISED);
+    getLogger()->error(ERR_EXC_RAISED);
   }
   return nGenericFailure;
 }
 
 int driver_fileExists(const char *sUrl) {
   try {
-    spdlog::info("Checking if file exists at URL {}...", sUrl);
+    getLogger()->info("Checking if file exists at URL {}...", sUrl);
     if (!IsConnected()) {
-      spdlog::error("Cannot check if file exists when disconnected.");
+      getLogger()->error("Cannot check if file exists when disconnected.");
       return nGenericFailure;
     }
     if (!sUrl) {
-      spdlog::error(ERR_NULL_ARG, __func__, STRINGIFY(sUrl));
+      getLogger()->error(ERR_NULL_ARG, __func__, STRINGIFY(sUrl));
       return nGenericFailure;
     }
     bool result;
@@ -136,20 +136,20 @@ int driver_fileExists(const char *sUrl) {
     }
     return result ? nTrue : nFalse;
   } catch (...) {
-    spdlog::error(ERR_EXC_RAISED);
+    getLogger()->error(ERR_EXC_RAISED);
   }
   return nGenericFailure;
 }
 
 int driver_dirExists(const char *sUrl) {
   try {
-    spdlog::info("Checking if directory exists at URL {}...", sUrl);
+    getLogger()->info("Checking if directory exists at URL {}...", sUrl);
     if (!IsConnected()) {
-      spdlog::error("Cannot check if directory exists when disconnected.");
+      getLogger()->error("Cannot check if directory exists when disconnected.");
       return nGenericFailure;
     }
     if (!sUrl) {
-      spdlog::error(ERR_NULL_ARG, __func__, STRINGIFY(sUrl));
+      getLogger()->error(ERR_NULL_ARG, __func__, STRINGIFY(sUrl));
       return nGenericFailure;
     }
     bool result;
@@ -158,20 +158,20 @@ int driver_dirExists(const char *sUrl) {
     }
     return result ? nTrue : nFalse;
   } catch (...) {
-    spdlog::error(ERR_EXC_RAISED);
+    getLogger()->error(ERR_EXC_RAISED);
   }
   return nGenericFailure;
 }
 
 long long int driver_getFileSize(const char *sUrl) {
   try {
-    spdlog::info("Retrieving size of file at URL {}...", sUrl);
+    getLogger()->info("Retrieving size of file at URL {}...", sUrl);
     if (!IsConnected()) {
-      spdlog::error("Cannot get object size when disconnected.");
+      getLogger()->error("Cannot get object size when disconnected.");
       return nSizeFailure;
     }
     if (!sUrl) {
-      spdlog::error(ERR_NULL_ARG, __func__, STRINGIFY(sUrl));
+      getLogger()->error(ERR_NULL_ARG, __func__, STRINGIFY(sUrl));
       return nSizeFailure;
     }
     size_t result;
@@ -180,20 +180,20 @@ long long int driver_getFileSize(const char *sUrl) {
     }
     return static_cast<long long int>(result);
   } catch (...) {
-    spdlog::error(ERR_EXC_RAISED);
+    getLogger()->error(ERR_EXC_RAISED);
   }
   return nSizeFailure;
 }
 
 void *driver_fopen(const char *sUrl, char mode) {
   try {
-    spdlog::info("Opening file at URL {} in mode {}...", sUrl, mode);
+    getLogger()->info("Opening file at URL {} in mode {}...", sUrl, mode);
     if (!IsConnected()) {
-      spdlog::error("Cannot open file when disconnected.");
+      getLogger()->error("Cannot open file when disconnected.");
       return nullptr;
     }
     if (!sUrl) {
-      spdlog::error(ERR_NULL_ARG, __func__, STRINGIFY(sUrl));
+      getLogger()->error(ERR_NULL_ARG, __func__, STRINGIFY(sUrl));
       return nullptr;
     }
     FileStream *fsPtr;
@@ -214,25 +214,25 @@ void *driver_fopen(const char *sUrl, char mode) {
       }
       break;
     default:
-      spdlog::error(ERR_INVALID_FSTREAM_MODE, sUrl, mode);
+      getLogger()->error(ERR_INVALID_FSTREAM_MODE, sUrl, mode);
       return nullptr;
     }
     return fsPtr->GetHandle();
   } catch (...) {
-    spdlog::error(ERR_EXC_RAISED);
+    getLogger()->error(ERR_EXC_RAISED);
   }
   return nullptr;
 }
 
 int driver_fclose(void *handle) {
   try {
-    spdlog::info("Closing file with handle {}...", handle);
+    getLogger()->info("Closing file with handle {}...", handle);
     if (!IsConnected()) {
-      spdlog::error("Cannot close file when disconnected.");
+      getLogger()->error("Cannot close file when disconnected.");
       return nCloseFailure;
     }
     if (!handle) {
-      spdlog::error(ERR_NULL_ARG, __func__, STRINGIFY(handle));
+      getLogger()->error(ERR_NULL_ARG, __func__, STRINGIFY(handle));
       return nCloseFailure;
     }
     if (driver->Close(handle)) {
@@ -240,7 +240,7 @@ int driver_fclose(void *handle) {
     }
     return nCloseSuccess;
   } catch (...) {
-    spdlog::error(ERR_EXC_RAISED);
+    getLogger()->error(ERR_EXC_RAISED);
   }
   return nCloseFailure;
 }
@@ -248,18 +248,18 @@ int driver_fclose(void *handle) {
 long long int driver_fread(void *dest, size_t size, size_t count,
                            void *handle) {
   try {
-    spdlog::info("Reading {}x{} bytes from file with handle {} to {}...", size,
+    getLogger()->info("Reading {}x{} bytes from file with handle {} to {}...", size,
                  count, handle, dest);
     if (!IsConnected()) {
-      spdlog::error("Cannot read from file when disconnected.");
+      getLogger()->error("Cannot read from file when disconnected.");
       return nReadFailure;
     }
     if (!dest) {
-      spdlog::error(ERR_NULL_ARG, __func__, STRINGIFY(dest));
+      getLogger()->error(ERR_NULL_ARG, __func__, STRINGIFY(dest));
       return nReadFailure;
     }
     if (!handle) {
-      spdlog::error(ERR_NULL_ARG, __func__, STRINGIFY(handle));
+      getLogger()->error(ERR_NULL_ARG, __func__, STRINGIFY(handle));
       return nReadFailure;
     }
     size_t nRead;
@@ -271,21 +271,21 @@ long long int driver_fread(void *dest, size_t size, size_t count,
     }
     return nRead;
   } catch (...) {
-    spdlog::error(ERR_EXC_RAISED);
+    getLogger()->error(ERR_EXC_RAISED);
   }
   return nReadFailure;
 }
 
 int driver_fseek(void *handle, long long int offset, int whence) {
   try {
-    spdlog::info("Seeking offset {} from origin {} in file with handle {}...",
+    getLogger()->info("Seeking offset {} from origin {} in file with handle {}...",
                  offset, whence, handle);
     if (!IsConnected()) {
-      spdlog::error("Cannot seek into file when disconnected.");
+      getLogger()->error("Cannot seek into file when disconnected.");
       return nSeekFailure;
     }
     if (!handle) {
-      spdlog::error(ERR_NULL_ARG, __func__, STRINGIFY(handle));
+      getLogger()->error(ERR_NULL_ARG, __func__, STRINGIFY(handle));
       return nSeekFailure;
     }
     int nOrigin;
@@ -300,7 +300,7 @@ int driver_fseek(void *handle, long long int offset, int whence) {
       nOrigin = ios::end;
       break;
     default:
-      spdlog::error(ERR_INVALID_SEEK_ORIGIN, whence);
+      getLogger()->error(ERR_INVALID_SEEK_ORIGIN, whence);
       return nSeekFailure;
     }
     if (driver->Seek(handle, offset, nOrigin)) {
@@ -308,22 +308,21 @@ int driver_fseek(void *handle, long long int offset, int whence) {
     }
     return nSeekSuccess;
   } catch (...) {
-    spdlog::error(ERR_EXC_RAISED);
+    getLogger()->error(ERR_EXC_RAISED);
   }
   return nSeekFailure;
 }
 
 const char *driver_getlasterror() {
   try {
-    spdlog::info("Retrieving last error...");
-    logging::logstring = logging::logstringstream.str();
-    logging::logstringstream.str("");
-    if (logging::logstring.empty()) {
+    getLogger()->info("Retrieving last error...");
+    const string &logstring = ::az::logging::getLastError();
+    if (logstring.empty()) {
       return nullptr;
     }
-    return logging::logstring.c_str();
+    return logstring.c_str();
   } catch (...) {
-    spdlog::error(ERR_EXC_RAISED);
+    getLogger()->error(ERR_EXC_RAISED);
   }
   return "Error while trying to fetch last error.";
 }
@@ -331,18 +330,18 @@ const char *driver_getlasterror() {
 long long int driver_fwrite(const void *source, size_t size, size_t count,
                             void *handle) {
   try {
-    spdlog::info("Writing {}x{} bytes from {} to file with handle {}...", size,
+    getLogger()->info("Writing {}x{} bytes from {} to file with handle {}...", size,
                  count, source, handle);
     if (!IsConnected()) {
-      spdlog::error("Cannot write to file when disconnected.");
+      getLogger()->error("Cannot write to file when disconnected.");
       return nWriteFailure;
     }
     if (!source) {
-      spdlog::error(ERR_NULL_ARG, __func__, STRINGIFY(source));
+      getLogger()->error(ERR_NULL_ARG, __func__, STRINGIFY(source));
       return nWriteFailure;
     }
     if (!handle) {
-      spdlog::error(ERR_NULL_ARG, __func__, STRINGIFY(handle));
+      getLogger()->error(ERR_NULL_ARG, __func__, STRINGIFY(handle));
       return nWriteFailure;
     }
     size_t nWritten;
@@ -351,20 +350,20 @@ long long int driver_fwrite(const void *source, size_t size, size_t count,
     }
     return nWritten;
   } catch (...) {
-    spdlog::error(ERR_EXC_RAISED);
+    getLogger()->error(ERR_EXC_RAISED);
   }
   return nWriteFailure;
 }
 
 int driver_fflush(void *handle) {
   try {
-    spdlog::info("Flushing file with handle {}...", handle);
+    getLogger()->info("Flushing file with handle {}...", handle);
     if (!IsConnected()) {
-      spdlog::error("Cannot flush file when disconnected.");
+      getLogger()->error("Cannot flush file when disconnected.");
       return nFlushFailure;
     }
     if (!handle) {
-      spdlog::error(ERR_NULL_ARG, __func__, STRINGIFY(handle));
+      getLogger()->error(ERR_NULL_ARG, __func__, STRINGIFY(handle));
       return nFlushFailure;
     }
     if (driver->Flush(handle)) {
@@ -372,20 +371,20 @@ int driver_fflush(void *handle) {
     }
     return nFlushSuccess;
   } catch (...) {
-    spdlog::error(ERR_EXC_RAISED);
+    getLogger()->error(ERR_EXC_RAISED);
   }
   return nFlushFailure;
 }
 
 int driver_remove(const char *sUrl) {
   try {
-    spdlog::info("Removing file at URL {}...", sUrl);
+    getLogger()->info("Removing file at URL {}...", sUrl);
     if (!IsConnected()) {
-      spdlog::error("Cannot remove file when disconnected.");
+      getLogger()->error("Cannot remove file when disconnected.");
       return nFailure;
     }
     if (!sUrl) {
-      spdlog::error(ERR_NULL_ARG, __func__, STRINGIFY(sUrl));
+      getLogger()->error(ERR_NULL_ARG, __func__, STRINGIFY(sUrl));
       return nFailure;
     }
     if (driver->Remove(sUrl)) {
@@ -393,20 +392,20 @@ int driver_remove(const char *sUrl) {
     }
     return nSuccess;
   } catch (...) {
-    spdlog::error(ERR_EXC_RAISED);
+    getLogger()->error(ERR_EXC_RAISED);
   }
   return nFailure;
 }
 
 int driver_mkdir(const char *sUrl) {
   try {
-    spdlog::info("Creating directory at URL {}...", sUrl);
+    getLogger()->info("Creating directory at URL {}...", sUrl);
     if (!IsConnected()) {
-      spdlog::error("Cannot make a directory when disconnected.");
+      getLogger()->error("Cannot make a directory when disconnected.");
       return nFailure;
     }
     if (!sUrl) {
-      spdlog::error(ERR_NULL_ARG, __func__, STRINGIFY(sUrl));
+      getLogger()->error(ERR_NULL_ARG, __func__, STRINGIFY(sUrl));
       return nFailure;
     }
     if (driver->MkDir(sUrl)) {
@@ -414,20 +413,20 @@ int driver_mkdir(const char *sUrl) {
     }
     return nSuccess;
   } catch (...) {
-    spdlog::error(ERR_EXC_RAISED);
+    getLogger()->error(ERR_EXC_RAISED);
   }
   return nFailure;
 }
 
 int driver_rmdir(const char *sUrl) {
   try {
-    spdlog::info("Removing directory at URL {}...", sUrl);
+    getLogger()->info("Removing directory at URL {}...", sUrl);
     if (!IsConnected()) {
-      spdlog::error("Cannot remove directory when disconnected.");
+      getLogger()->error("Cannot remove directory when disconnected.");
       return nFailure;
     }
     if (!sUrl) {
-      spdlog::error(ERR_NULL_ARG, __func__, STRINGIFY(sUrl));
+      getLogger()->error(ERR_NULL_ARG, __func__, STRINGIFY(sUrl));
       return nFailure;
     }
     if (driver->RmDir(sUrl)) {
@@ -435,20 +434,20 @@ int driver_rmdir(const char *sUrl) {
     }
     return nSuccess;
   } catch (...) {
-    spdlog::error(ERR_EXC_RAISED);
+    getLogger()->error(ERR_EXC_RAISED);
   }
   return nFailure;
 }
 
 long long int driver_diskFreeSpace(const char *sUrl) {
   try {
-    spdlog::info("Retrieving free disk space at URL {}...", sUrl);
+    getLogger()->info("Retrieving free disk space at URL {}...", sUrl);
     if (!IsConnected()) {
-      spdlog::error("Cannot get free disk space when disconnected.");
+      getLogger()->error("Cannot get free disk space when disconnected.");
       return nFreeDiskSpaceFailure;
     }
     if (!sUrl) {
-      spdlog::error(ERR_NULL_ARG, __func__, STRINGIFY(sUrl));
+      getLogger()->error(ERR_NULL_ARG, __func__, STRINGIFY(sUrl));
       return nFreeDiskSpaceFailure;
     }
     size_t nResult;
@@ -457,24 +456,24 @@ long long int driver_diskFreeSpace(const char *sUrl) {
     }
     return nResult;
   } catch (...) {
-    spdlog::error(ERR_EXC_RAISED);
+    getLogger()->error(ERR_EXC_RAISED);
   }
   return nFreeDiskSpaceFailure;
 }
 
 int driver_copyToLocal(const char *sSourceUrl, const char *sDestUrl) {
   try {
-    spdlog::info("Copying file at URL {} to URL {}...", sSourceUrl, sDestUrl);
+    getLogger()->info("Copying file at URL {} to URL {}...", sSourceUrl, sDestUrl);
     if (!IsConnected()) {
-      spdlog::error("Cannot copy to a local file when disconnected.");
+      getLogger()->error("Cannot copy to a local file when disconnected.");
       return nFailure;
     }
     if (!sSourceUrl) {
-      spdlog::error(ERR_NULL_ARG, __func__, STRINGIFY(sSourceUrl));
+      getLogger()->error(ERR_NULL_ARG, __func__, STRINGIFY(sSourceUrl));
       return nFailure;
     }
     if (!sDestUrl) {
-      spdlog::error(ERR_NULL_ARG, __func__, STRINGIFY(sDestUrl));
+      getLogger()->error(ERR_NULL_ARG, __func__, STRINGIFY(sDestUrl));
       return nFailure;
     }
     if (driver->CopyTo(sSourceUrl, sDestUrl)) {
@@ -482,24 +481,24 @@ int driver_copyToLocal(const char *sSourceUrl, const char *sDestUrl) {
     }
     return nSuccess;
   } catch (...) {
-    spdlog::error(ERR_EXC_RAISED);
+    getLogger()->error(ERR_EXC_RAISED);
   }
   return nFailure;
 }
 
 int driver_copyFromLocal(const char *sSourceUrl, const char *sDestUrl) {
   try {
-    spdlog::info("Copying file at URL {} to URL {}...", sSourceUrl, sDestUrl);
+    getLogger()->info("Copying file at URL {} to URL {}...", sSourceUrl, sDestUrl);
     if (!IsConnected()) {
-      spdlog::error("Cannot copy from a local file when disconnected.");
+      getLogger()->error("Cannot copy from a local file when disconnected.");
       return nFailure;
     }
     if (!sSourceUrl) {
-      spdlog::error(ERR_NULL_ARG, __func__, STRINGIFY(sSourceUrl));
+      getLogger()->error(ERR_NULL_ARG, __func__, STRINGIFY(sSourceUrl));
       return nFailure;
     }
     if (!sDestUrl) {
-      spdlog::error(ERR_NULL_ARG, __func__, STRINGIFY(sDestUrl));
+      getLogger()->error(ERR_NULL_ARG, __func__, STRINGIFY(sDestUrl));
       return nFailure;
     }
     if (driver->CopyFrom(sDestUrl, sSourceUrl)) {
@@ -507,7 +506,7 @@ int driver_copyFromLocal(const char *sSourceUrl, const char *sDestUrl) {
     }
     return nSuccess;
   } catch (...) {
-    spdlog::error(ERR_EXC_RAISED);
+    getLogger()->error(ERR_EXC_RAISED);
   }
   return nFailure;
 }
@@ -515,21 +514,21 @@ int driver_copyFromLocal(const char *sSourceUrl, const char *sDestUrl) {
 int driver_concat(const char *destfilename, const char **sourcefilenames,
                   size_t sourcefilecount) {
   try {
-    spdlog::info("Concatenating {} files to URL {}...", sourcefilecount,
+    getLogger()->info("Concatenating {} files to URL {}...", sourcefilecount,
                  destfilename);
     if (!IsConnected()) {
-      spdlog::error("Cannot concatenate objects when disconnected.");
+      getLogger()->error("Cannot concatenate objects when disconnected.");
       return nFailure;
     }
     for (size_t i = 0; i < sourcefilecount; i++) {
-      spdlog::info("  Source file #{}: {}", i + 1, sourcefilenames[i]);
+      getLogger()->info("  Source file #{}: {}", i + 1, sourcefilenames[i]);
     }
     if (!destfilename) {
-      spdlog::error(ERR_NULL_ARG, __func__, STRINGIFY(destfilename));
+      getLogger()->error(ERR_NULL_ARG, __func__, STRINGIFY(destfilename));
       return nFailure;
     }
     if (!sourcefilenames) {
-      spdlog::error(ERR_NULL_ARG, __func__, STRINGIFY(sourcefilenames));
+      getLogger()->error(ERR_NULL_ARG, __func__, STRINGIFY(sourcefilenames));
       return nFailure;
     }
     if (driver->Concatenate(
@@ -539,7 +538,7 @@ int driver_concat(const char *destfilename, const char **sourcefilenames,
     }
     return nSuccess;
   } catch (...) {
-    spdlog::error(ERR_EXC_RAISED);
+    getLogger()->error(ERR_EXC_RAISED);
   }
   return nFailure;
 }

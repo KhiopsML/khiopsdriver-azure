@@ -1,5 +1,6 @@
 #include "driver.hpp"
 #include "blobpathresolve.hpp"
+#include "logging.hpp"
 #include "servicerequest.hpp"
 #include "sharepathresolve.hpp"
 #include "storagetype.hpp"
@@ -22,6 +23,7 @@
 
 using namespace std;
 using namespace az::util;
+using az::logging::getLogger;
 
 namespace az {
 
@@ -32,12 +34,12 @@ Driver::Driver()
     try {
       nPreferredBufferSize = stoull(envvarval);
     } catch (const invalid_argument &exc) {
-      spdlog::debug(
+      getLogger()->debug(
           "Value {} of environment variable AZURE_PREFERRED_BUFFER_SIZE is not "
           "a valid number. Falling back to default {}...",
           envvarval, DEFAULT_PREFERRED_BUFFER_SIZE);
     } catch (const out_of_range &exc) {
-      spdlog::debug(
+      getLogger()->debug(
           "Value {} of environment variable AZURE_PREFERRED_BUFFER_SIZE is out "
           "of range. Falling back to default {}...",
           envvarval, DEFAULT_PREFERRED_BUFFER_SIZE);
@@ -79,20 +81,20 @@ int Driver::GetSize(size_t *result, const string &sUrl) const {
     return -1;
   }
   if (request.bDir) {
-    spdlog::error("Cannot get size of a directory: operation not supported.");
+    getLogger()->error("Cannot get size of a directory: operation not supported.");
     return -1;
   }
   if (request.storageType == BLOB) {
     auto blobs = ListBlobs(request);
     if (blobs.empty()) {
-      spdlog::error("No blob matches URL {}.", sUrl);
+      getLogger()->error("No blob matches URL {}.", sUrl);
       return -1;
     }
     *result = FragmentedFile(std::move(blobs)).GetSize();
   } else /* SHARE */ {
     auto files = ListFiles(request);
     if (files.empty()) {
-      spdlog::error("No file matches URL {}.", sUrl);
+      getLogger()->error("No file matches URL {}.", sUrl);
       return -1;
     }
     *result = FragmentedFile(std::move(files)).GetSize();
@@ -106,7 +108,7 @@ int Driver::OpenForReading(FileStream **result, const string &sUrl) {
     return -1;
   }
   if (request.bDir) {
-    spdlog::error(
+    getLogger()->error(
         "Cannot open a directory for reading: operation not supported.");
     return -1;
   }
@@ -115,7 +117,7 @@ int Driver::OpenForReading(FileStream **result, const string &sUrl) {
   if (request.storageType == BLOB) {
     auto blobs = ListBlobs(request);
     if (blobs.empty()) {
-      spdlog::error("No blob matches URL {}.", sUrl);
+      getLogger()->error("No blob matches URL {}.", sUrl);
       return -1;
     }
     if ((nOpenStatus = FileStream::OpenForReading(&fs, blobs))) {
@@ -125,7 +127,7 @@ int Driver::OpenForReading(FileStream **result, const string &sUrl) {
   {
     auto files = ListFiles(request);
     if (files.empty()) {
-      spdlog::error("No file matches URL {}.", sUrl);
+      getLogger()->error("No file matches URL {}.", sUrl);
       return -1;
     }
     if ((nOpenStatus = FileStream::OpenForReading(&fs, files))) {
@@ -142,7 +144,7 @@ int Driver::OpenForWriting(FileStream **result, const string &sUrl) {
     return -1;
   }
   if (request.bDir) {
-    spdlog::error(
+    getLogger()->error(
         "Cannot open a directory for writing: operation not supported.");
     return -1;
   }
@@ -168,7 +170,7 @@ int Driver::OpenForAppending(FileStream **result, const string &sUrl) {
     return -1;
   }
   if (request.bDir) {
-    spdlog::error(
+    getLogger()->error(
         "Cannot open a directory for appending: operation not supported.");
     return -1;
   }
@@ -268,14 +270,14 @@ int Driver::Remove(const string &sUrl) const {
     return -1;
   }
   if (request.bDir) {
-    spdlog::error("Invalid call with a directory: use dedicated directory "
+    getLogger()->error("Invalid call with a directory: use dedicated directory "
                   "removal function instead.");
     return -1;
   }
   if (request.storageType == BLOB) {
     auto blobs = ListBlobs(request);
     if (blobs.empty()) {
-      spdlog::error("No blob matches URL {}.", sUrl);
+      getLogger()->error("No blob matches URL {}.", sUrl);
       return -1;
     }
     Azure::Storage::Blobs::DeleteBlobOptions opts;
@@ -284,20 +286,20 @@ int Driver::Remove(const string &sUrl) const {
     for (const auto &blob : blobs) {
       const string sBlobUrl = blob.GetUrl();
       if (!blob.Delete(opts).Value.Deleted) {
-        spdlog::error("Failed to delete blob {}.", sBlobUrl);
+        getLogger()->error("Failed to delete blob {}.", sBlobUrl);
         return -1;
       }
     }
   } else /* SHARE */ {
     auto files = ListFiles(request);
     if (files.empty()) {
-      spdlog::error("No file matches URL {}.", sUrl);
+      getLogger()->error("No file matches URL {}.", sUrl);
       return -1;
     }
     for (const auto &file : files) {
       const string sFileUrl = file.GetUrl();
       if (!file.Delete().Value.Deleted) {
-        spdlog::error("Failed to delete file {}.", sFileUrl);
+        getLogger()->error("Failed to delete file {}.", sFileUrl);
         return -1;
       }
     }
@@ -311,11 +313,11 @@ int Driver::MkDir(const string &sUrl) const {
     return -1;
   }
   if (!request.bDir) {
-    spdlog::error("Cannot make a directory given a file URL.");
+    getLogger()->error("Cannot make a directory given a file URL.");
     return -1;
   }
   if (request.storageType == BLOB) {
-    spdlog::info("Making a directory for a blob storage does nothing.");
+    getLogger()->info("Making a directory for a blob storage does nothing.");
   } else // SHARE
   {
     string sNewDir = request.share.path.back();
@@ -333,13 +335,13 @@ int Driver::MkDir(const string &sUrl) const {
                   [sNewDir](const auto &dirItem) {
                     return dirItem.Name == sNewDir;
                   }) != pagedResponse.Directories.end()) {
-        spdlog::error("Cannot make directory: directory already exists.");
+        getLogger()->error("Cannot make directory: directory already exists.");
         return -1;
       }
     }
 
     if (!parentDir.GetSubdirectoryClient(sNewDir).Create().Value.Created) {
-      spdlog::error("Failed to make directory.");
+      getLogger()->error("Failed to make directory.");
       return -1;
     }
   }
@@ -352,22 +354,22 @@ int Driver::RmDir(const string &sUrl) const {
     return -1;
   }
   if (!request.bDir) {
-    spdlog::error("Cannot remove a directory given a file URL.");
+    getLogger()->error("Cannot remove a directory given a file URL.");
     return -1;
   }
   if (request.storageType == BLOB) {
-    spdlog::info("Removing a directory with a blob storage does nothing.");
+    getLogger()->info("Removing a directory with a blob storage does nothing.");
   } else // SHARE
   {
     auto dirs = ListDirs(request);
     if (dirs.empty()) {
-      spdlog::error("No file matches URL {}.", sUrl);
+      getLogger()->error("No file matches URL {}.", sUrl);
       return -1;
     }
     for (const auto &dir : dirs) {
       const string sDirUrl = dir.GetUrl();
       if (!dir.Delete().Value.Deleted) {
-        spdlog::error("Failed to delete directory {}.", sDirUrl);
+        getLogger()->error("Failed to delete directory {}.", sDirUrl);
         return -1;
       }
     }
@@ -386,7 +388,7 @@ int Driver::CopyTo(const string &sUrl, const string &destUrl) {
     return -1;
   }
   if (request.bDir) {
-    spdlog::error(
+    getLogger()->error(
         "Cannot copy a directory to a local file: operation not supported.");
     return -1;
   }
@@ -399,7 +401,7 @@ int Driver::CopyTo(const string &sUrl, const string &destUrl) {
   size_t nRead;
 
   for (;;) {
-    spdlog::trace("Copying at most {} bytes from remote to local file...",
+    getLogger()->trace("Copying at most {} bytes from remote to local file...",
                   GetPreferredBufferSize());
     switch (readerPtr->Read(&nRead, buffer, 1, GetPreferredBufferSize())) {
     case 0:
@@ -426,7 +428,7 @@ int Driver::CopyFrom(const string &sUrl, const string &sourceUrl) {
     return -1;
   }
   if (request.bDir) {
-    spdlog::error("Cannot copy from a local file to a directory: operation not "
+    getLogger()->error("Cannot copy from a local file to a directory: operation not "
                   "supported.");
     return -1;
   }
@@ -439,7 +441,7 @@ int Driver::CopyFrom(const string &sUrl, const string &sourceUrl) {
   ifstream ifs(sourceUrl, ios::binary);
 
   for (;;) {
-    spdlog::trace("Copying at most {} bytes from local file to remote...",
+    getLogger()->trace("Copying at most {} bytes from local file to remote...",
                   GetPreferredBufferSize());
     ifs.read(buffer, GetPreferredBufferSize());
     nRead = (size_t)ifs.gcount();
@@ -464,7 +466,7 @@ int Driver::Concatenate(const vector<string> &inputUrls,
                         const string &sDestUrl) {
   size_t nInputUrls = inputUrls.size();
   if (nInputUrls < 2) {
-    spdlog::info("Number of input URLs is {}; do not concatenate.", nInputUrls);
+    getLogger()->info("Number of input URLs is {}; do not concatenate.", nInputUrls);
     return 0;
   }
 
@@ -481,17 +483,17 @@ int Driver::Concatenate(const vector<string> &inputUrls,
 
   for (const auto &input : inputs) {
     if (input.storageType != output.storageType) {
-      spdlog::error(
+      getLogger()->error(
           "Input storage type (blob/file) does not match output storage type.");
       return -1;
     }
     if (input.bDir) {
-      spdlog::error("Cannot concatenate directories: operation not supported.");
+      getLogger()->error("Cannot concatenate directories: operation not supported.");
       return -1;
     }
   }
   if (output.bDir) {
-    spdlog::error(
+    getLogger()->error(
         "Cannot concatenate to a directory: operation not supported.");
     return -1;
   }
@@ -512,7 +514,7 @@ int Driver::Concatenate(const vector<string> &inputUrls,
              [nHeaderLen](const auto &fragmentedFile) {
                return fragmentedFile.GetHeaderLen() != nHeaderLen;
              })) {
-    spdlog::error("Input object headers are incompatible.");
+    getLogger()->error("Input object headers are incompatible.");
     return -1;
   }
 
@@ -567,7 +569,7 @@ int Driver::ParseUrl(ServiceRequest *result, const std::string &sUrl) const {
   try {
     url = Azure::Core::Url(sUrl);
   } catch (const exception &) {
-    spdlog::error("Caught an exception while performing basic URL parsing: URL "
+    getLogger()->error("Caught an exception while performing basic URL parsing: URL "
                   "{} is invalid.",
                   sUrl);
     return -1;
@@ -581,7 +583,7 @@ int Driver::ParseUrl(ServiceRequest *result, const std::string &sUrl) const {
   bool bAzureFileUrl =
       !bAzureBlobUrl && str::EndsWith(url.GetHost(), ".file.core.windows.net");
   if (!bIsEmulatedStorage && !bAzureBlobUrl && !bAzureFileUrl) {
-    spdlog::error("URL {} contains invalid domain.", sUrl);
+    getLogger()->error("URL {} contains invalid domain.", sUrl);
     return -1;
   }
 
@@ -636,7 +638,7 @@ int Driver::ParseUrl(ServiceRequest *result, const std::string &sUrl) const {
   if (bIsEmulatedStorage) // Emulated BLOB storage
   {
     if (!bConnectionStringDefined) {
-      spdlog::error("Undefined of empty environment variable: "
+      getLogger()->error("Undefined of empty environment variable: "
                     "AZURE_STORAGE_CONNECTION_STRING.");
       return -1;
     }
@@ -646,7 +648,7 @@ int Driver::ParseUrl(ServiceRequest *result, const std::string &sUrl) const {
             regex("([^/]+)/([^/]+)/(.+)"))) //  accountname/container/object  or
                                             //  accountname/container/object/
     {
-      spdlog::error("Invalid emulated storage object path: {}.", sPath);
+      getLogger()->error("Invalid emulated storage object path: {}.", sPath);
       return -1;
     }
     *result =
@@ -659,7 +661,7 @@ int Driver::ParseUrl(ServiceRequest *result, const std::string &sUrl) const {
             sPath, match,
             regex("([^/]+)/(.+)"))) //  container/object  or  container/object/
     {
-      spdlog::error("Invalid cloud blob path: {}.", sPath);
+      getLogger()->error("Invalid cloud blob path: {}.", sPath);
       return -1;
     }
     if (bConnectionStringDefined) {
@@ -680,7 +682,7 @@ int Driver::ParseUrl(ServiceRequest *result, const std::string &sUrl) const {
             regex("([^/]+)((?:/[^/]+)+/?)"))) //  share/path/to/a/file  or
                                               //  share/path/to/a/dir/
     {
-      spdlog::error("Invalid cloud file path: {}.", sPath);
+      getLogger()->error("Invalid cloud file path: {}.", sPath);
       return -1;
     }
     vector<string> fileOrDirPath = str::Split(match[2].str(), '/', -1, true);
@@ -711,7 +713,7 @@ string Driver::GetServiceUrl(const ServiceRequest &request) const {
         << ":" << request.azureUrl.GetPort();
   }
   std::string result = oss.str();
-  spdlog::debug("Service URL is: {}.", result);
+  getLogger()->debug("Service URL is: {}.", result);
   return result;
 }
 
@@ -719,7 +721,7 @@ string Driver::GetBlobContainerUrl(const ServiceRequest &request) const {
   ostringstream oss;
   oss << GetServiceUrl(request) << "/" << request.blob.sContainer;
   std::string result = oss.str();
-  spdlog::debug("Blob container URL is: {}.", result);
+  getLogger()->debug("Blob container URL is: {}.", result);
   return result;
 }
 
@@ -767,7 +769,7 @@ string Driver::GetFileShareUrl(const ServiceRequest &request) const {
   ostringstream oss;
   oss << GetServiceUrl(request) << "/" << request.share.sShare;
   string result = oss.str();
-  spdlog::debug("File share URL is: {}.", result);
+  getLogger()->debug("File share URL is: {}.", result);
   return result;
 }
 
@@ -859,7 +861,7 @@ int Driver::GetParentDir(
     }
 
     if (!bAlreadyExisting) {
-      spdlog::error("Ancestor directory {}/{} does not exist.",
+      getLogger()->error("Ancestor directory {}/{} does not exist.",
                     dirClient.GetUrl(), sPathFragment,
                     request.azureUrl.GetAbsoluteUrl());
       return -1;
@@ -882,7 +884,7 @@ FileStream *Driver::RegisterFileStream(FileStream &&fileStream) {
 int Driver::RetrieveFileStream(FileStream **result, void *handle) const {
   auto it = fileStreams.find(handle);
   if (it == fileStreams.end()) {
-    spdlog::error("File stream not found.");
+    getLogger()->error("File stream not found.");
     return -1;
   }
   *result = it->second.get();

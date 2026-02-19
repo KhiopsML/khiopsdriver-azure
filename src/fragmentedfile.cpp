@@ -1,4 +1,5 @@
 #include "fragmentedfile.hpp"
+#include "logging.hpp"
 #include "util.hpp"
 #include <algorithm>
 #include <azure/core/http/http.hpp>
@@ -15,6 +16,7 @@ using HttpRange = Azure::Core::Http::HttpRange;
 using BodyStream = Azure::Core::IO::BodyStream;
 using DownloadBlobOptions = Azure::Storage::Blobs::DownloadBlobOptions;
 using DownloadFileOptions = Azure::Storage::Files::Shares::DownloadFileOptions;
+using az::logging::getLogger;
 
 namespace az {
 static string
@@ -154,7 +156,7 @@ FragmentedFile::GetFragment(size_t nIndex) const {
 int FragmentedFile::GetFragmentIndexOfUserOffset(size_t *nFragmentIndex,
                                                  size_t nUserOffset) const {
   if (fragments.empty()) {
-    spdlog::error("No fragment found.");
+    getLogger()->error("No fragment found.");
     return -1;
   }
   *nFragmentIndex =

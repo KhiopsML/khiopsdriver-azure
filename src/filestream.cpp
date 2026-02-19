@@ -1,4 +1,5 @@
 #include "filestream.hpp"
+#include "logging.hpp"
 #include "util.hpp"
 #include <azure/storage/blobs/block_blob_client.hpp>
 #include <azure/storage/common/storage_exception.hpp>
@@ -9,6 +10,7 @@
 
 using namespace std;
 using namespace az::util;
+using az::logging::getLogger;
 
 namespace az {
 int FileStream::OpenForReading(
@@ -29,7 +31,7 @@ int FileStream::OpenForReading(
 int FileStream::OpenForReading(FileStream *result,
                                const std::vector<ObjectClient> &clients) {
   if (clients.empty()) {
-    spdlog::error("No object client found.");
+    getLogger()->error("No object client found.");
     return -1;
   }
   FileStream fs;
@@ -140,7 +142,7 @@ void FileStream::Close() {
 
 int FileStream::Read(size_t *nRead, void *dest, size_t nSize, size_t nCount) {
   if (mode != Mode::READ) {
-    spdlog::error("Operation 'read' is invalid for stream mode.");
+    getLogger()->error("Operation 'read' is invalid for stream mode.");
     return -1;
   }
 
@@ -184,7 +186,7 @@ int FileStream::Read(size_t *nRead, void *dest, size_t nSize, size_t nCount) {
         auto downloadResult =
             std::move(fragment.client.shareFile.Download(opts).Value);
         if (downloadResult.Details.ETag != fragment.etag) {
-          spdlog::error("The file has been updated while reading it.");
+          getLogger()->error("The file has been updated while reading it.");
           return -1;
         }
         bodyStream = std::move(downloadResult.BodyStream);
@@ -192,13 +194,13 @@ int FileStream::Read(size_t *nRead, void *dest, size_t nSize, size_t nCount) {
     } catch (const Azure::Storage::StorageException &exc) {
       if (exc.StatusCode ==
           Azure::Core::Http::HttpStatusCode::RangeNotSatisfiable) {
-        spdlog::error("Cannot read after end of file.");
+        getLogger()->error("Cannot read after end of file.");
         *nRead = 0;
         return -2;
       }
       if (exc.StatusCode ==
           Azure::Core::Http::HttpStatusCode::PreconditionFailed) {
-        spdlog::error("The file has been updated while reading it.");
+        getLogger()->error("The file has been updated while reading it.");
         return -1;
       }
       throw;
@@ -208,7 +210,7 @@ int FileStream::Read(size_t *nRead, void *dest, size_t nSize, size_t nCount) {
     if (nToRead > 0 && nRead_ == 0) {
       // Handle emulator special behavior that gracefully
       // accepts read beyond file size
-      spdlog::error("Cannot read after end of file.");
+      getLogger()->error("Cannot read after end of file.");
       *nRead = 0;
       return -2;
     }
@@ -227,7 +229,7 @@ int FileStream::Read(size_t *nRead, void *dest, size_t nSize, size_t nCount) {
 
 int FileStream::Seek(long long int nOffset, int nOrigin) {
   if (mode != Mode::READ) {
-    spdlog::error("Operation 'seek' is invalid for stream mode.");
+    getLogger()->error("Operation 'seek' is invalid for stream mode.");
     return -1;
   }
 
@@ -245,12 +247,12 @@ int FileStream::Seek(long long int nOffset, int nOrigin) {
     nSignedDest = (long long int)nTotalFileSize + nOffset;
     break;
   default:
-    spdlog::error("Invalid seek origin {}.", nOrigin);
+    getLogger()->error("Invalid seek origin {}.", nOrigin);
     return -1;
   }
 
   if (nSignedDest < 0 || nSignedDest >= (long long int)nTotalFileSize) {
-    spdlog::error("Invalid seek offset {} for origin {}.", nOffset, nOrigin);
+    getLogger()->error("Invalid seek offset {} for origin {}.", nOffset, nOrigin);
     return -1;
   }
 
@@ -262,7 +264,7 @@ int FileStream::Seek(long long int nOffset, int nOrigin) {
 int FileStream::Write(size_t *nWritten, const void *source, size_t nSize,
                       size_t nCount) {
   if (mode != Mode::WRITE) {
-    spdlog::error("Operation 'write' is invalid for stream mode.");
+    getLogger()->error("Operation 'write' is invalid for stream mode.");
     return -1;
   }
 
@@ -304,7 +306,7 @@ int FileStream::Write(size_t *nWritten, const void *source, size_t nSize,
 
 int FileStream::Flush() {
   if (mode != Mode::WRITE) {
-    spdlog::error("Operation 'flush' is invalid for stream mode.");
+    getLogger()->error("Operation 'flush' is invalid for stream mode.");
     return -1;
   }
 

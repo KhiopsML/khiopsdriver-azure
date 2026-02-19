@@ -91,6 +91,7 @@ set(SourceList
     util.hpp
     util.cpp
     logging.hpp
+    logging.cpp
     returnval.hpp
     objectclient.hpp
     storagetype.hpp

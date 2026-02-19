@@ -1,7 +1,9 @@
+#include "logging.hpp"
 #include "servicerequest.hpp"
 #include <spdlog/spdlog.h>
 
 using namespace std;
+using az::logging::getLogger;
 
 namespace az {
 ServiceRequest::ServiceRequest(
@@ -77,35 +79,35 @@ ServiceRequest &ServiceRequest::operator=(ServiceRequest &&other) {
 }
 
 void ServiceRequest::Info() {
-  spdlog::debug("Created service request:");
-  spdlog::debug("  URL: {}", azureUrl.GetAbsoluteUrl());
-  spdlog::debug("  emulated: {}", bEmulated ? "yes" : "no");
+  getLogger()->debug("Created service request:");
+  getLogger()->debug("  URL: {}", azureUrl.GetAbsoluteUrl());
+  getLogger()->debug("  emulated: {}", bEmulated ? "yes" : "no");
   switch (storageType) {
   case BLOB:
-    spdlog::debug("  storage type: blob");
+    getLogger()->debug("  storage type: blob");
     break;
   case SHARE:
-    spdlog::debug("  storage type: file");
+    getLogger()->debug("  storage type: file");
     break;
   default:
-    spdlog::debug("  storage type: <invalid: {}>",
+    getLogger()->debug("  storage type: <invalid: {}>",
                   static_cast<int>(storageType));
     break;
   }
-  spdlog::debug("  using connection string: {}",
+  getLogger()->debug("  using connection string: {}",
                 bUsingConnectionString ? "yes" : "no");
-  spdlog::debug("  directory: {}", bDir ? "yes" : "no");
+  getLogger()->debug("  directory: {}", bDir ? "yes" : "no");
   if (storageType == BLOB) {
-    spdlog::debug("  blob info:");
-    spdlog::debug("    account name: {}", blob.sAccountName);
-    spdlog::debug("    container: {}", blob.sContainer);
-    spdlog::debug("    blob: {}", blob.sBlob);
+    getLogger()->debug("  blob info:");
+    getLogger()->debug("    account name: {}", blob.sAccountName);
+    getLogger()->debug("    container: {}", blob.sContainer);
+    getLogger()->debug("    blob: {}", blob.sBlob);
   } else {
-    spdlog::debug("  file info:");
-    spdlog::debug("    share: {}", share.sShare);
-    spdlog::debug("    path:");
+    getLogger()->debug("  file info:");
+    getLogger()->debug("    share: {}", share.sShare);
+    getLogger()->debug("    path:");
     for (size_t i = 0ULL; i < share.path.size(); i++) {
-      spdlog::debug("      element #{}: {}", i + 1, share.path.at(i));
+      getLogger()->debug("      element #{}: {}", i + 1, share.path.at(i));
     }
   }
 }
