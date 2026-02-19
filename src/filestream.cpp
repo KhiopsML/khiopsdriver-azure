@@ -36,7 +36,7 @@ int FileStream::OpenForReading(FileStream *result,
   fs.storageType = clients.front().tag;
   fs.mode = Mode::READ;
   new (&fs.readInfo) FragmentedFile(clients);
-  *result = move(fs);
+  *result = std::move(fs);
   return 0;
 }
 
@@ -80,7 +80,7 @@ void FileStream::OpenForWriting(FileStream *result, OutputMode mode,
       fs.nCurrentPos =
           (size_t)fs.writeInfo.client.shareFile.GetProperties().Value.FileSize;
   }
-  *result = move(fs);
+  *result = std::move(fs);
 }
 
 FileStream::FileStream()

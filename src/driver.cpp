@@ -30,7 +30,7 @@ ServiceRequest::ServiceRequest(
     : azureUrl(azureUrl), bEmulated(bEmulated), storageType(storageType),
       bUsingConnectionString(true), bDir(bDir),
       blob{blob.sAccountName, blob.sContainer, blob.sBlob},
-      connectionStringCredential(move(connectionStringCredential)) {Info();}
+      connectionStringCredential(std::move(connectionStringCredential)) {Info();}
 
 ServiceRequest::ServiceRequest(
     const Azure::Core::Url azureUrl, bool bEmulated, StorageType storageType,
@@ -40,7 +40,7 @@ ServiceRequest::ServiceRequest(
     : azureUrl(azureUrl), bEmulated(bEmulated), storageType(storageType),
       bUsingConnectionString(false), bDir(bDir),
       blob{blob.sAccountName, blob.sContainer, blob.sBlob},
-      noConnectionStringCredential(move(noConnectionStringCredential)) {Info();}
+      noConnectionStringCredential(std::move(noConnectionStringCredential)) {Info();}
 
 ServiceRequest::ServiceRequest(
     const Azure::Core::Url azureUrl, bool bEmulated, StorageType storageType,
@@ -49,7 +49,7 @@ ServiceRequest::ServiceRequest(
         connectionStringCredential)
     : azureUrl(azureUrl), bEmulated(bEmulated), storageType(storageType),
       bUsingConnectionString(true), bDir(bDir), share{share.sShare, share.path},
-      connectionStringCredential(move(connectionStringCredential)) {Info();}
+      connectionStringCredential(std::move(connectionStringCredential)) {Info();}
 
 ServiceRequest::ServiceRequest(
     const Azure::Core::Url azureUrl, bool bEmulated, StorageType storageType,
@@ -59,7 +59,7 @@ ServiceRequest::ServiceRequest(
     : azureUrl(azureUrl), bEmulated(bEmulated), storageType(storageType),
       bUsingConnectionString(false), bDir(bDir),
       share{share.sShare, share.path},
-      noConnectionStringCredential(move(noConnectionStringCredential)) {Info();}
+      noConnectionStringCredential(std::move(noConnectionStringCredential)) {Info();}
 
 ServiceRequest::ServiceRequest(const ServiceRequest &other)
     : azureUrl(other.azureUrl), bEmulated(other.bEmulated),
@@ -290,7 +290,7 @@ int Driver::OpenForReading(FileStream **result, const string &sUrl) {
       return nOpenStatus;
     }
   }
-  *result = RegisterFileStream(move(fs));
+  *result = RegisterFileStream(std::move(fs));
   return 0;
 }
 
@@ -1062,7 +1062,7 @@ int Driver::GetParentDir(
 
 FileStream *Driver::RegisterFileStream(FileStream &&fileStream) {
   void *handle = fileStream.GetHandle();
-  fileStreams[handle] = make_unique<FileStream>(move(fileStream));
+  fileStreams[handle] = make_unique<FileStream>(std::move(fileStream));
   return fileStreams.at(handle).get();
 }
 

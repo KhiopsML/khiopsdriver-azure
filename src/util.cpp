@@ -128,16 +128,16 @@ ConnectionString::ConnectionString(const string &sAccountName,
       blobEndpointPtr(nullptr), fileEndpointPtr(nullptr) {}
 
 ConnectionString::ConnectionString(ConnectionString &&other)
-    : sAccountName(move(other.sAccountName)),
-      sAccountKey(move(other.sAccountKey)),
-      blobEndpointPtr(move(other.blobEndpointPtr)),
-      fileEndpointPtr(move(other.fileEndpointPtr)) {}
+    : sAccountName(std::move(other.sAccountName)),
+      sAccountKey(std::move(other.sAccountKey)),
+      blobEndpointPtr(std::move(other.blobEndpointPtr)),
+      fileEndpointPtr(std::move(other.fileEndpointPtr)) {}
 
 ConnectionString &ConnectionString::operator=(ConnectionString &&other) {
-  sAccountName = move(other.sAccountName);
-  sAccountKey = move(other.sAccountKey);
-  blobEndpointPtr = move(other.blobEndpointPtr);
-  fileEndpointPtr = move(other.fileEndpointPtr);
+  sAccountName = std::move(other.sAccountName);
+  sAccountKey = std::move(other.sAccountKey);
+  blobEndpointPtr = std::move(other.blobEndpointPtr);
+  fileEndpointPtr = std::move(other.fileEndpointPtr);
   return *this;
 }
 
@@ -194,7 +194,7 @@ int ConnectionString::ParseConnectionString(ConnectionString *result,
   spdlog::debug("  account key: ***REDACTED***");
   spdlog::debug("  blob endpoint: {}", connectionString.blobEndpointPtr ? connectionString.blobEndpointPtr->GetAbsoluteUrl() : "<none>");
   spdlog::debug("  file endpoint: {}", connectionString.fileEndpointPtr ? connectionString.fileEndpointPtr->GetAbsoluteUrl() : "<none>");
-  *result = move(connectionString);
+  *result = std::move(connectionString);
   return 0;
 }
 
