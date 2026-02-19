@@ -73,7 +73,7 @@ public:
 
 } // namespace
 
-shared_ptr<spdlog::logger> getLogger() {
+const shared_ptr<spdlog::logger> &getLogger() {
   static LogInitializer logInitializer;
   return logger;
 }

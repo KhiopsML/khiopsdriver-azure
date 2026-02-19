@@ -6,7 +6,7 @@
 namespace az {
 namespace logging {
 
-std::shared_ptr<spdlog::logger> getLogger();
+const std::shared_ptr<spdlog::logger> &getLogger();
 const std::string &getLastError();
 
 } // namespace logging
