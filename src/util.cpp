@@ -1,8 +1,8 @@
 #define _CRT_SECURE_NO_WARNINGS // getenv would be more secure in C++ than in C
                                 // and thus getenv_s would not be available in
                                 // C++?
-#include "logging.hpp"
 #include "util.hpp"
+#include "logging.hpp"
 #include <chrono>
 #include <cstdarg>
 #include <cstdlib>
@@ -98,12 +98,14 @@ string GetEnvVar(const string &sVarName, bool bForbidLogging) {
     return "";
   }
   if (!bForbidLogging) {
-    getLogger()->debug("Environment variable {} is set to: {}.", sVarName, sValue);
+    getLogger()->debug("Environment variable {} is set to: {}.", sVarName,
+                       sValue);
   }
   return sValue;
 }
 
-string GetEnvVarOrDefault(const string &sVarName, const string &sDefaultValue, bool bForbidLogging) {
+string GetEnvVarOrDefault(const string &sVarName, const string &sDefaultValue,
+                          bool bForbidLogging) {
   string sEnvval = GetEnvVar(sVarName, bForbidLogging);
   if (sEnvval.empty()) {
     return sDefaultValue;
@@ -142,8 +144,9 @@ int ConnectionString::ParseConnectionString(ConnectionString *result,
   smatch match;
   if (!regex_match(sConnectionString, match,
                    regex("(?:[^=]+=[^;]+;)*[^=]+=[^;]+;?"))) {
-    getLogger()->error("Connection string '{}' does not match expected pattern.",
-                  sConnectionString);
+    getLogger()->error(
+        "Connection string '{}' does not match expected pattern.",
+        sConnectionString);
     return -1;
   }
   regex kvRegex("([^=]+)=([^;]+);?");
@@ -158,14 +161,14 @@ int ConnectionString::ParseConnectionString(ConnectionString *result,
   auto accountNameIt = kvPairs.find("AccountName"); // Mandatory
   if (accountNameIt == kvPairs.end()) {
     getLogger()->error("Connection string '{}' misses 'AccountName' field.",
-                  sConnectionString);
+                       sConnectionString);
     return -1;
   }
 
   auto accountKeyIt = kvPairs.find("AccountKey"); // Mandatory
   if (accountKeyIt == kvPairs.end()) {
     getLogger()->error("Connection string '{}' misses 'AccountKey' field.",
-                  sConnectionString);
+                       sConnectionString);
     return -1;
   }
 
@@ -180,7 +183,7 @@ int ConnectionString::ParseConnectionString(ConnectionString *result,
         make_unique<Azure::Core::Url>(blobEndpointIt->second);
   } else if (bIsEmulatedStorage) {
     getLogger()->error("Connection string '{}' misses 'BlobEndpoint' field.",
-                  sConnectionString);
+                       sConnectionString);
     return -1;
   }
 
@@ -194,13 +197,13 @@ int ConnectionString::ParseConnectionString(ConnectionString *result,
   getLogger()->debug("  account name: {}", connectionString.sAccountName);
   getLogger()->debug("  account key: ***REDACTED***");
   getLogger()->debug("  blob endpoint: {}",
-                connectionString.blobEndpointPtr
-                    ? connectionString.blobEndpointPtr->GetAbsoluteUrl()
-                    : "<none>");
+                     connectionString.blobEndpointPtr
+                         ? connectionString.blobEndpointPtr->GetAbsoluteUrl()
+                         : "<none>");
   getLogger()->debug("  file endpoint: {}",
-                connectionString.fileEndpointPtr
-                    ? connectionString.fileEndpointPtr->GetAbsoluteUrl()
-                    : "<none>");
+                     connectionString.fileEndpointPtr
+                         ? connectionString.fileEndpointPtr->GetAbsoluteUrl()
+                         : "<none>");
   *result = std::move(connectionString);
   return 0;
 }
@@ -213,14 +216,14 @@ int ConnectionString::CheckAgainstUrl(const Azure::Core::Url &url,
       !util::str::StartsWith(url.GetAbsoluteUrl(),
                              blobEndpointPtr->GetAbsoluteUrl())) {
     getLogger()->error("URL {} does not start with expected blob endpoint {}.",
-                  url.GetAbsoluteUrl(), blobEndpointPtr->GetAbsoluteUrl());
+                       url.GetAbsoluteUrl(), blobEndpointPtr->GetAbsoluteUrl());
     return -1;
   }
   if (fileEndpointPtr && storageType == SHARE &&
       !util::str::StartsWith(url.GetAbsoluteUrl(),
                              fileEndpointPtr->GetAbsoluteUrl())) {
     getLogger()->error("URL {} does not start with expected file endpoint {}.",
-                  url.GetAbsoluteUrl(), fileEndpointPtr->GetAbsoluteUrl());
+                       url.GetAbsoluteUrl(), fileEndpointPtr->GetAbsoluteUrl());
     return -1;
   }
   return 0;

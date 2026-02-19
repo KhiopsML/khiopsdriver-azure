@@ -1,5 +1,5 @@
-#include "logging.hpp"
 #include "servicerequest.hpp"
+#include "logging.hpp"
 #include <spdlog/spdlog.h>
 
 using namespace std;
@@ -91,11 +91,11 @@ void ServiceRequest::Info() {
     break;
   default:
     getLogger()->debug("  storage type: <invalid: {}>",
-                  static_cast<int>(storageType));
+                       static_cast<int>(storageType));
     break;
   }
   getLogger()->debug("  using connection string: {}",
-                bUsingConnectionString ? "yes" : "no");
+                     bUsingConnectionString ? "yes" : "no");
   getLogger()->debug("  directory: {}", bDir ? "yes" : "no");
   if (storageType == BLOB) {
     getLogger()->debug("  blob info:");
@@ -111,4 +111,4 @@ void ServiceRequest::Info() {
     }
   }
 }
-}
+} // namespace az

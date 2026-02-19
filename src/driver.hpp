@@ -25,7 +25,8 @@ class Driver;
 #include <vector>
 
 namespace az {
-static constexpr long long int DEFAULT_PREFERRED_BUFFER_SIZE = 4LL * 1024LL * 1024LL;
+static constexpr long long int DEFAULT_PREFERRED_BUFFER_SIZE =
+    4LL * 1024LL * 1024LL;
 
 class Driver {
 public:

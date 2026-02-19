@@ -252,7 +252,8 @@ int FileStream::Seek(long long int nOffset, int nOrigin) {
   }
 
   if (nSignedDest < 0 || nSignedDest >= (long long int)nTotalFileSize) {
-    getLogger()->error("Invalid seek offset {} for origin {}.", nOffset, nOrigin);
+    getLogger()->error("Invalid seek offset {} for origin {}.", nOffset,
+                       nOrigin);
     return -1;
   }
 

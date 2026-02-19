@@ -248,8 +248,8 @@ int driver_fclose(void *handle) {
 long long int driver_fread(void *dest, size_t size, size_t count,
                            void *handle) {
   try {
-    getLogger()->info("Reading {}x{} bytes from file with handle {} to {}...", size,
-                 count, handle, dest);
+    getLogger()->info("Reading {}x{} bytes from file with handle {} to {}...",
+                      size, count, handle, dest);
     if (!IsConnected()) {
       getLogger()->error("Cannot read from file when disconnected.");
       return nReadFailure;
@@ -278,8 +278,9 @@ long long int driver_fread(void *dest, size_t size, size_t count,
 
 int driver_fseek(void *handle, long long int offset, int whence) {
   try {
-    getLogger()->info("Seeking offset {} from origin {} in file with handle {}...",
-                 offset, whence, handle);
+    getLogger()->info(
+        "Seeking offset {} from origin {} in file with handle {}...", offset,
+        whence, handle);
     if (!IsConnected()) {
       getLogger()->error("Cannot seek into file when disconnected.");
       return nSeekFailure;
@@ -330,8 +331,8 @@ const char *driver_getlasterror() {
 long long int driver_fwrite(const void *source, size_t size, size_t count,
                             void *handle) {
   try {
-    getLogger()->info("Writing {}x{} bytes from {} to file with handle {}...", size,
-                 count, source, handle);
+    getLogger()->info("Writing {}x{} bytes from {} to file with handle {}...",
+                      size, count, source, handle);
     if (!IsConnected()) {
       getLogger()->error("Cannot write to file when disconnected.");
       return nWriteFailure;
@@ -463,7 +464,8 @@ long long int driver_diskFreeSpace(const char *sUrl) {
 
 int driver_copyToLocal(const char *sSourceUrl, const char *sDestUrl) {
   try {
-    getLogger()->info("Copying file at URL {} to URL {}...", sSourceUrl, sDestUrl);
+    getLogger()->info("Copying file at URL {} to URL {}...", sSourceUrl,
+                      sDestUrl);
     if (!IsConnected()) {
       getLogger()->error("Cannot copy to a local file when disconnected.");
       return nFailure;
@@ -488,7 +490,8 @@ int driver_copyToLocal(const char *sSourceUrl, const char *sDestUrl) {
 
 int driver_copyFromLocal(const char *sSourceUrl, const char *sDestUrl) {
   try {
-    getLogger()->info("Copying file at URL {} to URL {}...", sSourceUrl, sDestUrl);
+    getLogger()->info("Copying file at URL {} to URL {}...", sSourceUrl,
+                      sDestUrl);
     if (!IsConnected()) {
       getLogger()->error("Cannot copy from a local file when disconnected.");
       return nFailure;
@@ -515,7 +518,7 @@ int driver_concat(const char *destfilename, const char **sourcefilenames,
                   size_t sourcefilecount) {
   try {
     getLogger()->info("Concatenating {} files to URL {}...", sourcefilecount,
-                 destfilename);
+                      destfilename);
     if (!IsConnected()) {
       getLogger()->error("Cannot concatenate objects when disconnected.");
       return nFailure;

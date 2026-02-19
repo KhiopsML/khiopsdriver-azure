@@ -47,8 +47,7 @@ Driver::Driver()
   }
 }
 
-Driver::~Driver() {
-}
+Driver::~Driver() {}
 
 size_t Driver::GetPreferredBufferSize() const { return nPreferredBufferSize; }
 
@@ -81,7 +80,8 @@ int Driver::GetSize(size_t *result, const string &sUrl) const {
     return -1;
   }
   if (request.bDir) {
-    getLogger()->error("Cannot get size of a directory: operation not supported.");
+    getLogger()->error(
+        "Cannot get size of a directory: operation not supported.");
     return -1;
   }
   if (request.storageType == BLOB) {
@@ -271,7 +271,7 @@ int Driver::Remove(const string &sUrl) const {
   }
   if (request.bDir) {
     getLogger()->error("Invalid call with a directory: use dedicated directory "
-                  "removal function instead.");
+                       "removal function instead.");
     return -1;
   }
   if (request.storageType == BLOB) {
@@ -402,7 +402,7 @@ int Driver::CopyTo(const string &sUrl, const string &destUrl) {
 
   for (;;) {
     getLogger()->trace("Copying at most {} bytes from remote to local file...",
-                  GetPreferredBufferSize());
+                       GetPreferredBufferSize());
     switch (readerPtr->Read(&nRead, buffer, 1, GetPreferredBufferSize())) {
     case 0:
       ofs.write(buffer, (streamsize)nRead);
@@ -428,8 +428,9 @@ int Driver::CopyFrom(const string &sUrl, const string &sourceUrl) {
     return -1;
   }
   if (request.bDir) {
-    getLogger()->error("Cannot copy from a local file to a directory: operation not "
-                  "supported.");
+    getLogger()->error(
+        "Cannot copy from a local file to a directory: operation not "
+        "supported.");
     return -1;
   }
   FileStream *writerPtr;
@@ -442,7 +443,7 @@ int Driver::CopyFrom(const string &sUrl, const string &sourceUrl) {
 
   for (;;) {
     getLogger()->trace("Copying at most {} bytes from local file to remote...",
-                  GetPreferredBufferSize());
+                       GetPreferredBufferSize());
     ifs.read(buffer, GetPreferredBufferSize());
     nRead = (size_t)ifs.gcount();
     if (nRead == 0) {
@@ -466,7 +467,8 @@ int Driver::Concatenate(const vector<string> &inputUrls,
                         const string &sDestUrl) {
   size_t nInputUrls = inputUrls.size();
   if (nInputUrls < 2) {
-    getLogger()->info("Number of input URLs is {}; do not concatenate.", nInputUrls);
+    getLogger()->info("Number of input URLs is {}; do not concatenate.",
+                      nInputUrls);
     return 0;
   }
 
@@ -488,7 +490,8 @@ int Driver::Concatenate(const vector<string> &inputUrls,
       return -1;
     }
     if (input.bDir) {
-      getLogger()->error("Cannot concatenate directories: operation not supported.");
+      getLogger()->error(
+          "Cannot concatenate directories: operation not supported.");
       return -1;
     }
   }
@@ -569,9 +572,10 @@ int Driver::ParseUrl(ServiceRequest *result, const std::string &sUrl) const {
   try {
     url = Azure::Core::Url(sUrl);
   } catch (const exception &) {
-    getLogger()->error("Caught an exception while performing basic URL parsing: URL "
-                  "{} is invalid.",
-                  sUrl);
+    getLogger()->error(
+        "Caught an exception while performing basic URL parsing: URL "
+        "{} is invalid.",
+        sUrl);
     return -1;
   }
   const string &sPath = url.GetPath();
@@ -639,7 +643,7 @@ int Driver::ParseUrl(ServiceRequest *result, const std::string &sUrl) const {
   {
     if (!bConnectionStringDefined) {
       getLogger()->error("Undefined of empty environment variable: "
-                    "AZURE_STORAGE_CONNECTION_STRING.");
+                         "AZURE_STORAGE_CONNECTION_STRING.");
       return -1;
     }
     smatch match;
@@ -862,8 +866,8 @@ int Driver::GetParentDir(
 
     if (!bAlreadyExisting) {
       getLogger()->error("Ancestor directory {}/{} does not exist.",
-                    dirClient.GetUrl(), sPathFragment,
-                    request.azureUrl.GetAbsoluteUrl());
+                         dirClient.GetUrl(), sPathFragment,
+                         request.azureUrl.GetAbsoluteUrl());
       return -1;
     }
 

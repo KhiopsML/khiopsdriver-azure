@@ -26,7 +26,8 @@ bool RandomBool();
 namespace env {
 std::string GetEnvVar(const std::string &sVarName, bool bForbidLogging = false);
 std::string GetEnvVarOrDefault(const std::string &sVarName,
-                               const std::string &sDefaultValue, bool bForbidLogging = false);
+                               const std::string &sDefaultValue,
+                               bool bForbidLogging = false);
 } // namespace env
 
 namespace connstr {
