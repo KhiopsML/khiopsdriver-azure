@@ -86,12 +86,10 @@ set(SourceList
     driver.hpp
     driver.cpp
     contrib.hpp
-    contrib.cpp
     util.hpp
     util.cpp
     returnval.hpp
     objectclient.hpp
-    objectclient.cpp
     storagetype.hpp
     filestream.hpp
     filestream.cpp
