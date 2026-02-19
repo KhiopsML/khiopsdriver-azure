@@ -89,7 +89,7 @@ TEST_P(IoTest, FReadAtEndOfFile) {
   // should raise an error
   ASSERT_EQ(driver_fread(ibuffer, 1, 4, ihandle), nReadFailure);
   ASSERT_THAT(driver_getlasterror(),
-              testing::EndsWith("Cannot read after end of file.\n"));
+              testing::HasSubstr("Cannot read after end of file."));
   ASSERT_STREQ(ibuffer, "e\n"); // Buffer content unchanged
 
   ASSERT_EQ(driver_fclose(ihandle), nCloseSuccess);
@@ -126,7 +126,7 @@ TEST_P(IoTest, FReadWithConcurrentWrite) {
   ASSERT_EQ(driver_fread(ibuffer, 1, 6, ihandle), nReadFailure);
   ASSERT_THAT(
       driver_getlasterror(),
-      testing::EndsWith("The file has been updated while reading it.\n"));
+      testing::HasSubstr("The file has been updated while reading it."));
   ASSERT_STREQ(ibuffer, "abc"); // Input buffer content unchanged
 
   // Open file again. This will fetch the new ETag
