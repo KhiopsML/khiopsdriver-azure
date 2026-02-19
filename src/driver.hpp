@@ -33,10 +33,6 @@ public:
   Driver();
   ~Driver();
 
-  const std::string &GetName() const;
-  const std::string &GetVersion() const;
-  const std::string &GetScheme() const;
-  bool IsReadOnly() const;
   size_t GetPreferredBufferSize() const;
 
   int Exists(bool *result, const std::string &sUrl) const;
@@ -101,8 +97,6 @@ private:
   FileStream *RegisterFileStream(FileStream &&fileStream);
   int RetrieveFileStream(FileStream **result, void *handle) const;
   std::unordered_map<void *, std::unique_ptr<FileStream>> fileStreams;
-
-  bool bIsConnected;
 
   size_t nPreferredBufferSize;
 };
