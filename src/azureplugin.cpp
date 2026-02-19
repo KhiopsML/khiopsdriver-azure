@@ -112,7 +112,11 @@ int driver_isConnected() {
 long long int driver_getSystemPreferredBufferSize() {
   try {
     getLogger()->info("Retrieving preferred buffer size...");
-    return DEFAULT_PREFERRED_BUFFER_SIZE;
+    if (!IsConnected()) {
+      getLogger()->error("Cannot retrieve preferred buffer size when disconnected.");
+      return nGenericFailure;
+    }
+    return driver->GetPreferredBufferSize();
   } catch (...) {
     getLogger()->error(ERR_EXC_RAISED);
   }
