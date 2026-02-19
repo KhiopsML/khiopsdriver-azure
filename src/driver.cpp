@@ -873,10 +873,10 @@ int Driver::ParseUrl(ServiceRequest *result, const std::string &sUrl) const {
       spdlog::error("Invalid emulated storage object path: {}.", sPath);
       return -1;
     }
-    *result = std::move(
+    *result =
         ServiceRequest(url, bIsEmulatedStorage, BLOB, bDir,
                        BlobInfo{match[1].str(), match[2].str(), match[3].str()},
-                       connectionStringCredential));
+                       connectionStringCredential);
   } else if (bAzureBlobUrl) { // Real Azure cloud BLOB storage
     smatch match;
     if (!regex_match(
@@ -887,15 +887,15 @@ int Driver::ParseUrl(ServiceRequest *result, const std::string &sUrl) const {
       return -1;
     }
     if (bConnectionStringDefined) {
-      *result = std::move(
+      *result =
           ServiceRequest(url, bIsEmulatedStorage, BLOB, bDir,
                          BlobInfo{string(), match[1].str(), match[2].str()},
-                         connectionStringCredential));
+                         connectionStringCredential);
     } else {
-      *result = std::move(
+      *result =
           ServiceRequest(url, bIsEmulatedStorage, BLOB, bDir,
                          BlobInfo{string(), match[1].str(), match[2].str()},
-                         noConnectionStringCredential));
+                         noConnectionStringCredential);
     }
   } else { // Real Azure cloud SHARE storage
     smatch match;
@@ -909,15 +909,13 @@ int Driver::ParseUrl(ServiceRequest *result, const std::string &sUrl) const {
     }
     vector<string> fileOrDirPath = str::Split(match[2].str(), '/', -1, true);
     if (bConnectionStringDefined) {
-      *result =
-          std::move(ServiceRequest(url, bIsEmulatedStorage, SHARE, bDir,
-                                   ShareInfo{match[1].str(), fileOrDirPath},
-                                   connectionStringCredential));
+      *result = ServiceRequest(url, bIsEmulatedStorage, SHARE, bDir,
+                               ShareInfo{match[1].str(), fileOrDirPath},
+                               connectionStringCredential);
     } else {
-      *result =
-          std::move(ServiceRequest(url, bIsEmulatedStorage, SHARE, bDir,
-                                   ShareInfo{match[1].str(), fileOrDirPath},
-                                   noConnectionStringCredential));
+      *result = ServiceRequest(url, bIsEmulatedStorage, SHARE, bDir,
+                               ShareInfo{match[1].str(), fileOrDirPath},
+                               noConnectionStringCredential);
     }
   }
   return 0;
