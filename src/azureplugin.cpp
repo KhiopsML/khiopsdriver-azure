@@ -21,8 +21,8 @@
 using namespace std;
 using namespace az;
 
-logging::LogInitializer _;
-unique_ptr<Driver> driver = nullptr;
+static logging::LogInitializer _;
+static unique_ptr<Driver> driver = nullptr;
 static bool IsConnected() { return driver != nullptr; }
 
 static const char *ERR_EXC_RAISED = "An exception has been raised.";
