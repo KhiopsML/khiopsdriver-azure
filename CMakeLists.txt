@@ -85,9 +85,12 @@ set(SourceList
     azureplugin.cpp
     driver.hpp
     driver.cpp
+    servicerequest.hpp
+    servicerequest.cpp
     contrib.hpp
     util.hpp
     util.cpp
+    logging.hpp
     returnval.hpp
     objectclient.hpp
     storagetype.hpp

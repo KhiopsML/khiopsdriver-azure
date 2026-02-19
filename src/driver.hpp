@@ -20,77 +20,23 @@ class Driver;
 #include <azure/storage/files/shares/share_file_client.hpp>
 #include <azure/storage/files/shares/share_service_client.hpp>
 #include <memory>
-#include <spdlog/sinks/basic_file_sink.h>
-#include <spdlog/sinks/ostream_sink.h>
-#include <spdlog/sinks/stdout_sinks.h>
-#include <spdlog/spdlog.h>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
 namespace az {
-static constexpr size_t nDefaultPreferredBufferSize = 4 * 1024 * 1024;
-
-struct BlobInfo {
-  std::string sAccountName;
-  std::string sContainer;
-  std::string sBlob;
-};
-
-struct ShareInfo {
-  std::string sShare;
-  std::vector<std::string> path;
-};
-
-struct ServiceRequest {
-  Azure::Core::Url azureUrl;
-  bool bEmulated;
-  StorageType storageType;
-  bool bUsingConnectionString;
-  bool bDir;
-  BlobInfo blob;
-  ShareInfo share;
-  std::shared_ptr<Azure::Storage::StorageSharedKeyCredential>
-      connectionStringCredential;
-  std::shared_ptr<Azure::Core::Credentials::TokenCredential>
-      noConnectionStringCredential;
-  ServiceRequest(const Azure::Core::Url azureUrl, bool bEmulated,
-                 StorageType storageType, bool bDir, const BlobInfo &blob,
-                 std::shared_ptr<Azure::Storage::StorageSharedKeyCredential>
-                     connectionStringCredential);
-  ServiceRequest(const Azure::Core::Url azureUrl, bool bEmulated,
-                 StorageType storageType, bool bDir, const BlobInfo &blob,
-                 std::shared_ptr<Azure::Core::Credentials::TokenCredential>
-                     noConnectionStringCredential);
-  ServiceRequest(const Azure::Core::Url azureUrl, bool bEmulated,
-                 StorageType storageType, bool bDir, const ShareInfo &share,
-                 std::shared_ptr<Azure::Storage::StorageSharedKeyCredential>
-                     connectionStringCredential);
-  ServiceRequest(const Azure::Core::Url azureUrl, bool bEmulated,
-                 StorageType storageType, bool bDir, const ShareInfo &share,
-                 std::shared_ptr<Azure::Core::Credentials::TokenCredential>
-                     noConnectionStringCredential);
-  ServiceRequest(const ServiceRequest &other);
-  ServiceRequest();
-  ServiceRequest &operator=(ServiceRequest &&other);
-  void Info();
-};
+static constexpr long long int DEFAULT_PREFERRED_BUFFER_SIZE = 4LL * 1024LL * 1024LL;
 
 class Driver {
 public:
   Driver();
   ~Driver();
-  void InitializeLogging();
 
   const std::string &GetName() const;
   const std::string &GetVersion() const;
   const std::string &GetScheme() const;
   bool IsReadOnly() const;
   size_t GetPreferredBufferSize() const;
-
-  void Connect();
-  int Disconnect();
-  bool IsConnected() const;
 
   int Exists(bool *result, const std::string &sUrl) const;
   int GetSize(size_t *result, const std::string &sUrl) const;
@@ -158,14 +104,5 @@ private:
   bool bIsConnected;
 
   size_t nPreferredBufferSize;
-
-  /*** Logging ***/
-  std::string logstring;
-  std::ostringstream logstringstream;
-  std::shared_ptr<spdlog::sinks::ostream_sink_st> stringstreamsink;
-  std::shared_ptr<spdlog::sinks::stderr_sink_st> stderrsink;
-  std::shared_ptr<spdlog::sinks::basic_file_sink_st> filesink;
-  std::vector<std::shared_ptr<spdlog::sinks::sink>> defaultloggersinks;
-  std::shared_ptr<spdlog::logger> defaultlogger;
 };
 } // namespace az

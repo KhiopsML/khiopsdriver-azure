@@ -81,22 +81,28 @@ bool RandomBool() {
 } // namespace random
 
 namespace env {
-string GetEnvVar(const string &sVarName) {
+string GetEnvVar(const string &sVarName, bool bForbidLogging) {
   char *sValue = getenv(sVarName.c_str());
   if (!sValue) {
-    spdlog::debug("Environment variable {} is not set.", sVarName);
+    if (!bForbidLogging) {
+      spdlog::debug("Environment variable {} is not set.", sVarName);
+    }
     return "";
   }
   if (strlen(sValue) == 0ULL) {
-    spdlog::debug("Environment variable {} is empty.", sVarName);
+    if (!bForbidLogging) {
+      spdlog::debug("Environment variable {} is empty.", sVarName);
+    }
     return "";
   }
-  spdlog::debug("Environment variable {} is set to: {}.", sVarName, sValue);
+  if (!bForbidLogging) {
+    spdlog::debug("Environment variable {} is set to: {}.", sVarName, sValue);
+  }
   return sValue;
 }
 
-string GetEnvVarOrDefault(const string &sVarName, const string &sDefaultValue) {
-  string sEnvval = GetEnvVar(sVarName);
+string GetEnvVarOrDefault(const string &sVarName, const string &sDefaultValue, bool bForbidLogging) {
+  string sEnvval = GetEnvVar(sVarName, bForbidLogging);
   if (sEnvval.empty()) {
     return sDefaultValue;
   }

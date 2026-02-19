@@ -1,5 +1,6 @@
 #include "driver.hpp"
 #include "blobpathresolve.hpp"
+#include "servicerequest.hpp"
 #include "sharepathresolve.hpp"
 #include "storagetype.hpp"
 #include "util.hpp"
@@ -15,6 +16,7 @@
 #include <iostream>
 #include <iterator>
 #include <regex>
+#include <spdlog/spdlog.h>
 #include <sstream>
 #include <stdexcept>
 
@@ -22,116 +24,9 @@ using namespace std;
 using namespace az::util;
 
 namespace az {
-ServiceRequest::ServiceRequest(
-    const Azure::Core::Url azureUrl, bool bEmulated, StorageType storageType,
-    bool bDir, const BlobInfo &blob,
-    shared_ptr<Azure::Storage::StorageSharedKeyCredential>
-        connectionStringCredential)
-    : azureUrl(azureUrl), bEmulated(bEmulated), storageType(storageType),
-      bUsingConnectionString(true), bDir(bDir),
-      blob{blob.sAccountName, blob.sContainer, blob.sBlob},
-      connectionStringCredential(std::move(connectionStringCredential)) {
-  Info();
-}
-
-ServiceRequest::ServiceRequest(
-    const Azure::Core::Url azureUrl, bool bEmulated, StorageType storageType,
-    bool bDir, const BlobInfo &blob,
-    shared_ptr<Azure::Core::Credentials::TokenCredential>
-        noConnectionStringCredential)
-    : azureUrl(azureUrl), bEmulated(bEmulated), storageType(storageType),
-      bUsingConnectionString(false), bDir(bDir),
-      blob{blob.sAccountName, blob.sContainer, blob.sBlob},
-      noConnectionStringCredential(std::move(noConnectionStringCredential)) {
-  Info();
-}
-
-ServiceRequest::ServiceRequest(
-    const Azure::Core::Url azureUrl, bool bEmulated, StorageType storageType,
-    bool bDir, const ShareInfo &share,
-    shared_ptr<Azure::Storage::StorageSharedKeyCredential>
-        connectionStringCredential)
-    : azureUrl(azureUrl), bEmulated(bEmulated), storageType(storageType),
-      bUsingConnectionString(true), bDir(bDir), share{share.sShare, share.path},
-      connectionStringCredential(std::move(connectionStringCredential)) {
-  Info();
-}
-
-ServiceRequest::ServiceRequest(
-    const Azure::Core::Url azureUrl, bool bEmulated, StorageType storageType,
-    bool bDir, const ShareInfo &share,
-    shared_ptr<Azure::Core::Credentials::TokenCredential>
-        noConnectionStringCredential)
-    : azureUrl(azureUrl), bEmulated(bEmulated), storageType(storageType),
-      bUsingConnectionString(false), bDir(bDir),
-      share{share.sShare, share.path},
-      noConnectionStringCredential(std::move(noConnectionStringCredential)) {
-  Info();
-}
-
-ServiceRequest::ServiceRequest(const ServiceRequest &other)
-    : azureUrl(other.azureUrl), bEmulated(other.bEmulated),
-      storageType(other.storageType),
-      bUsingConnectionString(other.bUsingConnectionString), bDir(other.bDir),
-      blob(other.blob), share(other.share),
-      connectionStringCredential(other.connectionStringCredential),
-      noConnectionStringCredential(other.noConnectionStringCredential) {
-  Info();
-}
-
-ServiceRequest::ServiceRequest() {}
-
-ServiceRequest &ServiceRequest::operator=(ServiceRequest &&other) {
-  azureUrl = std::move(other.azureUrl);
-  bEmulated = std::move(other.bEmulated);
-  storageType = std::move(other.storageType);
-  bUsingConnectionString = std::move(other.bUsingConnectionString);
-  bDir = std::move(other.bDir);
-  blob = std::move(other.blob);
-  share = std::move(other.share);
-  connectionStringCredential = std::move(other.connectionStringCredential);
-  noConnectionStringCredential = std::move(other.noConnectionStringCredential);
-  return *this;
-}
-
-void ServiceRequest::Info() {
-  spdlog::debug("Created service request:");
-  spdlog::debug("  URL: {}", azureUrl.GetAbsoluteUrl());
-  spdlog::debug("  emulated: {}", bEmulated ? "yes" : "no");
-  switch (storageType) {
-  case BLOB:
-    spdlog::debug("  storage type: blob");
-    break;
-  case SHARE:
-    spdlog::debug("  storage type: file");
-    break;
-  default:
-    spdlog::debug("  storage type: <invalid: {}>",
-                  static_cast<int>(storageType));
-    break;
-  }
-  spdlog::debug("  using connection string: {}",
-                bUsingConnectionString ? "yes" : "no");
-  spdlog::debug("  directory: {}", bDir ? "yes" : "no");
-  if (storageType == BLOB) {
-    spdlog::debug("  blob info:");
-    spdlog::debug("    account name: {}", blob.sAccountName);
-    spdlog::debug("    container: {}", blob.sContainer);
-    spdlog::debug("    blob: {}", blob.sBlob);
-  } else {
-    spdlog::debug("  file info:");
-    spdlog::debug("    share: {}", share.sShare);
-    spdlog::debug("    path:");
-    for (size_t i = 0ULL; i < share.path.size(); i++) {
-      spdlog::debug("      element #{}: {}", i + 1, share.path.at(i));
-    }
-  }
-}
 
 Driver::Driver()
-    : bIsConnected(false),
-      nPreferredBufferSize(nDefaultPreferredBufferSize) /* Default value */ {
-  InitializeLogging();
+    : nPreferredBufferSize(DEFAULT_PREFERRED_BUFFER_SIZE) /* Default value */ {
   string envvarval = env::GetEnvVar("AZURE_PREFERRED_BUFFER_SIZE");
   if (!envvarval.empty()) {
     try {
@@ -140,101 +35,22 @@ Driver::Driver()
       spdlog::debug(
           "Value {} of environment variable AZURE_PREFERRED_BUFFER_SIZE is not "
           "a valid number. Falling back to default {}...",
-          envvarval, nDefaultPreferredBufferSize);
+          envvarval, DEFAULT_PREFERRED_BUFFER_SIZE);
     } catch (const out_of_range &exc) {
       spdlog::debug(
           "Value {} of environment variable AZURE_PREFERRED_BUFFER_SIZE is out "
           "of range. Falling back to default {}...",
-          envvarval, nDefaultPreferredBufferSize);
+          envvarval, DEFAULT_PREFERRED_BUFFER_SIZE);
     }
   }
 }
 
 Driver::~Driver() {
-  fileStreams.clear();
-  stringstreamsink.reset();
-  stderrsink.reset();
-  filesink.reset();
-  for (shared_ptr<spdlog::sinks::sink>& sinkPtr : defaultloggersinks) {
-    sinkPtr.reset();
-  }
-  defaultlogger.reset();
-  spdlog::shutdown();
 }
-
-void Driver::InitializeLogging() {
-  logstring = "";
-  logstringstream = ostringstream("");
-  stringstreamsink =
-      make_shared<spdlog::sinks::ostream_sink_st>(logstringstream);
-  stringstreamsink->set_level(spdlog::level::err);
-  defaultloggersinks.push_back(stringstreamsink);
-
-  stderrsink = make_shared<spdlog::sinks::stderr_sink_st>();
-  stderrsink->set_level(spdlog::level::from_str(
-      env::GetEnvVarOrDefault("AZURE_DRIVER_LOGLEVEL", "off")));
-  defaultloggersinks.push_back(stderrsink);
-
-  string sLogFileEnvVal = env::GetEnvVar("AZURE_DRIVER_LOGFILE");
-  if (!sLogFileEnvVal.empty()) {
-    filesink = make_shared<spdlog::sinks::basic_file_sink_st>(sLogFileEnvVal);
-    filesink->set_level(spdlog::level::trace);
-    defaultloggersinks.push_back(filesink);
-  }
-
-  defaultloggersinks = {stringstreamsink, stderrsink};
-
-  defaultlogger = make_shared<spdlog::logger>(
-      "default", defaultloggersinks.begin(), defaultloggersinks.end());
-  defaultlogger->set_level(
-      spdlog::level::trace); // Let the sinks choose the log level.
-  spdlog::set_default_logger(defaultlogger);
-
-  /* Disable Azure SDK logging.
-     Note: This will not prevent Azure CLI, called as a subprocess by the
-     Azure SDK, to log errors such as "Please run 'az login' to authenticate".
-   */
-  Azure::Core::Diagnostics::Logger::SetListener(
-      [](Azure::Core::Diagnostics::Logger::Level, std::string const &) {});
-}
-
-const string &Driver::GetName() const {
-  static string sName = "Azure driver";
-  return sName;
-}
-
-const string &Driver::GetVersion() const {
-  static string sVersion = DRIVER_VERSION;
-  return sVersion;
-}
-
-const string &Driver::GetScheme() const {
-  static string sScheme = "https";
-  return sScheme;
-}
-
-bool Driver::IsReadOnly() const { return false; }
 
 size_t Driver::GetPreferredBufferSize() const { return nPreferredBufferSize; }
 
-void Driver::Connect() { bIsConnected = true; }
-
-int Driver::Disconnect() {
-  if (!IsConnected()) {
-    spdlog::error("Cannot disconnect when already disconnected.");
-    return -1;
-  }
-  bIsConnected = false;
-  return 0;
-}
-
-bool Driver::IsConnected() const { return bIsConnected; }
-
 int Driver::Exists(bool *result, const string &sUrl) const {
-  if (!IsConnected()) {
-    spdlog::error("Cannot check for object existence when disconnected.");
-    return -1;
-  }
   ServiceRequest request;
   if (ParseUrl(&request, sUrl)) {
     return -1;
@@ -258,10 +74,6 @@ int Driver::Exists(bool *result, const string &sUrl) const {
 }
 
 int Driver::GetSize(size_t *result, const string &sUrl) const {
-  if (!IsConnected()) {
-    spdlog::error("Cannot get object size when disconnected.");
-    return -1;
-  }
   ServiceRequest request;
   if (ParseUrl(&request, sUrl)) {
     return -1;
@@ -289,10 +101,6 @@ int Driver::GetSize(size_t *result, const string &sUrl) const {
 }
 
 int Driver::OpenForReading(FileStream **result, const string &sUrl) {
-  if (!IsConnected()) {
-    spdlog::error("Cannot open object for reading when disconnected.");
-    return -1;
-  }
   ServiceRequest request;
   if (ParseUrl(&request, sUrl)) {
     return -1;
@@ -329,10 +137,6 @@ int Driver::OpenForReading(FileStream **result, const string &sUrl) {
 }
 
 int Driver::OpenForWriting(FileStream **result, const string &sUrl) {
-  if (!IsConnected()) {
-    spdlog::error("Cannot open object for writing when disconnected.");
-    return -1;
-  }
   ServiceRequest request;
   if (ParseUrl(&request, sUrl)) {
     return -1;
@@ -359,10 +163,6 @@ int Driver::OpenForWriting(FileStream **result, const string &sUrl) {
 }
 
 int Driver::OpenForAppending(FileStream **result, const string &sUrl) {
-  if (!IsConnected()) {
-    spdlog::error("Cannot open object for appending when disconnected.");
-    return -1;
-  }
   ServiceRequest request;
   if (ParseUrl(&request, sUrl)) {
     return -1;
@@ -439,12 +239,6 @@ int Driver::Seek(void *handle, long long int nOffset, int nOrigin) {
   return 0;
 }
 
-void Driver::GetLastError(string **result) {
-  logstring = logstringstream.str();
-  logstringstream.str("");
-  *result = &logstring;
-}
-
 int Driver::Write(size_t *nWritten, void *handle, const void *source,
                   size_t nSize, size_t nCount) {
   FileStream *fileStreamPtr;
@@ -469,10 +263,6 @@ int Driver::Flush(void *handle) {
 }
 
 int Driver::Remove(const string &sUrl) const {
-  if (!IsConnected()) {
-    spdlog::error("Cannot remove file when disconnected.");
-    return -1;
-  }
   ServiceRequest request;
   if (ParseUrl(&request, sUrl)) {
     return -1;
@@ -516,10 +306,6 @@ int Driver::Remove(const string &sUrl) const {
 }
 
 int Driver::MkDir(const string &sUrl) const {
-  if (!IsConnected()) {
-    spdlog::error("Cannot make a directory when disconnected.");
-    return -1;
-  }
   ServiceRequest request;
   if (ParseUrl(&request, sUrl)) {
     return -1;
@@ -561,10 +347,6 @@ int Driver::MkDir(const string &sUrl) const {
 }
 
 int Driver::RmDir(const string &sUrl) const {
-  if (!IsConnected()) {
-    spdlog::error("Cannot remove directory when disconnected.");
-    return -1;
-  }
   ServiceRequest request;
   if (ParseUrl(&request, sUrl)) {
     return -1;
@@ -594,19 +376,11 @@ int Driver::RmDir(const string &sUrl) const {
 }
 
 int Driver::GetFreeDiskSpace(size_t *result) const {
-  if (!IsConnected()) {
-    spdlog::error("Cannot get free disk space when disconnected.");
-    return -1;
-  }
   *result = 5ULL * 1024ULL * 1024ULL * 1024ULL * 1024ULL;
   return 0;
 }
 
 int Driver::CopyTo(const string &sUrl, const string &destUrl) {
-  if (!IsConnected()) {
-    spdlog::error("Cannot copy to a local file when disconnected.");
-    return -1;
-  }
   ServiceRequest request;
   if (ParseUrl(&request, sUrl)) {
     return -1;
@@ -647,10 +421,6 @@ int Driver::CopyTo(const string &sUrl, const string &destUrl) {
 }
 
 int Driver::CopyFrom(const string &sUrl, const string &sourceUrl) {
-  if (!IsConnected()) {
-    spdlog::error("Cannot copy from a local file when disconnected.");
-    return -1;
-  }
   ServiceRequest request;
   if (ParseUrl(&request, sUrl)) {
     return -1;
@@ -692,10 +462,6 @@ int Driver::CopyFrom(const string &sUrl, const string &sourceUrl) {
 
 int Driver::Concatenate(const vector<string> &inputUrls,
                         const string &sDestUrl) {
-  if (!IsConnected()) {
-    spdlog::error("Cannot concatenate objects when disconnected.");
-    return -1;
-  }
   size_t nInputUrls = inputUrls.size();
   if (nInputUrls < 2) {
     spdlog::info("Number of input URLs is {}; do not concatenate.", nInputUrls);
@@ -1122,4 +888,5 @@ int Driver::RetrieveFileStream(FileStream **result, void *handle) const {
   *result = it->second.get();
   return 0;
 }
+
 } // namespace az
