@@ -150,7 +150,17 @@ Driver::Driver()
   }
 }
 
-Driver::~Driver() { fileStreams.clear(); }
+Driver::~Driver() {
+  fileStreams.clear();
+  stringstreamsink.reset();
+  stderrsink.reset();
+  filesink.reset();
+  for (shared_ptr<spdlog::sinks::sink>& sinkPtr : defaultloggersinks) {
+    sinkPtr.reset();
+  }
+  defaultlogger.reset();
+  spdlog::shutdown();
+}
 
 void Driver::InitializeLogging() {
   logstring = "";
