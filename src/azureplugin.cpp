@@ -113,7 +113,8 @@ long long int driver_getSystemPreferredBufferSize() {
   try {
     getLogger()->info("Retrieving preferred buffer size...");
     if (!IsConnected()) {
-      getLogger()->error("Cannot retrieve preferred buffer size when disconnected.");
+      getLogger()->error(
+          "Cannot retrieve preferred buffer size when disconnected.");
       return nGenericFailure;
     }
     return static_cast<long long int>(driver->GetPreferredBufferSize());
