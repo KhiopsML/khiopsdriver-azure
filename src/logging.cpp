@@ -81,6 +81,7 @@ shared_ptr<spdlog::logger> getLogger() {
 const string &getLastError() {
   logstring = logstringstream.str();
   logstringstream.str("");
+  logstringstream.clear();
   return logstring;
 }
 
