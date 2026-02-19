@@ -143,9 +143,6 @@ if(BUILD_TESTS)
       $<$<CXX_COMPILER_ID:MSVC>:-Wall;/wd4582;/wd4583;/wd4625;/wd4626;/wd4710;/wd4711;/wd4820;/wd4868;/permissive->
     PRIVATE $<$<CXX_COMPILER_ID:AppleClang,Clang,GNU>:-Wall;-Wextra;-pedantic>)
 
-  # Not working on windows because of unspecified target architecture add_executable(KhiopsPluginTest
-  # src/khiopsplugintest.cpp) target_link_libraries(KhiopsPluginTest PRIVATE fmt::fmt ${CMAKE_DL_LIBS})
-  # add_executable(drivertest src/drivertest.cpp) target_link_libraries(drivertest ${CMAKE_DL_LIBS}) # Link to dl
   add_subdirectory(test)
 endif(BUILD_TESTS)
 
