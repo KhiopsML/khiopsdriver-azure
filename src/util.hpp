@@ -24,8 +24,8 @@ bool RandomBool();
 }
 
 namespace env {
-std::string GetEnvironmentVariable(const std::string &sVarName);
-std::string GetEnvironmentVariableOrDefault(const std::string &sVarName,
+std::string GetEnvVar(const std::string &sVarName);
+std::string GetEnvVarOrDefault(const std::string &sVarName,
                                             const std::string &sDefaultValue);
 } // namespace env
 

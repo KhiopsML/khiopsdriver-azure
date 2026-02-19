@@ -80,7 +80,7 @@ bool RandomBool() {
 } // namespace random
 
 namespace env {
-string GetEnvironmentVariable(const string &sVarName) {
+string GetEnvVar(const string &sVarName) {
   char *sValue = getenv(sVarName.c_str());
   if (!sValue) {
     spdlog::debug("Environment variable {} is not set.", sVarName);
@@ -94,7 +94,7 @@ string GetEnvironmentVariable(const string &sVarName) {
   return sValue;
 }
 
-string GetEnvironmentVariableOrDefault(const string &sVarName,
+string GetEnvVarOrDefault(const string &sVarName,
                                        const string &sDefaultValue) {
   char *sValue = getenv(sVarName.c_str());
 
