@@ -30,7 +30,9 @@ ServiceRequest::ServiceRequest(
     : azureUrl(azureUrl), bEmulated(bEmulated), storageType(storageType),
       bUsingConnectionString(true), bDir(bDir),
       blob{blob.sAccountName, blob.sContainer, blob.sBlob},
-      connectionStringCredential(std::move(connectionStringCredential)) {Info();}
+      connectionStringCredential(std::move(connectionStringCredential)) {
+  Info();
+}
 
 ServiceRequest::ServiceRequest(
     const Azure::Core::Url azureUrl, bool bEmulated, StorageType storageType,
@@ -40,7 +42,9 @@ ServiceRequest::ServiceRequest(
     : azureUrl(azureUrl), bEmulated(bEmulated), storageType(storageType),
       bUsingConnectionString(false), bDir(bDir),
       blob{blob.sAccountName, blob.sContainer, blob.sBlob},
-      noConnectionStringCredential(std::move(noConnectionStringCredential)) {Info();}
+      noConnectionStringCredential(std::move(noConnectionStringCredential)) {
+  Info();
+}
 
 ServiceRequest::ServiceRequest(
     const Azure::Core::Url azureUrl, bool bEmulated, StorageType storageType,
@@ -49,7 +53,9 @@ ServiceRequest::ServiceRequest(
         connectionStringCredential)
     : azureUrl(azureUrl), bEmulated(bEmulated), storageType(storageType),
       bUsingConnectionString(true), bDir(bDir), share{share.sShare, share.path},
-      connectionStringCredential(std::move(connectionStringCredential)) {Info();}
+      connectionStringCredential(std::move(connectionStringCredential)) {
+  Info();
+}
 
 ServiceRequest::ServiceRequest(
     const Azure::Core::Url azureUrl, bool bEmulated, StorageType storageType,
@@ -59,7 +65,9 @@ ServiceRequest::ServiceRequest(
     : azureUrl(azureUrl), bEmulated(bEmulated), storageType(storageType),
       bUsingConnectionString(false), bDir(bDir),
       share{share.sShare, share.path},
-      noConnectionStringCredential(std::move(noConnectionStringCredential)) {Info();}
+      noConnectionStringCredential(std::move(noConnectionStringCredential)) {
+  Info();
+}
 
 ServiceRequest::ServiceRequest(const ServiceRequest &other)
     : azureUrl(other.azureUrl), bEmulated(other.bEmulated),
@@ -67,7 +75,9 @@ ServiceRequest::ServiceRequest(const ServiceRequest &other)
       bUsingConnectionString(other.bUsingConnectionString), bDir(other.bDir),
       blob(other.blob), share(other.share),
       connectionStringCredential(other.connectionStringCredential),
-      noConnectionStringCredential(other.noConnectionStringCredential) {Info();}
+      noConnectionStringCredential(other.noConnectionStringCredential) {
+  Info();
+}
 
 ServiceRequest::ServiceRequest() {}
 
@@ -89,17 +99,19 @@ void ServiceRequest::Info() {
   spdlog::debug("  URL: {}", azureUrl.GetAbsoluteUrl());
   spdlog::debug("  emulated: {}", bEmulated ? "yes" : "no");
   switch (storageType) {
-    case BLOB:
-      spdlog::debug("  storage type: blob");
-      break;
-    case SHARE:
-      spdlog::debug("  storage type: file");
-      break;
-    default:
-      spdlog::debug("  storage type: <invalid: {}>", static_cast<int>(storageType));
-      break;
+  case BLOB:
+    spdlog::debug("  storage type: blob");
+    break;
+  case SHARE:
+    spdlog::debug("  storage type: file");
+    break;
+  default:
+    spdlog::debug("  storage type: <invalid: {}>",
+                  static_cast<int>(storageType));
+    break;
   }
-  spdlog::debug("  using connection string: {}", bUsingConnectionString ? "yes" : "no");
+  spdlog::debug("  using connection string: {}",
+                bUsingConnectionString ? "yes" : "no");
   spdlog::debug("  directory: {}", bDir ? "yes" : "no");
   if (storageType == BLOB) {
     spdlog::debug("  blob info:");
@@ -117,17 +129,23 @@ void ServiceRequest::Info() {
 }
 
 Driver::Driver()
-  : bIsConnected(false),
-  nPreferredBufferSize(nDefaultPreferredBufferSize) /* Default value */ {
+    : bIsConnected(false),
+      nPreferredBufferSize(nDefaultPreferredBufferSize) /* Default value */ {
   InitializeLogging();
   string envvarval = env::GetEnvVar("AZURE_PREFERRED_BUFFER_SIZE");
   if (!envvarval.empty()) {
     try {
       nPreferredBufferSize = stoull(envvarval);
-    } catch (const invalid_argument& exc) {
-      spdlog::debug("Value {} of environment variable AZURE_PREFERRED_BUFFER_SIZE is not a valid number. Falling back to default {}...", envvarval, nDefaultPreferredBufferSize);
-    } catch (const out_of_range& exc) {
-      spdlog::debug("Value {} of environment variable AZURE_PREFERRED_BUFFER_SIZE is out of range. Falling back to default {}...", envvarval, nDefaultPreferredBufferSize);
+    } catch (const invalid_argument &exc) {
+      spdlog::debug(
+          "Value {} of environment variable AZURE_PREFERRED_BUFFER_SIZE is not "
+          "a valid number. Falling back to default {}...",
+          envvarval, nDefaultPreferredBufferSize);
+    } catch (const out_of_range &exc) {
+      spdlog::debug(
+          "Value {} of environment variable AZURE_PREFERRED_BUFFER_SIZE is out "
+          "of range. Falling back to default {}...",
+          envvarval, nDefaultPreferredBufferSize);
     }
   }
 }
@@ -137,12 +155,14 @@ Driver::~Driver() { fileStreams.clear(); }
 void Driver::InitializeLogging() {
   logstring = "";
   logstringstream = ostringstream("");
-  stringstreamsink = make_shared<spdlog::sinks::ostream_sink_st>(logstringstream);
+  stringstreamsink =
+      make_shared<spdlog::sinks::ostream_sink_st>(logstringstream);
   stringstreamsink->set_level(spdlog::level::err);
   defaultloggersinks.push_back(stringstreamsink);
-  
+
   stderrsink = make_shared<spdlog::sinks::stderr_sink_st>();
-  stderrsink->set_level(spdlog::level::from_str(env::GetEnvVarOrDefault("AZURE_DRIVER_LOGLEVEL", "off")));
+  stderrsink->set_level(spdlog::level::from_str(
+      env::GetEnvVarOrDefault("AZURE_DRIVER_LOGLEVEL", "off")));
   defaultloggersinks.push_back(stderrsink);
 
   string sLogFileEnvVal = env::GetEnvVar("AZURE_DRIVER_LOGFILE");
@@ -151,18 +171,21 @@ void Driver::InitializeLogging() {
     filesink->set_level(spdlog::level::trace);
     defaultloggersinks.push_back(filesink);
   }
-  
+
   defaultloggersinks = {stringstreamsink, stderrsink};
 
-  defaultlogger = make_shared<spdlog::logger>("default", defaultloggersinks.begin(), defaultloggersinks.end());
-  defaultlogger->set_level(spdlog::level::trace);  // Let the sinks choose the log level.
+  defaultlogger = make_shared<spdlog::logger>(
+      "default", defaultloggersinks.begin(), defaultloggersinks.end());
+  defaultlogger->set_level(
+      spdlog::level::trace); // Let the sinks choose the log level.
   spdlog::set_default_logger(defaultlogger);
-  
+
   /* Disable Azure SDK logging.
      Note: This will not prevent Azure CLI, called as a subprocess by the
-     Azure SDK, to log errors such as "Please run 'az login' to authenticate". */
+     Azure SDK, to log errors such as "Please run 'az login' to authenticate".
+   */
   Azure::Core::Diagnostics::Logger::SetListener(
-    [](Azure::Core::Diagnostics::Logger::Level, std::string const &) {});
+      [](Azure::Core::Diagnostics::Logger::Level, std::string const &) {});
 }
 
 const string &Driver::GetName() const {
@@ -265,7 +288,8 @@ int Driver::OpenForReading(FileStream **result, const string &sUrl) {
     return -1;
   }
   if (request.bDir) {
-    spdlog::error("Cannot open a directory for reading: operation not supported.");
+    spdlog::error(
+        "Cannot open a directory for reading: operation not supported.");
     return -1;
   }
   int nOpenStatus;
@@ -304,7 +328,8 @@ int Driver::OpenForWriting(FileStream **result, const string &sUrl) {
     return -1;
   }
   if (request.bDir) {
-    spdlog::error("Cannot open a directory for writing: operation not supported.");
+    spdlog::error(
+        "Cannot open a directory for writing: operation not supported.");
     return -1;
   }
   FileStream fs;
@@ -333,7 +358,8 @@ int Driver::OpenForAppending(FileStream **result, const string &sUrl) {
     return -1;
   }
   if (request.bDir) {
-    spdlog::error("Cannot open a directory for appending: operation not supported.");
+    spdlog::error(
+        "Cannot open a directory for appending: operation not supported.");
     return -1;
   }
   FileStream fs;
@@ -442,7 +468,8 @@ int Driver::Remove(const string &sUrl) const {
     return -1;
   }
   if (request.bDir) {
-    spdlog::error("Invalid call with a directory: use dedicated directory removal function instead.");
+    spdlog::error("Invalid call with a directory: use dedicated directory "
+                  "removal function instead.");
     return -1;
   }
   if (request.storageType == BLOB) {
@@ -504,7 +531,7 @@ int Driver::MkDir(const string &sUrl) const {
     Azure::Storage::Files::Shares::ListFilesAndDirectoriesOptions opts;
     opts.Prefix = sNewDir;
     for (auto pagedResponse = parentDir.ListFilesAndDirectories(opts);
-          pagedResponse.HasPage(); pagedResponse.MoveToNextPage()) {
+         pagedResponse.HasPage(); pagedResponse.MoveToNextPage()) {
       if (find_if(pagedResponse.Directories.begin(),
                   pagedResponse.Directories.end(),
                   [sNewDir](const auto &dirItem) {
@@ -575,7 +602,8 @@ int Driver::CopyTo(const string &sUrl, const string &destUrl) {
     return -1;
   }
   if (request.bDir) {
-    spdlog::error("Cannot copy a directory to a local file: operation not supported.");
+    spdlog::error(
+        "Cannot copy a directory to a local file: operation not supported.");
     return -1;
   }
   FileStream *readerPtr;
@@ -587,15 +615,16 @@ int Driver::CopyTo(const string &sUrl, const string &destUrl) {
   size_t nRead;
 
   for (;;) {
-    spdlog::trace("Copying at most {} bytes from remote to local file...", GetPreferredBufferSize());
+    spdlog::trace("Copying at most {} bytes from remote to local file...",
+                  GetPreferredBufferSize());
     switch (readerPtr->Read(&nRead, buffer, 1, GetPreferredBufferSize())) {
-      case 0:
-        ofs.write(buffer, (streamsize)nRead);
-        continue;
-      case -1:
-        return -1;
-      case -2:  // Read at EOF
-        break;
+    case 0:
+      ofs.write(buffer, (streamsize)nRead);
+      continue;
+    case -1:
+      return -1;
+    case -2: // Read at EOF
+      break;
     }
     break;
   }
@@ -617,7 +646,8 @@ int Driver::CopyFrom(const string &sUrl, const string &sourceUrl) {
     return -1;
   }
   if (request.bDir) {
-    spdlog::error("Cannot copy from a local file to a directory: operation not supported.");
+    spdlog::error("Cannot copy from a local file to a directory: operation not "
+                  "supported.");
     return -1;
   }
   FileStream *writerPtr;
@@ -629,7 +659,8 @@ int Driver::CopyFrom(const string &sUrl, const string &sourceUrl) {
   ifstream ifs(sourceUrl, ios::binary);
 
   for (;;) {
-    spdlog::trace("Copying at most {} bytes from local file to remote...", GetPreferredBufferSize());
+    spdlog::trace("Copying at most {} bytes from local file to remote...",
+                  GetPreferredBufferSize());
     ifs.read(buffer, GetPreferredBufferSize());
     nRead = (size_t)ifs.gcount();
     if (nRead == 0) {
@@ -649,7 +680,8 @@ int Driver::CopyFrom(const string &sUrl, const string &sourceUrl) {
   return 0;
 }
 
-int Driver::Concatenate(const vector<string> &inputUrls, const string &sDestUrl) {
+int Driver::Concatenate(const vector<string> &inputUrls,
+                        const string &sDestUrl) {
   if (!IsConnected()) {
     spdlog::error("Cannot concatenate objects when disconnected.");
     return -1;
@@ -673,7 +705,8 @@ int Driver::Concatenate(const vector<string> &inputUrls, const string &sDestUrl)
 
   for (const auto &input : inputs) {
     if (input.storageType != output.storageType) {
-      spdlog::error("Input storage type (blob/file) does not match output storage type.");
+      spdlog::error(
+          "Input storage type (blob/file) does not match output storage type.");
       return -1;
     }
     if (input.bDir) {
@@ -682,7 +715,8 @@ int Driver::Concatenate(const vector<string> &inputUrls, const string &sDestUrl)
     }
   }
   if (output.bDir) {
-    spdlog::error("Cannot concatenate to a directory: operation not supported.");
+    spdlog::error(
+        "Cannot concatenate to a directory: operation not supported.");
     return -1;
   }
 
@@ -747,7 +781,8 @@ int Driver::Concatenate(const vector<string> &inputUrls, const string &sDestUrl)
 
 bool Driver::IsEmulatedStorage() const {
   string sEmulatedStorageEnvVarVal = env::GetEnvVar("AZURE_EMULATED_STORAGE");
-  return !sEmulatedStorageEnvVarVal.empty() && sEmulatedStorageEnvVarVal != "false";
+  return !sEmulatedStorageEnvVarVal.empty() &&
+         sEmulatedStorageEnvVarVal != "false";
 }
 
 int Driver::ParseUrl(ServiceRequest *result, const std::string &sUrl) const {
@@ -756,7 +791,9 @@ int Driver::ParseUrl(ServiceRequest *result, const std::string &sUrl) const {
   try {
     url = Azure::Core::Url(sUrl);
   } catch (const exception &) {
-    spdlog::error("Caught an exception while performing basic URL parsing: URL {} is invalid.", sUrl);
+    spdlog::error("Caught an exception while performing basic URL parsing: URL "
+                  "{} is invalid.",
+                  sUrl);
     return -1;
   }
   const string &sPath = url.GetPath();
@@ -788,7 +825,7 @@ int Driver::ParseUrl(ServiceRequest *result, const std::string &sUrl) const {
   connstr::ConnectionString connectionString;
   if (bConnectionStringDefined) {
     if (connstr::ConnectionString::ParseConnectionString(
-                 &connectionString, sConnectionString, bIsEmulatedStorage)) {
+            &connectionString, sConnectionString, bIsEmulatedStorage)) {
       return -1;
     }
     if (connectionString.CheckAgainstUrl(url, storageType)) {
@@ -823,7 +860,8 @@ int Driver::ParseUrl(ServiceRequest *result, const std::string &sUrl) const {
   if (bIsEmulatedStorage) // Emulated BLOB storage
   {
     if (!bConnectionStringDefined) {
-      spdlog::error("Undefined of empty environment variable: AZURE_STORAGE_CONNECTION_STRING.");
+      spdlog::error("Undefined of empty environment variable: "
+                    "AZURE_STORAGE_CONNECTION_STRING.");
       return -1;
     }
     smatch match;
@@ -869,8 +907,7 @@ int Driver::ParseUrl(ServiceRequest *result, const std::string &sUrl) const {
       spdlog::error("Invalid cloud file path: {}.", sPath);
       return -1;
     }
-    vector<string> fileOrDirPath =
-        str::Split(match[2].str(), '/', -1, true);
+    vector<string> fileOrDirPath = str::Split(match[2].str(), '/', -1, true);
     if (bConnectionStringDefined) {
       *result =
           std::move(ServiceRequest(url, bIsEmulatedStorage, SHARE, bDir,
@@ -1048,7 +1085,9 @@ int Driver::GetParentDir(
     }
 
     if (!bAlreadyExisting) {
-      spdlog::error("Ancestor directory {}/{} does not exist.", dirClient.GetUrl(), sPathFragment, request.azureUrl.GetAbsoluteUrl());
+      spdlog::error("Ancestor directory {}/{} does not exist.",
+                    dirClient.GetUrl(), sPathFragment,
+                    request.azureUrl.GetAbsoluteUrl());
       return -1;
     }
 

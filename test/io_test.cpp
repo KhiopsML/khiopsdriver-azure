@@ -88,7 +88,8 @@ TEST_P(IoTest, FReadAtEndOfFile) {
   // Trying to read four bytes while we are already at the end of the file...
   // should raise an error
   ASSERT_EQ(driver_fread(ibuffer, 1, 4, ihandle), nReadFailure);
-  ASSERT_THAT(driver_getlasterror(), testing::EndsWith("Cannot read after end of file.\n"));
+  ASSERT_THAT(driver_getlasterror(),
+              testing::EndsWith("Cannot read after end of file.\n"));
   ASSERT_STREQ(ibuffer, "e\n"); // Buffer content unchanged
 
   ASSERT_EQ(driver_fclose(ihandle), nCloseSuccess);
@@ -123,8 +124,9 @@ TEST_P(IoTest, FReadWithConcurrentWrite) {
   // This second reading operation should fail because it should find an ETag
   // different to the one fetched by the driver_fopen call
   ASSERT_EQ(driver_fread(ibuffer, 1, 6, ihandle), nReadFailure);
-  ASSERT_THAT(driver_getlasterror(),
-               testing::EndsWith("The file has been updated while reading it.\n"));
+  ASSERT_THAT(
+      driver_getlasterror(),
+      testing::EndsWith("The file has been updated while reading it.\n"));
   ASSERT_STREQ(ibuffer, "abc"); // Input buffer content unchanged
 
   // Open file again. This will fetch the new ETag

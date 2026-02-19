@@ -1,5 +1,6 @@
 #define _CRT_SECURE_NO_WARNINGS // getenv would be more secure in C++ than in C
-                                // and thus getenv_s would not be available in C++?
+                                // and thus getenv_s would not be available in
+                                // C++?
 #include "util.hpp"
 #include <chrono>
 #include <cstdarg>
@@ -94,26 +95,12 @@ string GetEnvVar(const string &sVarName) {
   return sValue;
 }
 
-string GetEnvVarOrDefault(const string &sVarName,
-                                       const string &sDefaultValue) {
-  char *sValue = getenv(sVarName.c_str());
-
-  if (sValue && strlen(sValue) > 0ULL) {
-    return sValue;
+string GetEnvVarOrDefault(const string &sVarName, const string &sDefaultValue) {
+  string sEnvval = GetEnvVar(sVarName);
+  if (sEnvval.empty()) {
+    return sDefaultValue;
   }
-
-  string low_key = str::ToLower(sVarName);
-  if (low_key.find("token") != string::npos ||
-      low_key.find("password") != string::npos ||
-      low_key.find("key") != string::npos ||
-      low_key.find("secret") != string::npos) {
-    spdlog::debug("No {} specified, using **REDACTED** as default.", sVarName);
-  } else {
-    spdlog::debug("No {} specified, using '{}' as default.", sVarName,
-                  sDefaultValue);
-  }
-
-  return sDefaultValue;
+  return sEnvval;
 }
 } // namespace env
 
@@ -147,7 +134,8 @@ int ConnectionString::ParseConnectionString(ConnectionString *result,
   smatch match;
   if (!regex_match(sConnectionString, match,
                    regex("(?:[^=]+=[^;]+;)*[^=]+=[^;]+;?"))) {
-    spdlog::error("Connection string '{}' does not match expected pattern.", sConnectionString);
+    spdlog::error("Connection string '{}' does not match expected pattern.",
+                  sConnectionString);
     return -1;
   }
   regex kvRegex("([^=]+)=([^;]+);?");
@@ -161,13 +149,15 @@ int ConnectionString::ParseConnectionString(ConnectionString *result,
 
   auto accountNameIt = kvPairs.find("AccountName"); // Mandatory
   if (accountNameIt == kvPairs.end()) {
-    spdlog::error("Connection string '{}' misses 'AccountName' field.", sConnectionString);
+    spdlog::error("Connection string '{}' misses 'AccountName' field.",
+                  sConnectionString);
     return -1;
   }
 
   auto accountKeyIt = kvPairs.find("AccountKey"); // Mandatory
   if (accountKeyIt == kvPairs.end()) {
-    spdlog::error("Connection string '{}' misses 'AccountKey' field.", sConnectionString);
+    spdlog::error("Connection string '{}' misses 'AccountKey' field.",
+                  sConnectionString);
     return -1;
   }
 
@@ -178,22 +168,31 @@ int ConnectionString::ParseConnectionString(ConnectionString *result,
       kvPairs.find("BlobEndpoint"); // Optional for read Azure cloud storage,
                                     // mandatory for emulated storage
   if (blobEndpointIt != kvPairs.end()) {
-    connectionString.blobEndpointPtr = make_unique<Azure::Core::Url>(blobEndpointIt->second);
+    connectionString.blobEndpointPtr =
+        make_unique<Azure::Core::Url>(blobEndpointIt->second);
   } else if (bIsEmulatedStorage) {
-    spdlog::error("Connection string '{}' misses 'BlobEndpoint' field.", sConnectionString);
+    spdlog::error("Connection string '{}' misses 'BlobEndpoint' field.",
+                  sConnectionString);
     return -1;
   }
 
   auto fileEndpointIt = kvPairs.find("FileEndpoint"); // Optional
   if (fileEndpointIt != kvPairs.end()) {
-    connectionString.fileEndpointPtr = make_unique<Azure::Core::Url>(fileEndpointIt->second);
+    connectionString.fileEndpointPtr =
+        make_unique<Azure::Core::Url>(fileEndpointIt->second);
   }
 
   spdlog::debug("Parsed connection string:");
   spdlog::debug("  account name: {}", connectionString.sAccountName);
   spdlog::debug("  account key: ***REDACTED***");
-  spdlog::debug("  blob endpoint: {}", connectionString.blobEndpointPtr ? connectionString.blobEndpointPtr->GetAbsoluteUrl() : "<none>");
-  spdlog::debug("  file endpoint: {}", connectionString.fileEndpointPtr ? connectionString.fileEndpointPtr->GetAbsoluteUrl() : "<none>");
+  spdlog::debug("  blob endpoint: {}",
+                connectionString.blobEndpointPtr
+                    ? connectionString.blobEndpointPtr->GetAbsoluteUrl()
+                    : "<none>");
+  spdlog::debug("  file endpoint: {}",
+                connectionString.fileEndpointPtr
+                    ? connectionString.fileEndpointPtr->GetAbsoluteUrl()
+                    : "<none>");
   *result = std::move(connectionString);
   return 0;
 }
@@ -205,13 +204,15 @@ int ConnectionString::CheckAgainstUrl(const Azure::Core::Url &url,
   if (blobEndpointPtr && storageType == BLOB &&
       !util::str::StartsWith(url.GetAbsoluteUrl(),
                              blobEndpointPtr->GetAbsoluteUrl())) {
-    spdlog::error("URL {} does not start with expected blob endpoint {}.", url.GetAbsoluteUrl(), blobEndpointPtr->GetAbsoluteUrl());
+    spdlog::error("URL {} does not start with expected blob endpoint {}.",
+                  url.GetAbsoluteUrl(), blobEndpointPtr->GetAbsoluteUrl());
     return -1;
   }
   if (fileEndpointPtr && storageType == SHARE &&
       !util::str::StartsWith(url.GetAbsoluteUrl(),
                              fileEndpointPtr->GetAbsoluteUrl())) {
-    spdlog::error("URL {} does not start with expected file endpoint {}.", url.GetAbsoluteUrl(), fileEndpointPtr->GetAbsoluteUrl());
+    spdlog::error("URL {} does not start with expected file endpoint {}.",
+                  url.GetAbsoluteUrl(), fileEndpointPtr->GetAbsoluteUrl());
     return -1;
   }
   return 0;

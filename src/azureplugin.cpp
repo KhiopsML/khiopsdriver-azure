@@ -15,7 +15,7 @@
 #include <memory>
 #include <spdlog/spdlog.h>
 
-#define STRINGIFY(s) #s  // Use to log function argument names.
+#define STRINGIFY(s) #s // Use to log function argument names.
 
 using namespace std;
 using namespace az;
@@ -23,9 +23,12 @@ using namespace az;
 static Driver driver;
 
 static const char *ERR_EXC_RAISED = "An exception has been raised.";
-static const char *ERR_NULL_ARG = "Error calling '{}': passing null pointer as argument '{}'.";
-static const char *ERR_INVALID_FSTREAM_MODE = "Tried to open file '{}' with invalid mode '{}'.";
-static const char *ERR_INVALID_SEEK_ORIGIN = "Tried to seek from invalid origin '{}'.";
+static const char *ERR_NULL_ARG =
+    "Error calling '{}': passing null pointer as argument '{}'.";
+static const char *ERR_INVALID_FSTREAM_MODE =
+    "Tried to open file '{}' with invalid mode '{}'.";
+static const char *ERR_INVALID_SEEK_ORIGIN =
+    "Tried to seek from invalid origin '{}'.";
 
 const char *driver_getDriverName() {
   try {
@@ -221,7 +224,7 @@ long long int driver_fread(void *dest, size_t size, size_t count,
                            void *handle) {
   try {
     spdlog::info("Reading {}x{} bytes from file with handle {} to {}...", size,
-                  count, handle, dest);
+                 count, handle, dest);
     if (!dest) {
       spdlog::error(ERR_NULL_ARG, __func__, STRINGIFY(dest));
       return nReadFailure;
@@ -247,7 +250,7 @@ long long int driver_fread(void *dest, size_t size, size_t count,
 int driver_fseek(void *handle, long long int offset, int whence) {
   try {
     spdlog::info("Seeking offset {} from origin {} in file with handle {}...",
-                  offset, whence, handle);
+                 offset, whence, handle);
     if (!handle) {
       spdlog::error(ERR_NULL_ARG, __func__, STRINGIFY(handle));
       return nSeekFailure;
@@ -296,7 +299,7 @@ long long int driver_fwrite(const void *source, size_t size, size_t count,
                             void *handle) {
   try {
     spdlog::info("Writing {}x{} bytes from {} to file with handle {}...", size,
-                  count, source, handle);
+                 count, source, handle);
     if (!source) {
       spdlog::error(ERR_NULL_ARG, __func__, STRINGIFY(source));
       return nWriteFailure;
@@ -448,7 +451,7 @@ int driver_concat(const char *destfilename, const char **sourcefilenames,
                   size_t sourcefilecount) {
   try {
     spdlog::info("Concatenating {} files to URL {}...", sourcefilecount,
-                  destfilename);
+                 destfilename);
     for (size_t i = 0; i < sourcefilecount; i++) {
       spdlog::info("  Source file #{}: {}", i + 1, sourcefilenames[i]);
     }
@@ -461,8 +464,8 @@ int driver_concat(const char *destfilename, const char **sourcefilenames,
       return nFailure;
     }
     if (driver.Concatenate(
-             vector<string>(sourcefilenames, sourcefilenames + sourcefilecount),
-             destfilename)) {
+            vector<string>(sourcefilenames, sourcefilenames + sourcefilecount),
+            destfilename)) {
       return nFailure;
     }
     return nSuccess;

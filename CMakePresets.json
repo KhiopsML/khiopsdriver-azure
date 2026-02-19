@@ -10,14 +10,18 @@
     },
     {
       "name": "ninja-dbg",
-      "inherits": ["ninja"],
+      "inherits": [
+        "ninja"
+      ],
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug"
       }
     },
     {
       "name": "ninja-rel",
-      "inherits": ["ninja"],
+      "inherits": [
+        "ninja"
+      ],
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release"
       }
