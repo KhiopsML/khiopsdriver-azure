@@ -119,12 +119,10 @@ private:
 
   int ParseUrl(ServiceRequest *result, const std::string &sUrl) const;
 
-  /*** Generic URL Retrieval
-   * ************************************************************************/
+  /*** Generic URL Retrieval ***/
   std::string GetServiceUrl(const ServiceRequest &request) const;
 
-  /*** Blob URL retrieval
-   * ***************************************************************************/
+  /*** Blob URL retrieval ***/
   std::string GetBlobContainerUrl(const ServiceRequest &request) const;
   Azure::Storage::Blobs::BlobServiceClient
   GetBlobServiceClient(const ServiceRequest &request) const;
@@ -135,8 +133,7 @@ private:
   std::vector<Azure::Storage::Blobs::BlobClient>
   ListBlobs(const ServiceRequest &request) const;
 
-  /*** File URL Retrieval
-   * ***************************************************************************/
+  /*** File URL Retrieval ***/
   std::string GetFileShareUrl(const ServiceRequest &request) const;
   Azure::Storage::Files::Shares::ShareServiceClient
   GetFileShareServiceClient(const ServiceRequest &request) const;
@@ -153,8 +150,7 @@ private:
   int GetParentDir(Azure::Storage::Files::Shares::ShareDirectoryClient *result,
                    const ServiceRequest &request) const;
 
-  /*** File Stream Management
-   * ***********************************************************************/
+  /*** File Stream Management ***/
   FileStream *RegisterFileStream(FileStream &&fileStream);
   int RetrieveFileStream(FileStream **result, void *handle) const;
   std::unordered_map<void *, std::unique_ptr<FileStream>> fileStreams;
@@ -163,8 +159,7 @@ private:
 
   size_t nPreferredBufferSize;
 
-  /*** Logging
-   * **************************************************************************************/
+  /*** Logging ***/
   std::string logstring;
   std::ostringstream logstringstream;
   std::shared_ptr<spdlog::sinks::ostream_sink_st> stringstreamsink;
