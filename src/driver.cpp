@@ -120,7 +120,7 @@ Driver::Driver()
   : bIsConnected(false),
   nPreferredBufferSize(nDefaultPreferredBufferSize) /* Default value */ {
   InitializeLogging();
-  string envvarval = util::env::GetEnvironmentVariable("AZURE_PREFERRED_BUFFER_SIZE");
+  string envvarval = env::GetEnvironmentVariable("AZURE_PREFERRED_BUFFER_SIZE");
   if (!envvarval.empty()) {
     try {
       nPreferredBufferSize = stoull(envvarval);
@@ -142,10 +142,10 @@ void Driver::InitializeLogging() {
   defaultloggersinks.push_back(stringstreamsink);
   
   stderrsink = make_shared<spdlog::sinks::stderr_sink_st>();
-  stderrsink->set_level(spdlog::level::from_str(util::env::GetEnvironmentVariableOrDefault("AZURE_DRIVER_LOGLEVEL", "off")));
+  stderrsink->set_level(spdlog::level::from_str(env::GetEnvironmentVariableOrDefault("AZURE_DRIVER_LOGLEVEL", "off")));
   defaultloggersinks.push_back(stderrsink);
 
-  string sLogFileEnvVal = util::env::GetEnvironmentVariable("AZURE_DRIVER_LOGFILE");
+  string sLogFileEnvVal = env::GetEnvironmentVariable("AZURE_DRIVER_LOGFILE");
   if (!sLogFileEnvVal.empty()) {
     filesink = make_shared<spdlog::sinks::basic_file_sink_st>(sLogFileEnvVal);
     filesink->set_level(spdlog::level::trace);
@@ -746,7 +746,7 @@ int Driver::Concatenate(const vector<string> &inputUrls, const string &sDestUrl)
 }
 
 bool Driver::IsEmulatedStorage() const {
-  string sEmulatedStorageEnvVarVal = util::env::GetEnvironmentVariable("AZURE_EMULATED_STORAGE");
+  string sEmulatedStorageEnvVarVal = env::GetEnvironmentVariable("AZURE_EMULATED_STORAGE");
   return !sEmulatedStorageEnvVarVal.empty() && sEmulatedStorageEnvVarVal != "false";
 }
 
@@ -783,7 +783,7 @@ int Driver::ParseUrl(ServiceRequest *result, const std::string &sUrl) const {
   }
 
   // Connection string parsing
-  string sConnectionString = util::env::GetEnvironmentVariable("AZURE_STORAGE_CONNECTION_STRING");
+  string sConnectionString = env::GetEnvironmentVariable("AZURE_STORAGE_CONNECTION_STRING");
   bool bConnectionStringDefined = !sConnectionString.empty();
   connstr::ConnectionString connectionString;
   if (bConnectionStringDefined) {
