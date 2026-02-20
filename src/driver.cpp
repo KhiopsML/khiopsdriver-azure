@@ -27,29 +27,9 @@ using az::logging::getLogger;
 
 namespace az {
 
-Driver::Driver()
-    : nPreferredBufferSize(DEFAULT_PREFERRED_BUFFER_SIZE) /* Default value */ {
-  string envvarval = env::GetEnvVar("AZURE_PREFERRED_BUFFER_SIZE");
-  if (!envvarval.empty()) {
-    try {
-      nPreferredBufferSize = stoull(envvarval);
-    } catch (const invalid_argument &exc) {
-      getLogger()->debug(
-          "Value {} of environment variable AZURE_PREFERRED_BUFFER_SIZE is not "
-          "a valid number. Falling back to default {}...",
-          envvarval, DEFAULT_PREFERRED_BUFFER_SIZE);
-    } catch (const out_of_range &exc) {
-      getLogger()->debug(
-          "Value {} of environment variable AZURE_PREFERRED_BUFFER_SIZE is out "
-          "of range. Falling back to default {}...",
-          envvarval, DEFAULT_PREFERRED_BUFFER_SIZE);
-    }
-  }
-}
+Driver::Driver(size_t nPreferredBufferSize) : nPreferredBufferSize(nPreferredBufferSize) {}
 
 Driver::~Driver() {}
-
-size_t Driver::GetPreferredBufferSize() const { return nPreferredBufferSize; }
 
 int Driver::Exists(bool *result, const string &sUrl) const {
   ServiceRequest request;
@@ -396,14 +376,14 @@ int Driver::CopyTo(const string &sUrl, const string &destUrl) {
   if (OpenForReading(&readerPtr, sUrl)) {
     return -1;
   }
-  char *buffer = new char[GetPreferredBufferSize()];
+  char *buffer = new char[nPreferredBufferSize];
   ofstream ofs(destUrl, ios::binary);
   size_t nRead;
 
   for (;;) {
     getLogger()->trace("Copying at most {} bytes from remote to local file...",
-                       GetPreferredBufferSize());
-    switch (readerPtr->Read(&nRead, buffer, 1, GetPreferredBufferSize())) {
+                       nPreferredBufferSize);
+    switch (readerPtr->Read(&nRead, buffer, 1, nPreferredBufferSize)) {
     case 0:
       ofs.write(buffer, (streamsize)nRead);
       continue;
@@ -437,14 +417,14 @@ int Driver::CopyFrom(const string &sUrl, const string &sourceUrl) {
   if (OpenForWriting(&writerPtr, sUrl)) {
     return -1;
   }
-  char *buffer = new char[GetPreferredBufferSize()];
+  char *buffer = new char[nPreferredBufferSize];
   size_t nRead;
   ifstream ifs(sourceUrl, ios::binary);
 
   for (;;) {
     getLogger()->trace("Copying at most {} bytes from local file to remote...",
-                       GetPreferredBufferSize());
-    ifs.read(buffer, GetPreferredBufferSize());
+                       nPreferredBufferSize);
+    ifs.read(buffer, nPreferredBufferSize);
     nRead = (size_t)ifs.gcount();
     if (nRead == 0) {
       break;

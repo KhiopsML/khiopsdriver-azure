@@ -25,6 +25,40 @@ using az::logging::getLogger;
 static unique_ptr<Driver> driver = nullptr;
 static bool IsConnected() { return driver != nullptr; }
 
+namespace {
+constexpr long long int DEFAULT_PREFERRED_BUFFER_SIZE = 4LL * 1024LL * 1024LL;
+size_t nPreferredBufferSize;
+
+class PreferredBufferSizeInitializer {
+public:
+  PreferredBufferSizeInitializer() {
+    string envvarval = util::env::GetEnvVar("AZURE_PREFERRED_BUFFER_SIZE");
+    if (envvarval.empty()) {
+      nPreferredBufferSize = DEFAULT_PREFERRED_BUFFER_SIZE;
+    } else {
+      try {
+        nPreferredBufferSize = stoull(envvarval);
+      } catch (const invalid_argument &exc) {
+        getLogger()->debug(
+            "Value {} of environment variable AZURE_PREFERRED_BUFFER_SIZE is not "
+            "a valid number. Falling back to default {}...",
+            envvarval, DEFAULT_PREFERRED_BUFFER_SIZE);
+      } catch (const out_of_range &exc) {
+        getLogger()->debug(
+            "Value {} of environment variable AZURE_PREFERRED_BUFFER_SIZE is out "
+            "of range. Falling back to default {}...",
+            envvarval, DEFAULT_PREFERRED_BUFFER_SIZE);
+      }
+    }
+  }
+};
+} // namespace
+
+static size_t GetSystemPreferredBufferSize() {
+  static PreferredBufferSizeInitializer preferredBufferSizeInitializer;
+  return nPreferredBufferSize;
+}
+
 static const char *ERR_EXC_RAISED = "An exception has been raised.";
 static const char *ERR_NULL_ARG =
     "Error calling '{}': passing null pointer as argument '{}'.";
@@ -76,7 +110,7 @@ int driver_isReadOnly() {
 int driver_connect() {
   try {
     getLogger()->info("Connecting...");
-    driver = make_unique<Driver>();
+    driver = make_unique<Driver>(GetSystemPreferredBufferSize());
     return nSuccess;
   } catch (...) {
     getLogger()->error(ERR_EXC_RAISED);
@@ -112,12 +146,7 @@ int driver_isConnected() {
 long long int driver_getSystemPreferredBufferSize() {
   try {
     getLogger()->info("Retrieving preferred buffer size...");
-    if (!IsConnected()) {
-      getLogger()->error(
-          "Cannot retrieve preferred buffer size when disconnected.");
-      return nGenericFailure;
-    }
-    return static_cast<long long int>(driver->GetPreferredBufferSize());
+    return static_cast<long long int>(GetSystemPreferredBufferSize());
   } catch (...) {
     getLogger()->error(ERR_EXC_RAISED);
   }

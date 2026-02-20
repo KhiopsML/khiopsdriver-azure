@@ -25,15 +25,11 @@ class Driver;
 #include <vector>
 
 namespace az {
-static constexpr long long int DEFAULT_PREFERRED_BUFFER_SIZE =
-    4LL * 1024LL * 1024LL;
 
 class Driver {
 public:
-  Driver();
+  Driver(size_t nPreferredBufferSize);
   ~Driver();
-
-  size_t GetPreferredBufferSize() const;
 
   int Exists(bool *result, const std::string &sUrl) const;
   int GetSize(size_t *result, const std::string &sUrl) const;
