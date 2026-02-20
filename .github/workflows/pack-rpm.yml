@@ -40,7 +40,7 @@ jobs:
         run: cmake --build --preset ninja-rel --target khiopsdriver_file_azure
 
       - name: Build package with CPack
-        run: cd build/release && cpack -G RPM
+        run: cd build/ninja-rel && cpack -G RPM
 
       - name: Set environment variables
         run: |
@@ -53,7 +53,7 @@ jobs:
         run: |
           source /etc/os-release
           ARCH=$(arch)
-          cd build/release/packages
+          cd build/ninja-rel/packages
           for filename in *.rpm
           do
             mv -v $filename ${filename%.${ARCH}*}.${{ env.VERSION_CODENAME }}.${ARCH}.rpm
@@ -65,7 +65,7 @@ jobs:
           # We add a `rpm-` prefix so we can later recover all artifacts with the pattern `rpm-*`
           # Note: The more natural pattern `*-rpm` or `*` does not work
           name: rpm-${{ env.ID }}-${{ env.VERSION_CODENAME }}
-          path: build/release/packages/*.rpm
+          path: build/ninja-rel/packages/*.rpm
           if-no-files-found: error
 
   # Test packages on a brand new runner to check:

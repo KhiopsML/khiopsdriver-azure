@@ -168,7 +168,7 @@ jobs:
         with:
           name: binary-${{ matrix.os }}
           path: |
-            build/release/lib/*.dylib
-            build/release/lib/*.so
-            build/release/bin/*.dll
+            build/ninja-rel/lib/*.dylib
+            build/ninja-rel/lib/*.so
+            build/ninja-rel/bin/*.dll
           if-no-files-found: ignore

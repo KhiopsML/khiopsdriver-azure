@@ -45,7 +45,7 @@ jobs:
         run: cmake --build --preset ninja-rel --target khiopsdriver_file_azure
 
       - name: Build package with CPack
-        run: cd build/release && cpack -G DEB
+        run: cd build/ninja-rel && cpack -G DEB
 
       - name: Set environment variables
         run: |
@@ -56,7 +56,7 @@ jobs:
 
       - name: Rename the packages to include the ubuntu codename
         run: |
-          cd build/release/packages/
+          cd build/ninja-rel/packages/
           for filename in *.deb
           do
             mv -v $filename ${filename%_*}-${VERSION_CODENAME}.${filename##*_}
@@ -68,7 +68,7 @@ jobs:
           # We add a `deb-` prefix so we can later recover all artifacts with the pattern `deb-*`
           # Note: The more natural pattern `*-deb` or `*` does not work
           name: deb-${{ env.ID }}-${{ env.VERSION_CODENAME }}-${{ env.ARCH }}
-          path: build/release/packages/*.deb
+          path: build/ninja-rel/packages/*.deb
           if-no-files-found: error
  
   # Test packages on a brand new runner to check:
