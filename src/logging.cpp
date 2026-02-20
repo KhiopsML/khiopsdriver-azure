@@ -25,6 +25,10 @@ shared_ptr<spdlog::logger> logger;
 class LogInitializer {
 public:
   LogInitializer() {
+    spdlog::level::level_enum loglevel =
+        spdlog::level::from_str(::az::util::env::GetEnvVarOrDefault(
+            "AZURE_DRIVER_LOGLEVEL", "off", true));
+
     logstring.clear();
     logstringstream = ostringstream("");
     stringstreamsink =
@@ -33,16 +37,14 @@ public:
     sinks.push_back(stringstreamsink);
 
     stderrsink = make_shared<spdlog::sinks::stderr_sink_st>();
-    stderrsink->set_level(
-        spdlog::level::from_str(::az::util::env::GetEnvVarOrDefault(
-            "AZURE_DRIVER_LOGLEVEL", "off", true)));
+    stderrsink->set_level(loglevel);
     sinks.push_back(stderrsink);
 
     string sLogFileEnvVal =
         ::az::util::env::GetEnvVar("AZURE_DRIVER_LOGFILE", true);
     if (!sLogFileEnvVal.empty()) {
       filesink = make_shared<spdlog::sinks::basic_file_sink_st>(sLogFileEnvVal);
-      filesink->set_level(spdlog::level::trace);
+      filesink->set_level(loglevel);
       sinks.push_back(filesink);
     }
 
