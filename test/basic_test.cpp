@@ -1,6 +1,9 @@
 #include "azureplugin.hpp"
 #include "fixtures/storage_fixture.hpp"
+#include "testutil.hpp"
 #include "returnval.hpp"
+
+#include <algorithm>
 
 #include <boost/process/v2/environment.hpp>
 
@@ -9,6 +12,11 @@
 #include <boost/uuid/uuid_io.hpp>         // streaming operators etc.
 
 #include <gtest/gtest.h>
+
+#include <iterator>
+#include <sstream>
+#include <string>
+#include <vector>
 
 using namespace az;
 
@@ -176,4 +184,41 @@ TEST_F(ShareStorageTest, RmDir) {
   ASSERT_EQ(driver_rmdir(sNewDir.c_str()), nSuccess);
   ASSERT_EQ(driver_dirExists(sNewDir.c_str()), nFalse);
   ASSERT_EQ(driver_disconnect(), nSuccess);
+}
+
+TEST_P(CommonStorageTest, Concat) {
+  const std::vector<std::string> sources_as_strvec = url.SplitFileParts();
+  const size_t nsources = sources_as_strvec.size();
+  std::vector<const char *> sources;
+  std::transform(sources_as_strvec.begin(), sources_as_strvec.end(), std::back_inserter(sources), [](const std::string &source){return source.c_str();});
+  const std::string output = url.NewRandomDir() + "driver_concat_test_output";
+  const std::string reference = url.File();
+  const std::string backupdir = url.NewRandomDir();
+  std::vector<std::string> backupfiles;
+  std::transform(sources_as_strvec.begin(), sources_as_strvec.end(), std::back_inserter(backupfiles), [backupdir](const std::string &source){
+    return backupdir + source.substr(source.rfind('/') + 1);
+  });
+
+  ASSERT_EQ(driver_connect(), nSuccess) << "Failed to connect.";
+  ASSERT_EQ(driver_fileExists(output.c_str()), nFalse) << "The output file exists before concatenation.";
+  // Source backup
+  for(size_t i = 0ULL; i < nsources; i++) {
+    CopyFile(sources_as_strvec[i], backupfiles[i]);
+  }
+  // Concat
+  ASSERT_EQ(driver_concat(output.c_str(), sources.data(), nsources), nSuccess) << "Concatenation failed.";
+  // Checks
+  for(const std::string &source : sources_as_strvec) {
+    ASSERT_EQ(driver_fileExists(source.c_str()), nFalse) << "Source file " << source << " was not deleted after concatenation.";
+  }
+  ASSERT_EQ(driver_fileExists(output.c_str()), nTrue) << "The concatenation created no output file.";
+  ASSERT_EQ(driver_getFileSize(output.c_str()), driver_getFileSize(reference.c_str())) << "Incorrect output file size.";
+  // Cleanup
+  ASSERT_EQ(driver_remove(output.c_str()), nSuccess) << "Failed to remove output file.";
+  ASSERT_EQ(driver_fileExists(output.c_str()), nFalse) << "Output file still exists after removal.";
+  // Source restore
+  for(size_t i = 0ULL; i < nsources; i++) {
+    CopyFile(backupfiles[i], sources_as_strvec[i]);
+  }
+  ASSERT_EQ(driver_disconnect(), nSuccess) << "Failed to disconnect.";
 }

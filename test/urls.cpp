@@ -89,6 +89,17 @@ const string StorageTestUrlProvider::MultisplitFile() const {
                    "Adult_subsplit/**/Adult-split-0*.txt";
 }
 
+const vector<string> StorageTestUrlProvider::SplitFileParts() const {
+  return {
+    sPrefix + "/data-test-khiops-driver-azure/khiops_data/split/Adult/Adult-split-00.txt",
+    sPrefix + "/data-test-khiops-driver-azure/khiops_data/split/Adult/Adult-split-01.txt",
+    sPrefix + "/data-test-khiops-driver-azure/khiops_data/split/Adult/Adult-split-02.txt",
+    sPrefix + "/data-test-khiops-driver-azure/khiops_data/split/Adult/Adult-split-03.txt",
+    sPrefix + "/data-test-khiops-driver-azure/khiops_data/split/Adult/Adult-split-04.txt",
+    sPrefix + "/data-test-khiops-driver-azure/khiops_data/split/Adult/Adult-split-05.txt",
+  };
+}
+
 IoTestUrlProvider::IoTestUrlProvider() {}
 
 IoTestUrlProvider::IoTestUrlProvider(StorageType storageType,

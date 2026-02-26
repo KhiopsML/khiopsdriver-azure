@@ -26,6 +26,7 @@ add_executable(
   fixtures/storage_fixture.hpp
   fixtures/storage_fixture.cpp
   ../src/returnval.hpp
+  testutil.hpp
   storagetype.hpp
   storagetype.cpp
   urls.hpp

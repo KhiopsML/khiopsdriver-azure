@@ -6,6 +6,7 @@ class EndToEndTestUrlProvider;
 
 #include "storagetype.hpp"
 #include <string>
+#include <vector>
 
 class StorageTestUrlProvider {
 public:
@@ -23,6 +24,7 @@ public:
   const std::string BQEmptyFile() const;
   const std::string SplitFile() const;
   const std::string MultisplitFile() const;
+  const std::vector<std::string> SplitFileParts() const;
 
 protected:
   std::string sPrefix;
