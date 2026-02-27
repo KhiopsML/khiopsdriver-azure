@@ -1,8 +1,10 @@
-/* This is the main file that implements the functions exposed by the driver as
-   a library. It delegates most of the work to the Driver class. This library
-   must be C-compatible so it provides a C interface. This means that all
-   high-level types taken as arguments or returned by the driver are converted,
-   in this file, to basic C types. */
+/*
+This is the main file that implements the functions exposed by the driver as
+a library. It delegates most of the work to the Driver class. This library
+must be C-compatible so it provides a C interface. This means that all
+high-level types taken as arguments or returned by the driver are converted,
+in this file, to basic C types.
+*/
 
 #ifdef __CYGWIN__
 #define _CRT_SECURE_NO_WARNINGS
@@ -16,14 +18,26 @@
 #include <memory>
 #include <spdlog/spdlog.h>
 
-#define STRINGIFY(s) #s // Use to log function argument names.
+// Used to log function argument names.
+#define STRINGIFY(s) #s
 
 using namespace std;
 using namespace az;
+// Use this function to get the logger that should be used to log anything.
 using az::logging::getLogger;
+
+
+/*********************
+ * THE DRIVER OBJECT *
+ *********************/
 
 static unique_ptr<Driver> driver = nullptr;
 static bool IsConnected() { return driver != nullptr; }
+
+
+/******************************************
+ * PREFERRED BUFFER SIZE LAZY INITIALIZER *
+ ******************************************/
 
 namespace {
 constexpr long long int DEFAULT_PREFERRED_BUFFER_SIZE = 4LL * 1024LL * 1024LL;
@@ -59,7 +73,13 @@ static size_t GetSystemPreferredBufferSize() {
   return nPreferredBufferSize;
 }
 
-static const char *ERR_EXC_RAISED = "An exception has been raised.";
+
+/*****************
+ * ERROR STRINGS *
+ *****************/
+
+static const char *ERR_NONEXC_RAISED = "An non-exception value has been raised as an exception.";
+static const char *ERR_EXC_RAISED = "An exception has been raised: {}";
 static const char *ERR_NULL_ARG =
     "Error calling '{}': passing null pointer as argument '{}'.";
 static const char *ERR_INVALID_FSTREAM_MODE =
@@ -67,12 +87,19 @@ static const char *ERR_INVALID_FSTREAM_MODE =
 static const char *ERR_INVALID_SEEK_ORIGIN =
     "Tried to seek from invalid origin '{}'.";
 
+
+/***********************************************************************
+ * DRIVER FUNCTIONS BEGIN HERE AND CONTINUE TILL THE END OF THIS FILE. *
+ ***********************************************************************/
+
 const char *driver_getDriverName() {
   try {
     getLogger()->info("Retrieving driver name...");
     return "Azure driver";
+  } catch (const exception& exc) {
+    getLogger()->error(ERR_EXC_RAISED, exc.what());
   } catch (...) {
-    getLogger()->error(ERR_EXC_RAISED);
+    getLogger()->error(ERR_NONEXC_RAISED);
   }
   return nullptr;
 }
@@ -81,8 +108,10 @@ const char *driver_getVersion() {
   try {
     getLogger()->info("Retrieving driver version...");
     return DRIVER_VERSION;
+  } catch (const exception& exc) {
+    getLogger()->error(ERR_EXC_RAISED, exc.what());
   } catch (...) {
-    getLogger()->error(ERR_EXC_RAISED);
+    getLogger()->error(ERR_NONEXC_RAISED);
   }
   return nullptr;
 }
@@ -91,8 +120,10 @@ const char *driver_getScheme() {
   try {
     getLogger()->info("Retrieving driver scheme...");
     return "https";
+  } catch (const exception& exc) {
+    getLogger()->error(ERR_EXC_RAISED, exc.what());
   } catch (...) {
-    getLogger()->error(ERR_EXC_RAISED);
+    getLogger()->error(ERR_NONEXC_RAISED);
   }
   return nullptr;
 }
@@ -101,8 +132,10 @@ int driver_isReadOnly() {
   try {
     getLogger()->info("Retrieving read-only state...");
     return nFalse;
+  } catch (const exception& exc) {
+    getLogger()->error(ERR_EXC_RAISED, exc.what());
   } catch (...) {
-    getLogger()->error(ERR_EXC_RAISED);
+    getLogger()->error(ERR_NONEXC_RAISED);
   }
   return nGenericFailure;
 }
@@ -112,8 +145,10 @@ int driver_connect() {
     getLogger()->info("Connecting...");
     driver = make_unique<Driver>(GetSystemPreferredBufferSize());
     return nSuccess;
+  } catch (const exception& exc) {
+    getLogger()->error(ERR_EXC_RAISED, exc.what());
   } catch (...) {
-    getLogger()->error(ERR_EXC_RAISED);
+    getLogger()->error(ERR_NONEXC_RAISED);
   }
   return nFailure;
 }
@@ -127,8 +162,10 @@ int driver_disconnect() {
     }
     driver = nullptr;
     return nSuccess;
+  } catch (const exception& exc) {
+    getLogger()->error(ERR_EXC_RAISED, exc.what());
   } catch (...) {
-    getLogger()->error(ERR_EXC_RAISED);
+    getLogger()->error(ERR_NONEXC_RAISED);
   }
   return nFailure;
 }
@@ -137,8 +174,10 @@ int driver_isConnected() {
   try {
     getLogger()->info("Retrieving connection state...");
     return IsConnected() ? nTrue : nFalse;
+  } catch (const exception& exc) {
+    getLogger()->error(ERR_EXC_RAISED, exc.what());
   } catch (...) {
-    getLogger()->error(ERR_EXC_RAISED);
+    getLogger()->error(ERR_NONEXC_RAISED);
   }
   return nGenericFailure;
 }
@@ -147,8 +186,10 @@ long long int driver_getSystemPreferredBufferSize() {
   try {
     getLogger()->info("Retrieving preferred buffer size...");
     return static_cast<long long int>(GetSystemPreferredBufferSize());
+  } catch (const exception& exc) {
+    getLogger()->error(ERR_EXC_RAISED, exc.what());
   } catch (...) {
-    getLogger()->error(ERR_EXC_RAISED);
+    getLogger()->error(ERR_NONEXC_RAISED);
   }
   return nGenericFailure;
 }
@@ -169,8 +210,10 @@ int driver_fileExists(const char *sUrl) {
       return nGenericFailure;
     }
     return result ? nTrue : nFalse;
+  } catch (const exception& exc) {
+    getLogger()->error(ERR_EXC_RAISED, exc.what());
   } catch (...) {
-    getLogger()->error(ERR_EXC_RAISED);
+    getLogger()->error(ERR_NONEXC_RAISED);
   }
   return nGenericFailure;
 }
@@ -191,8 +234,10 @@ int driver_dirExists(const char *sUrl) {
       return nGenericFailure;
     }
     return result ? nTrue : nFalse;
+  } catch (const exception& exc) {
+    getLogger()->error(ERR_EXC_RAISED, exc.what());
   } catch (...) {
-    getLogger()->error(ERR_EXC_RAISED);
+    getLogger()->error(ERR_NONEXC_RAISED);
   }
   return nGenericFailure;
 }
@@ -213,8 +258,10 @@ long long int driver_getFileSize(const char *sUrl) {
       return nSizeFailure;
     }
     return static_cast<long long int>(result);
+  } catch (const exception& exc) {
+    getLogger()->error(ERR_EXC_RAISED, exc.what());
   } catch (...) {
-    getLogger()->error(ERR_EXC_RAISED);
+    getLogger()->error(ERR_NONEXC_RAISED);
   }
   return nSizeFailure;
 }
@@ -252,8 +299,10 @@ void *driver_fopen(const char *sUrl, char mode) {
       return nullptr;
     }
     return fsPtr->GetHandle();
+  } catch (const exception& exc) {
+    getLogger()->error(ERR_EXC_RAISED, exc.what());
   } catch (...) {
-    getLogger()->error(ERR_EXC_RAISED);
+    getLogger()->error(ERR_NONEXC_RAISED);
   }
   return nullptr;
 }
@@ -273,8 +322,10 @@ int driver_fclose(void *handle) {
       return nCloseFailure;
     }
     return nCloseSuccess;
+  } catch (const exception& exc) {
+    getLogger()->error(ERR_EXC_RAISED, exc.what());
   } catch (...) {
-    getLogger()->error(ERR_EXC_RAISED);
+    getLogger()->error(ERR_NONEXC_RAISED);
   }
   return nCloseFailure;
 }
@@ -304,8 +355,10 @@ long long int driver_fread(void *dest, size_t size, size_t count,
       return nReadFailure;
     }
     return nRead;
+  } catch (const exception& exc) {
+    getLogger()->error(ERR_EXC_RAISED, exc.what());
   } catch (...) {
-    getLogger()->error(ERR_EXC_RAISED);
+    getLogger()->error(ERR_NONEXC_RAISED);
   }
   return nReadFailure;
 }
@@ -342,8 +395,10 @@ int driver_fseek(void *handle, long long int offset, int whence) {
       return nSeekFailure;
     }
     return nSeekSuccess;
+  } catch (const exception& exc) {
+    getLogger()->error(ERR_EXC_RAISED, exc.what());
   } catch (...) {
-    getLogger()->error(ERR_EXC_RAISED);
+    getLogger()->error(ERR_NONEXC_RAISED);
   }
   return nSeekFailure;
 }
@@ -356,8 +411,10 @@ const char *driver_getlasterror() {
       return nullptr;
     }
     return logstring.c_str();
+  } catch (const exception& exc) {
+    getLogger()->error(ERR_EXC_RAISED, exc.what());
   } catch (...) {
-    getLogger()->error(ERR_EXC_RAISED);
+    getLogger()->error(ERR_NONEXC_RAISED);
   }
   return "Error while trying to fetch last error.";
 }
@@ -384,8 +441,10 @@ long long int driver_fwrite(const void *source, size_t size, size_t count,
       return nWriteFailure;
     }
     return nWritten;
+  } catch (const exception& exc) {
+    getLogger()->error(ERR_EXC_RAISED, exc.what());
   } catch (...) {
-    getLogger()->error(ERR_EXC_RAISED);
+    getLogger()->error(ERR_NONEXC_RAISED);
   }
   return nWriteFailure;
 }
@@ -405,8 +464,10 @@ int driver_fflush(void *handle) {
       return nFlushFailure;
     }
     return nFlushSuccess;
+  } catch (const exception& exc) {
+    getLogger()->error(ERR_EXC_RAISED, exc.what());
   } catch (...) {
-    getLogger()->error(ERR_EXC_RAISED);
+    getLogger()->error(ERR_NONEXC_RAISED);
   }
   return nFlushFailure;
 }
@@ -426,8 +487,10 @@ int driver_remove(const char *sUrl) {
       return nFailure;
     }
     return nSuccess;
+  } catch (const exception& exc) {
+    getLogger()->error(ERR_EXC_RAISED, exc.what());
   } catch (...) {
-    getLogger()->error(ERR_EXC_RAISED);
+    getLogger()->error(ERR_NONEXC_RAISED);
   }
   return nFailure;
 }
@@ -447,8 +510,10 @@ int driver_mkdir(const char *sUrl) {
       return nFailure;
     }
     return nSuccess;
+  } catch (const exception& exc) {
+    getLogger()->error(ERR_EXC_RAISED, exc.what());
   } catch (...) {
-    getLogger()->error(ERR_EXC_RAISED);
+    getLogger()->error(ERR_NONEXC_RAISED);
   }
   return nFailure;
 }
@@ -468,8 +533,10 @@ int driver_rmdir(const char *sUrl) {
       return nFailure;
     }
     return nSuccess;
+  } catch (const exception& exc) {
+    getLogger()->error(ERR_EXC_RAISED, exc.what());
   } catch (...) {
-    getLogger()->error(ERR_EXC_RAISED);
+    getLogger()->error(ERR_NONEXC_RAISED);
   }
   return nFailure;
 }
@@ -490,8 +557,10 @@ long long int driver_diskFreeSpace(const char *sUrl) {
       return nFreeDiskSpaceFailure;
     }
     return nResult;
+  } catch (const exception& exc) {
+    getLogger()->error(ERR_EXC_RAISED, exc.what());
   } catch (...) {
-    getLogger()->error(ERR_EXC_RAISED);
+    getLogger()->error(ERR_NONEXC_RAISED);
   }
   return nFreeDiskSpaceFailure;
 }
@@ -516,8 +585,10 @@ int driver_copyToLocal(const char *sSourceUrl, const char *sDestUrl) {
       return nFailure;
     }
     return nSuccess;
+  } catch (const exception& exc) {
+    getLogger()->error(ERR_EXC_RAISED, exc.what());
   } catch (...) {
-    getLogger()->error(ERR_EXC_RAISED);
+    getLogger()->error(ERR_NONEXC_RAISED);
   }
   return nFailure;
 }
@@ -542,8 +613,10 @@ int driver_copyFromLocal(const char *sSourceUrl, const char *sDestUrl) {
       return nFailure;
     }
     return nSuccess;
+  } catch (const exception& exc) {
+    getLogger()->error(ERR_EXC_RAISED, exc.what());
   } catch (...) {
-    getLogger()->error(ERR_EXC_RAISED);
+    getLogger()->error(ERR_NONEXC_RAISED);
   }
   return nFailure;
 }
@@ -574,8 +647,10 @@ int driver_concat(const char *destfilename, const char **sourcefilenames,
       return nFailure;
     }
     return nSuccess;
+  } catch (const exception& exc) {
+    getLogger()->error(ERR_EXC_RAISED, exc.what());
   } catch (...) {
-    getLogger()->error(ERR_EXC_RAISED);
+    getLogger()->error(ERR_NONEXC_RAISED);
   }
   return nFailure;
 }
