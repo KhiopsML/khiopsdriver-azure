@@ -1,6 +1,12 @@
-// Remote file abstraction that understands a file might have been split into
-// multiple remote files. This is also used for monolythic files, which are
-// considered as single-fragment files.
+/*
+Remote file abstraction that understands a file might have been split into
+multiple remote files. This is also used for monolythic files, which are
+considered as single-fragment files.
+Multi-fragment remote files are specified in URLs using globbing.
+Empty fragments, including fragments containing only the header (if any),
+are removed. Thus, the number of resulting fragments may be less than the
+number of remote files.
+*/
 
 #pragma once
 
@@ -16,7 +22,13 @@ namespace az {
 class FragmentedFile {
 public:
   struct Fragment {
+    // User offset is the start position of this fragment in the whole
+    // fragmented file as seen by the user. If the fragmented file
+    // contains a header, the user only sees the header at the beginning
+    // of the first fragment. User offset is always zero for the first
+    // fragment.
     size_t nUserOffset;
+    // Content size includes the header length only for the first fragment.
     size_t nContentSize;
     ObjectClient client;
     Azure::ETag etag;

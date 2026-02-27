@@ -130,7 +130,7 @@ FragmentedFile::FragmentedFile(const vector<ObjectClient> &clients)
       fragments[i].nUserOffset = nSize;
       nSize += fragments[i].nContentSize;
       if (i != nFreePosition)
-        fragments[nFreePosition] = std::move(fragments[i]);
+        fragments[nFreePosition] = std::move(fragments[i]); // Shift the fragment.
       nFreePosition++;
     }
   }
