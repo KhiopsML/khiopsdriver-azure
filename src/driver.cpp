@@ -481,31 +481,40 @@ int Driver::Concatenate(const vector<string> &inputUrls,
     return -1;
   }
 
+  // One fragmented file for each input.
   vector<FragmentedFile> fragmentedFiles;
-  if (output.storageType == BLOB) {
-    transform(
-        inputs.begin(), inputs.end(), back_inserter(fragmentedFiles),
-        [this](const auto &input) { return FragmentedFile(ListBlobs(input)); });
-  } else // SHARE
-  {
-    transform(
-        inputs.begin(), inputs.end(), back_inserter(fragmentedFiles),
-        [this](const auto &input) { return FragmentedFile(ListFiles(input)); });
+  // There may be multiple clients for each input, that is, input globs are supported.
+  vector<ObjectClient> allClients;
+  for(const auto &input : inputs) {
+    if(output.storageType == BLOB) {
+      auto blobs = ListBlobs(input);
+      fragmentedFiles.emplace_back(blobs);
+      for(auto client : blobs) {
+        allClients.emplace_back(client);
+      }
+    } else /* SHARE */ {
+      auto files = ListFiles(input);
+      fragmentedFiles.emplace_back(files);
+      for(auto client : files) {
+        allClients.emplace_back(client);
+      }
+    }
   }
-  size_t nHeaderLen = fragmentedFiles.front().GetHeaderLen();
-  if (any_of(fragmentedFiles.begin() + 1, fragmentedFiles.end(),
-             [nHeaderLen](const auto &fragmentedFile) {
-               return fragmentedFile.GetHeaderLen() != nHeaderLen;
-             })) {
-    getLogger()->error("Input object headers are incompatible.");
-    return -1;
+  // Fragmented file representing all inputs concatenated.
+  FragmentedFile fragmentedFile(allClients);
+  size_t nHeaderLen = fragmentedFile.GetHeaderLen();
+  getLogger()->debug("Concatenation involves {} sources for a total of {} fragments.", fragmentedFiles.size(), fragmentedFile.GetNumberOfFragments());
+  for(size_t i = 0ULL; i < fragmentedFiles.size(); i++) {
+    getLogger()->debug("  Source #{} contains {} fragments.", i + 1, fragmentedFiles[i].GetNumberOfFragments());
   }
 
+  Azure::Core::Http::HttpRange range;
+  size_t nFragmentSize;
   if (output.storageType == BLOB) {
     auto destBlob = GetBlobClient(output).AsBlockBlobClient();
     vector<string> destBlockIds;
-    Azure::Core::Http::HttpRange range;
     for (size_t nInputIndex = 0; nInputIndex != inputs.size(); nInputIndex++) {
+      nFragmentSize = fragmentedFiles[nInputIndex].GetSize();
       ostringstream oss;
       oss << setfill('0') << setw(64) << destBlockIds.size();
       string sBlockIdInBase10 = oss.str();
@@ -515,7 +524,7 @@ int Driver::Concatenate(const vector<string> &inputUrls,
           Azure::Core::Convert::Base64Encode(blockIdInBase10);
       destBlockIds.push_back(sBlockIdInBase64);
 
-      range.Offset = nInputIndex == 0 ? 0 : nHeaderLen;
+      range = Azure::Core::Http::HttpRange{nInputIndex == 0ULL ? 0LL : static_cast<int64_t>(nHeaderLen), static_cast<int64_t>(nFragmentSize)};
       Azure::Storage::Blobs::StageBlockFromUriOptions opts;
       opts.SourceRange = range;
       destBlob.StageBlockFromUri(sBlockIdInBase64,
@@ -523,17 +532,16 @@ int Driver::Concatenate(const vector<string> &inputUrls,
                                  opts);
     }
     destBlob.CommitBlockList(destBlockIds);
-  } else // SHARE
-  {
+  } else /* SHARE */ {
     auto destFile = GetFileClient(output);
     destFile.Create(0LL);
     size_t nOffset = 0ULL;
-    Azure::Core::Http::HttpRange range;
-    for (size_t nInputIndex = 0; nInputIndex != inputs.size(); nInputIndex++) {
-      range.Offset = nInputIndex == 0 ? 0 : nHeaderLen;
+    for (size_t nInputIndex = 0ULL; nInputIndex != inputs.size(); nInputIndex++) {
+      nFragmentSize = fragmentedFiles[nInputIndex].GetSize();
+      range = Azure::Core::Http::HttpRange{nInputIndex == 0ULL ? 0LL : static_cast<int64_t>(nHeaderLen), static_cast<int64_t>(nFragmentSize)};
       destFile.UploadRangeFromUri(
-          nOffset, inputs[nInputIndex].azureUrl.GetAbsoluteUrl(), range);
-      nOffset += fragmentedFiles[nInputIndex].GetSize();
+        nOffset, inputs[nInputIndex].azureUrl.GetAbsoluteUrl(), range);
+      nOffset += nFragmentSize;
     }
   }
 
