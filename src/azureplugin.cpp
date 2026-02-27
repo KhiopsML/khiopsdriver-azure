@@ -626,12 +626,12 @@ int driver_concat(const char *destfilename, const char **sourcefilenames,
   try {
     getLogger()->info("Concatenating {} files to URL {}...", sourcefilecount,
                       destfilename);
+    for (size_t i = 0; i < sourcefilecount; i++) {
+      getLogger()->info("  Source file #{}: {}", i + 1, sourcefilenames[i]);
+    }
     if (!IsConnected()) {
       getLogger()->error("Cannot concatenate objects when disconnected.");
       return nFailure;
-    }
-    for (size_t i = 0; i < sourcefilecount; i++) {
-      getLogger()->info("  Source file #{}: {}", i + 1, sourcefilenames[i]);
     }
     if (!destfilename) {
       getLogger()->error(ERR_NULL_ARG, __func__, STRINGIFY(destfilename));
