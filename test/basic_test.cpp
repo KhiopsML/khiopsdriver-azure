@@ -187,6 +187,7 @@ TEST_F(ShareStorageTest, RmDir) {
 }
 
 TEST_P(CommonStorageTest, Concat) {
+  // Define URLs
   const std::vector<std::string> sources_as_strvec = url.SplitFileParts();
   const size_t nsources = sources_as_strvec.size();
   std::vector<const char *> sources;
@@ -201,13 +202,14 @@ TEST_P(CommonStorageTest, Concat) {
 
   ASSERT_EQ(driver_connect(), nSuccess) << "Failed to connect.";
   ASSERT_EQ(driver_fileExists(output.c_str()), nFalse) << "The output file exists before concatenation.";
-  // Source backup
+  // Backup sources
+  ASSERT_EQ(driver_mkdir(backupdir.c_str()), nSuccess);
   for(size_t i = 0ULL; i < nsources; i++) {
     CopyFile(sources_as_strvec[i], backupfiles[i]);
   }
   // Concat
   ASSERT_EQ(driver_concat(output.c_str(), sources.data(), nsources), nSuccess) << "Concatenation failed.";
-  // Checks
+  // Check
   for(const std::string &source : sources_as_strvec) {
     ASSERT_EQ(driver_fileExists(source.c_str()), nFalse) << "Source file " << source << " was not deleted after concatenation.";
   }
@@ -216,9 +218,10 @@ TEST_P(CommonStorageTest, Concat) {
   // Cleanup
   ASSERT_EQ(driver_remove(output.c_str()), nSuccess) << "Failed to remove output file.";
   ASSERT_EQ(driver_fileExists(output.c_str()), nFalse) << "Output file still exists after removal.";
-  // Source restore
+  // Restore sources
   for(size_t i = 0ULL; i < nsources; i++) {
-    CopyFile(backupfiles[i], sources_as_strvec[i]);
+    MoveFile(backupfiles[i], sources_as_strvec[i]);
   }
+  ASSERT_EQ(driver_rmdir(backupdir.c_str()), nSuccess) << "Could not delete backup directory.";
   ASSERT_EQ(driver_disconnect(), nSuccess) << "Failed to disconnect.";
 }
