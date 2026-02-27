@@ -40,6 +40,7 @@ public:
   const Fragment &GetFragment(size_t nIndex) const;
   int GetFragmentIndexOfUserOffset(size_t *nFragmentIndex,
                                    size_t nUserOffset) const;
+  size_t GetNumberOfFragments() const;
 
 private:
   StorageType storageType;

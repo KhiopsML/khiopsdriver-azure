@@ -168,6 +168,10 @@ int FragmentedFile::GetFragmentIndexOfUserOffset(size_t *nFragmentIndex,
   return 0;
 }
 
+size_t FragmentedFile::GetNumberOfFragments() const {
+  return fragments.size();
+}
+
 static string ReadHeaderFromBodyStream(unique_ptr<BodyStream> &&bodyStream) {
   string sHeader;
   size_t nBufferSize = static_cast<size_t>(bodyStream->Length());
