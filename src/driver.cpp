@@ -539,8 +539,17 @@ int Driver::Concatenate(const vector<string> &inputUrls,
     for (size_t nInputIndex = 0ULL; nInputIndex != inputs.size(); nInputIndex++) {
       nFragmentSize = fragmentedFiles[nInputIndex].GetSize();
       range = Azure::Core::Http::HttpRange{nInputIndex == 0ULL ? 0LL : static_cast<int64_t>(nHeaderLen), static_cast<int64_t>(nFragmentSize)};
-      destFile.UploadRangeFromUri(
-        nOffset, inputs[nInputIndex].azureUrl.GetAbsoluteUrl(), range);
+      try {
+        destFile.UploadRangeFromUri(nOffset, inputs[nInputIndex].azureUrl.GetAbsoluteUrl(), range);
+      } catch (const Azure::Core::RequestFailedException& exc) {
+        getLogger()->error("Failed to upload range from URI. Details of Azure error:");
+        getLogger()->error("  Exception message: {}", exc.what());
+        getLogger()->error("  HTTP response headers:");
+        for(const auto &header : exc.RawResponse->GetHeaders()) {
+          getLogger()->error("    Header name: '{}'   Header value: '{}'", header.first, header.second);
+        }
+        return -1;
+      }
       nOffset += nFragmentSize;
     }
   }
