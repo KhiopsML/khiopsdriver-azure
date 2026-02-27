@@ -22,6 +22,7 @@ shared_ptr<spdlog::sinks::basic_file_sink_st> filesink;
 vector<shared_ptr<spdlog::sinks::sink>> sinks;
 shared_ptr<spdlog::logger> logger;
 
+// Logging lazy initializer
 class LogInitializer {
 public:
   LogInitializer() {
