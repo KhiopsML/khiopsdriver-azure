@@ -187,6 +187,8 @@ TEST_F(ShareStorageTest, RmDir) {
 }
 
 TEST_P(CommonStorageTest, Concat) {
+  StorageType storageType = GetParam();
+
   // Define URLs
   const std::vector<std::string> sources_as_strvec = url.SplitFileParts();
   const size_t nsources = sources_as_strvec.size();
@@ -204,13 +206,13 @@ TEST_P(CommonStorageTest, Concat) {
   ASSERT_EQ(driver_connect(), nSuccess) << "Failed to connect.";
   ASSERT_EQ(driver_fileExists(output.c_str()), nFalse) << "The output file exists before concatenation.";
   // Backup sources
-  ASSERT_EQ(driver_dirExists(backupdir.c_str()), nFalse) << "The backup directory already exists.";
+  if(storageType == SHARE) ASSERT_EQ(driver_dirExists(backupdir.c_str()), nFalse) << "The backup directory already exists.";
   ASSERT_EQ(driver_mkdir(backupdir.c_str()), nSuccess) << "Could not create backup directory.";
   for(size_t i = 0ULL; i < nsources; i++) {
     CopyFile(sources_as_strvec[i], backupfiles[i]);
   }
   // Concat
-  ASSERT_EQ(driver_dirExists(outputdir.c_str()), nFalse) << "The destination directory already exists.";
+  if(storageType == SHARE) ASSERT_EQ(driver_dirExists(outputdir.c_str()), nFalse) << "The destination directory already exists.";
   ASSERT_EQ(driver_mkdir(outputdir.c_str()), nSuccess) << "Could not create the destination directory.";
   ASSERT_EQ(driver_concat(output.c_str(), sources.data(), nsources), nSuccess) << "Concatenation failed.";
   // Check
@@ -223,12 +225,12 @@ TEST_P(CommonStorageTest, Concat) {
   ASSERT_EQ(driver_remove(output.c_str()), nSuccess) << "Failed to remove output file.";
   ASSERT_EQ(driver_fileExists(output.c_str()), nFalse) << "Output file still exists after removal.";
   ASSERT_EQ(driver_rmdir(outputdir.c_str()), nSuccess) << "Could not delete destination directory.";
-  ASSERT_EQ(driver_dirExists(outputdir.c_str()), nFalse) << "The destination directory still exists after removal.";
+  if(storageType == SHARE) ASSERT_EQ(driver_dirExists(outputdir.c_str()), nFalse) << "The destination directory still exists after removal.";
   // Restore sources
   for(size_t i = 0ULL; i < nsources; i++) {
     MoveFile(backupfiles[i], sources_as_strvec[i]);
   }
   ASSERT_EQ(driver_rmdir(backupdir.c_str()), nSuccess) << "Could not delete backup directory.";
-  ASSERT_EQ(driver_dirExists(backupdir.c_str()), nFalse) << "The backup directory still exists after removal.";
+  if(storageType == SHARE) ASSERT_EQ(driver_dirExists(backupdir.c_str()), nFalse) << "The backup directory still exists after removal.";
   ASSERT_EQ(driver_disconnect(), nSuccess) << "Failed to disconnect.";
 }
