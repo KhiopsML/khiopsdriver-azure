@@ -21,6 +21,7 @@
 #include <spdlog/spdlog.h>
 #include <sstream>
 #include <stdexcept>
+#include <unordered_map>
 
 using namespace std;
 using namespace az::util;
@@ -482,42 +483,21 @@ int Driver::Concatenate(const vector<string> &inputUrls,
     return -1;
   }
 
-  // One fragmented file for each input.
-  vector<FragmentedFile> fragmentedFiles;
-  // There may be multiple clients for each input, that is, input globs are supported.
-  vector<ObjectClient> allClients;
-  for(const auto &input : inputs) {
-    if(output.storageType == BLOB) {
-      auto blobs = ListBlobs(input);
-      fragmentedFiles.emplace_back(blobs);
-      for(auto client : blobs) {
-        allClients.emplace_back(client);
-      }
-    } else /* SHARE */ {
-      auto files = ListFiles(input);
-      fragmentedFiles.emplace_back(files);
-      for(auto client : files) {
-        allClients.emplace_back(client);
-      }
-    }
-  }
-  // Fragmented file representing all inputs concatenated.
-  FragmentedFile fragmentedFile(allClients);
-  size_t nHeaderLen = fragmentedFile.GetHeaderLen();
-  getLogger()->debug("Concatenation involves {} sources for a total of {} fragments.", fragmentedFiles.size(), fragmentedFile.GetNumberOfFragments());
-  for(size_t i = 0ULL; i < fragmentedFiles.size(); i++) {
-    getLogger()->debug("  Source #{} contains {} fragments.", i + 1, fragmentedFiles[i].GetNumberOfFragments());
-  }
-
   try {
-    Azure::Core::Http::HttpRange range;
-    size_t nFragmentSize;
     if (output.storageType == BLOB) {
-      auto destBlob = GetBlobClient(output).AsBlockBlobClient();
+      Azure::Storage::Blobs::BlockBlobClient destBlob = GetBlobClient(output).AsBlockBlobClient();
       vector<string> destBlockIds;
-      for (size_t nInputIndex = 0ULL; nInputIndex != inputs.size(); nInputIndex++) {
-        auto sourceAuth = BuildAuth(inputs[nInputIndex]);
-        nFragmentSize = fragmentedFiles[nInputIndex].GetSize();
+
+      for (const ServiceRequest &input : inputs) {
+        Auth sourceAuth;
+        if(BuildAuth(&sourceAuth, input)) {
+          return -1;
+        }
+        Azure::Storage::Blobs::StageBlockFromUriOptions opts;
+        if (sourceAuth.HasHeader()) {
+          opts.SourceAuthorization = sourceAuth.sAuthHeader;
+        }
+
         ostringstream oss;
         oss << setfill('0') << setw(64) << destBlockIds.size();
         string sBlockIdInBase10 = oss.str();
@@ -527,31 +507,45 @@ int Driver::Concatenate(const vector<string> &inputUrls,
             Azure::Core::Convert::Base64Encode(blockIdInBase10);
         destBlockIds.push_back(sBlockIdInBase64);
 
-        range = Azure::Core::Http::HttpRange{nInputIndex == 0ULL ? 0LL : static_cast<int64_t>(nHeaderLen), static_cast<int64_t>(nFragmentSize)};
-        Azure::Storage::Blobs::StageBlockFromUriOptions opts;
-        opts.SourceRange = range;
-        if (sourceAuth.HasHeader()) {
-          opts.SourceAuthorization = sourceAuth.sAuthHeader;
-        }
         destBlob.StageBlockFromUri(sBlockIdInBase64, sourceAuth.sUriAuth, opts);
       }
       destBlob.CommitBlockList(destBlockIds);
     } else /* SHARE */ {
-      auto destFile = GetFileClient(output);
-      destFile.Create(fragmentedFile.GetSize());
-      size_t nOffset = 0ULL;
-      for (size_t nInputIndex = 0ULL; nInputIndex != inputs.size(); nInputIndex++) {
-        auto sourceAuth = BuildAuth(inputs[nInputIndex]);
-        nFragmentSize = fragmentedFiles[nInputIndex].GetSize();
-        range = Azure::Core::Http::HttpRange{nInputIndex == 0ULL ? 0LL : static_cast<int64_t>(nHeaderLen), static_cast<int64_t>(nFragmentSize)};
-        if (sourceAuth.HasHeader()) {
-          Azure::Storage::Files::Shares::UploadFileRangeFromUriOptions opts;
-          opts.SourceAuthorization = sourceAuth.sAuthHeader;
-          destFile.UploadRangeFromUri(nOffset, sourceAuth.sUriAuth, range, opts);
-        } else {
-          destFile.UploadRangeFromUri(nOffset, sourceAuth.sUriAuth, range);
+      Azure::Core::Http::HttpRange range;
+      getLogger()->trace("Concatenating / Output: {}", output.azureUrl.GetAbsoluteUrl());
+      Azure::Storage::Files::Shares::ShareFileClient destFile = GetFileClient(output);
+
+      unordered_map<const ServiceRequest *, int64_t> sourceSizes;
+      int64_t nTotalSize = 0LL;
+      for (const ServiceRequest &input : inputs) {
+        getLogger()->trace("Concatenating / Input: {}", input.azureUrl.GetAbsoluteUrl());
+        int64_t nSourceSize = GetFileClient(input).GetProperties().Value.FileSize;
+        getLogger()->trace("Concatenating / Size of input: {}", nSourceSize);
+        sourceSizes[&input] = nSourceSize;
+        nTotalSize += nSourceSize;
+      }
+      destFile.Create(nTotalSize);
+      getLogger()->trace("Concatenating / Created destination file of size: {}", nTotalSize);
+      int64_t nGlobalOffset = 0LL;
+      for (const ServiceRequest &input : inputs) {
+        int64_t nSourceSize = sourceSizes[&input];
+        Auth sourceAuth;
+        if(BuildAuth(&sourceAuth, input)) {
+          return -1;
         }
-        nOffset += nFragmentSize;
+        Azure::Storage::Files::Shares::UploadFileRangeFromUriOptions opts;
+        if (sourceAuth.HasHeader()) {
+          opts.SourceAuthorization = sourceAuth.sAuthHeader;
+        }
+        // See size limitation of source range: header x-ms-source-range at https://learn.microsoft.com/en-us/rest/api/storageservices/put-range-from-url .
+        constexpr int64_t MAX_SOURCE_SIZE = 4LL * 1024LL * 1024LL;
+        for (int64_t nOffsetInSource = 0LL; nOffsetInSource < nSourceSize; nOffsetInSource += MAX_SOURCE_SIZE)
+        {
+          int64_t nToUpload = min(nSourceSize - nOffsetInSource, MAX_SOURCE_SIZE);
+          range = Azure::Core::Http::HttpRange{nOffsetInSource, nToUpload};
+          destFile.UploadRangeFromUri(nGlobalOffset + nOffsetInSource, sourceAuth.sUriAuth, range, opts);
+        }
+        nGlobalOffset += nSourceSize;
       }
     }
   } catch (const Azure::Core::RequestFailedException& exc) {
