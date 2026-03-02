@@ -87,6 +87,7 @@ set(SourceList
     driver.cpp
     servicerequest.hpp
     servicerequest.cpp
+    auth.hpp
     contrib.hpp
     util.hpp
     util.cpp

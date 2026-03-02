@@ -1,4 +1,5 @@
 #include "driver.hpp"
+#include "auth.hpp"
 #include "blobpathresolve.hpp"
 #include "logging.hpp"
 #include "servicerequest.hpp"
@@ -508,49 +509,64 @@ int Driver::Concatenate(const vector<string> &inputUrls,
     getLogger()->debug("  Source #{} contains {} fragments.", i + 1, fragmentedFiles[i].GetNumberOfFragments());
   }
 
-  Azure::Core::Http::HttpRange range;
-  size_t nFragmentSize;
-  if (output.storageType == BLOB) {
-    auto destBlob = GetBlobClient(output).AsBlockBlobClient();
-    vector<string> destBlockIds;
-    for (size_t nInputIndex = 0; nInputIndex != inputs.size(); nInputIndex++) {
-      nFragmentSize = fragmentedFiles[nInputIndex].GetSize();
-      ostringstream oss;
-      oss << setfill('0') << setw(64) << destBlockIds.size();
-      string sBlockIdInBase10 = oss.str();
-      vector<uint8_t> blockIdInBase10(sBlockIdInBase10.begin(),
-                                      sBlockIdInBase10.end());
-      string sBlockIdInBase64 =
-          Azure::Core::Convert::Base64Encode(blockIdInBase10);
-      destBlockIds.push_back(sBlockIdInBase64);
+  try {
+    Azure::Core::Http::HttpRange range;
+    size_t nFragmentSize;
+    if (output.storageType == BLOB) {
+      auto destBlob = GetBlobClient(output).AsBlockBlobClient();
+      vector<string> destBlockIds;
+      for (size_t nInputIndex = 0ULL; nInputIndex != inputs.size(); nInputIndex++) {
+        auto sourceAuth = BuildAuth(inputs[nInputIndex]);
+        nFragmentSize = fragmentedFiles[nInputIndex].GetSize();
+        ostringstream oss;
+        oss << setfill('0') << setw(64) << destBlockIds.size();
+        string sBlockIdInBase10 = oss.str();
+        vector<uint8_t> blockIdInBase10(sBlockIdInBase10.begin(),
+                                        sBlockIdInBase10.end());
+        string sBlockIdInBase64 =
+            Azure::Core::Convert::Base64Encode(blockIdInBase10);
+        destBlockIds.push_back(sBlockIdInBase64);
 
-      range = Azure::Core::Http::HttpRange{nInputIndex == 0ULL ? 0LL : static_cast<int64_t>(nHeaderLen), static_cast<int64_t>(nFragmentSize)};
-      Azure::Storage::Blobs::StageBlockFromUriOptions opts;
-      opts.SourceRange = range;
-      destBlob.StageBlockFromUri(sBlockIdInBase64,
-                                 inputs[nInputIndex].azureUrl.GetAbsoluteUrl(),
-                                 opts);
-    }
-    destBlob.CommitBlockList(destBlockIds);
-  } else /* SHARE */ {
-    auto destFile = GetFileClient(output);
-    destFile.Create(0LL);
-    size_t nOffset = 0ULL;
-    for (size_t nInputIndex = 0ULL; nInputIndex != inputs.size(); nInputIndex++) {
-      nFragmentSize = fragmentedFiles[nInputIndex].GetSize();
-      range = Azure::Core::Http::HttpRange{nInputIndex == 0ULL ? 0LL : static_cast<int64_t>(nHeaderLen), static_cast<int64_t>(nFragmentSize)};
-      try {
-        destFile.UploadRangeFromUri(nOffset, inputs[nInputIndex].azureUrl.GetAbsoluteUrl(), range);
-      } catch (const Azure::Core::RequestFailedException& exc) {
-        getLogger()->error("Failed to upload range from URI. Details of Azure error:");
-        getLogger()->error("  Exception message: {}", exc.what());
-        getLogger()->error("  HTTP response headers:");
-        for(const auto &header : exc.RawResponse->GetHeaders()) {
-          getLogger()->error("    Header name: '{}'   Header value: '{}'", header.first, header.second);
+        range = Azure::Core::Http::HttpRange{nInputIndex == 0ULL ? 0LL : static_cast<int64_t>(nHeaderLen), static_cast<int64_t>(nFragmentSize)};
+        Azure::Storage::Blobs::StageBlockFromUriOptions opts;
+        opts.SourceRange = range;
+        if (sourceAuth.HasHeader()) {
+          opts.SourceAuthorization = sourceAuth.sAuthHeader;
         }
-        return -1;
+        destBlob.StageBlockFromUri(sBlockIdInBase64, sourceAuth.sUriAuth, opts);
       }
-      nOffset += nFragmentSize;
+      destBlob.CommitBlockList(destBlockIds);
+    } else /* SHARE */ {
+      auto destFile = GetFileClient(output);
+      destFile.Create(fragmentedFile.GetSize());
+      size_t nOffset = 0ULL;
+      for (size_t nInputIndex = 0ULL; nInputIndex != inputs.size(); nInputIndex++) {
+        auto sourceAuth = BuildAuth(inputs[nInputIndex]);
+        nFragmentSize = fragmentedFiles[nInputIndex].GetSize();
+        range = Azure::Core::Http::HttpRange{nInputIndex == 0ULL ? 0LL : static_cast<int64_t>(nHeaderLen), static_cast<int64_t>(nFragmentSize)};
+        if (sourceAuth.HasHeader()) {
+          Azure::Storage::Files::Shares::UploadFileRangeFromUriOptions opts;
+          opts.SourceAuthorization = sourceAuth.sAuthHeader;
+          destFile.UploadRangeFromUri(nOffset, sourceAuth.sUriAuth, range, opts);
+        } else {
+          destFile.UploadRangeFromUri(nOffset, sourceAuth.sUriAuth, range);
+        }
+        nOffset += nFragmentSize;
+      }
+    }
+  } catch (const Azure::Core::RequestFailedException& exc) {
+    getLogger()->error("Failed to upload range from URI. Details of Azure error:");
+    getLogger()->error("  Exception message: {}", exc.what());
+    getLogger()->error("  HTTP response headers:");
+    for(const auto &header : exc.RawResponse->GetHeaders()) {
+      getLogger()->error("    Header name: '{}'   Header value: '{}'", header.first, header.second);
+    }
+    return -1;
+  }
+
+  for (const string &sInputUrl : inputUrls) {
+    if(Remove(sInputUrl)) {
+      return -1;
     }
   }
 
