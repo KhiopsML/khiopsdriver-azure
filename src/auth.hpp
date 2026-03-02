@@ -11,13 +11,16 @@ merely URL strings. Thus we must be correctly authenticated for the sources.
 #pragma once
 
 #include "servicerequest.hpp"
+#include "logging.hpp"
 #include <azure/core/datetime.hpp>
 #include <azure/core/credentials/credentials.hpp>
 #include <azure/storage/blobs/blob_sas_builder.hpp>
 #include <azure/storage/files/shares/share_sas_builder.hpp>
 #include <chrono>
+#include <numeric>
 #include <sstream>
 #include <string>
+#include <vector>
 
 namespace az {
 
@@ -27,7 +30,11 @@ struct Auth {
     bool HasHeader() const {return !sAuthHeader.empty();}
 };
 
-Auth BuildAuth(const ServiceRequest &request) {
+static int BuildAuth(Auth *result, const ServiceRequest &request) {
+    logging::getLogger()->debug("Building authentication object...");
+    logging::getLogger()->debug("  Using connection string: {}", request.bUsingConnectionString ? "true": "false");
+    logging::getLogger()->debug("  Storage type: {}", request.storageType == BLOB ? "BLOB" : "FILE");
+    logging::getLogger()->debug("  URL: {}", request.azureUrl.GetAbsoluteUrl());
     if (request.bUsingConnectionString) {
         std::string sToken;
         if (request.storageType == BLOB) {
@@ -35,32 +42,44 @@ Auth BuildAuth(const ServiceRequest &request) {
             sasbuilder.BlobContainerName = request.blob.sContainer;
             sasbuilder.BlobName = request.blob.sBlob;
             sasbuilder.Resource = Azure::Storage::Sas::BlobSasResource::Blob;
+            sasbuilder.StartsOn = Azure::DateTime::clock::now() - std::chrono::minutes(5);
             sasbuilder.ExpiresOn = Azure::DateTime::clock::now() + std::chrono::hours(2);
             sasbuilder.SetPermissions(Azure::Storage::Sas::BlobSasPermissions::Read);
+            logging::getLogger()->debug("  BLOB SAS builder:");
+            logging::getLogger()->debug("    BLOB container name: {}", sasbuilder.BlobContainerName);
+            logging::getLogger()->debug("    BLOB name: {}", sasbuilder.BlobName);
             sToken = sasbuilder.GenerateSasToken(*request.connectionStringCredential);
         } else /* SHARE */ {
             Azure::Storage::Sas::ShareSasBuilder sasbuilder;
             sasbuilder.ShareName = request.share.sShare;
-            auto pathvec = request.share.path;
-            std::ostringstream oss;
-            for (std::string sSegment : pathvec) {
-                oss << sSegment;
+            std::vector<std::string> pathSegments = request.share.path;
+            if(pathSegments.empty()) {
+                logging::getLogger()->error("Shared file path is empty.");
+                return -1;
+            }
+            std::ostringstream oss(pathSegments[0]);
+            for (size_t i = 1ULL; i < pathSegments.size(); i++) {
+                oss << "/" << pathSegments[i];
             }
             sasbuilder.FilePath = oss.str();
             sasbuilder.Resource = Azure::Storage::Sas::ShareSasResource::File;
+            sasbuilder.StartsOn = Azure::DateTime::clock::now() - std::chrono::minutes(5);
             sasbuilder.ExpiresOn = Azure::DateTime::clock::now() + std::chrono::hours(2);
             sasbuilder.SetPermissions(Azure::Storage::Sas::ShareSasPermissions::Read);
+            logging::getLogger()->debug("  SHARE SAS builder:");
+            logging::getLogger()->debug("    SHARE name: {}", sasbuilder.ShareName);
+            logging::getLogger()->debug("    FILE path: {}", sasbuilder.FilePath);
             sToken = sasbuilder.GenerateSasToken(*request.connectionStringCredential);
         }
-        return {request.azureUrl.GetAbsoluteUrl() + "?" + sToken, ""};
+        *result = {request.azureUrl.GetAbsoluteUrl() + "?" + sToken, ""};
     } else /* using chained key credential */ {
-        auto token = request.noConnectionStringCredential->GetToken(
-            Azure::Core::Credentials::TokenRequestContext{{"https://storage.azure.com/.default"}},
-            Azure::Core::Context()
-        );
+        Azure::Core::Credentials::TokenRequestContext trc;
+        trc.Scopes = {"https://storage.azure.com/.default"};
+        auto token = request.noConnectionStringCredential->GetToken(trc, Azure::Core::Context());
 
-        return {request.azureUrl.GetAbsoluteUrl(), std::string("Bearer ") + token.Token};
+        *result = {request.azureUrl.GetAbsoluteUrl(), std::string("Bearer ") + token.Token};
     }
+    return 0;
 }
 
 }
