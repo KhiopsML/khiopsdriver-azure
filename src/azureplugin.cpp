@@ -52,12 +52,12 @@ public:
     } else {
       try {
         nPreferredBufferSize = stoull(envvarval);
-      } catch (const invalid_argument &exc) {
+      } catch (const invalid_argument &) {
         getLogger()->debug(
             "Value {} of environment variable AZURE_PREFERRED_BUFFER_SIZE is not "
             "a valid number. Falling back to default {}...",
             envvarval, DEFAULT_PREFERRED_BUFFER_SIZE);
-      } catch (const out_of_range &exc) {
+      } catch (const out_of_range &) {
         getLogger()->debug(
             "Value {} of environment variable AZURE_PREFERRED_BUFFER_SIZE is out "
             "of range. Falling back to default {}...",
@@ -354,7 +354,7 @@ long long int driver_fread(void *dest, size_t size, size_t count,
     if (nRead == 0ULL) {
       return nReadFailure;
     }
-    return nRead;
+    return static_cast<long long int>(nRead);
   } catch (const exception& exc) {
     getLogger()->error(ERR_EXC_RAISED, exc.what());
   } catch (...) {
@@ -440,7 +440,7 @@ long long int driver_fwrite(const void *source, size_t size, size_t count,
     if (driver->Write(&nWritten, handle, source, size, count)) {
       return nWriteFailure;
     }
-    return nWritten;
+    return static_cast<long long int>(nWritten);
   } catch (const exception& exc) {
     getLogger()->error(ERR_EXC_RAISED, exc.what());
   } catch (...) {
