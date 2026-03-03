@@ -186,7 +186,11 @@ TEST_F(ShareStorageTest, RmDir) {
   ASSERT_EQ(driver_disconnect(), nSuccess);
 }
 
-TEST_P(CommonStorageTest, Concat) {
+INSTANTIATE_TEST_SUITE_P(BlobAndShare, CommonNonEmulatableStorageTest,
+                         testing::Values(BLOB, SHARE),
+                         CommonNonEmulatableStorageTest::FormatParam);
+
+TEST_P(CommonNonEmulatableStorageTest, Concat) {
   StorageType storageType = GetParam();
 
   // Define URLs
