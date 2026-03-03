@@ -190,34 +190,35 @@ TEST_P(CommonStorageTest, Concat) {
   StorageType storageType = GetParam();
 
   // Define URLs
-  const std::vector<std::string> sources_as_strvec = url.SplitFileParts();
-  const size_t nsources = sources_as_strvec.size();
-  std::vector<const char *> sources;
-  std::transform(sources_as_strvec.begin(), sources_as_strvec.end(), std::back_inserter(sources), [](const std::string &source){return source.c_str();});
+  const std::vector<std::string> original_sources = url.SplitFileParts();
   const std::string outputdir = url.NewRandomDir();
   const std::string output = outputdir + "driver_concat_test_output";
   const std::string reference = url.File();
-  const std::string backupdir = url.NewRandomDir();
-  std::vector<std::string> backupfiles;
-  std::transform(sources_as_strvec.begin(), sources_as_strvec.end(), std::back_inserter(backupfiles), [backupdir](const std::string &source){
-    return backupdir + source.substr(source.rfind('/') + 1);
-  });
+  const std::string tmpdir = url.NewRandomDir();
+  std::vector<std::string> tmpsources;
+  std::vector<const char *> tmpsources_as_cstr;
+  for(const std::string &original_source : original_sources) {
+    std::string tmpsource = tmpdir + original_source.substr(original_source.rfind('/') + 1);
+    tmpsources_as_cstr.push_back(tmpsource.c_str());
+    tmpsources.push_back(std::move(tmpsource));
+  }
+  const size_t nsources = tmpsources.size();
 
   ASSERT_EQ(driver_connect(), nSuccess) << "Failed to connect.";
   ASSERT_EQ(driver_fileExists(output.c_str()), nFalse) << "The output file exists before concatenation.";
-  // Backup sources
-  if(storageType == SHARE) ASSERT_EQ(driver_dirExists(backupdir.c_str()), nFalse) << "The backup directory already exists.";
-  ASSERT_EQ(driver_mkdir(backupdir.c_str()), nSuccess) << "Could not create backup directory.";
+  // Copy sources. The temporary copies will be the actual sources of the concatenation.
+  if(storageType == SHARE) ASSERT_EQ(driver_dirExists(tmpdir.c_str()), nFalse) << "The temporary directory already exists.";
+  ASSERT_EQ(driver_mkdir(tmpdir.c_str()), nSuccess) << "Could not create temporary directory.";
   for(size_t i = 0ULL; i < nsources; i++) {
-    CopyFile(sources_as_strvec[i], backupfiles[i]);
+    CopyFile(original_sources[i], tmpsources[i]);
   }
   // Concat
   if(storageType == SHARE) ASSERT_EQ(driver_dirExists(outputdir.c_str()), nFalse) << "The destination directory already exists.";
   ASSERT_EQ(driver_mkdir(outputdir.c_str()), nSuccess) << "Could not create the destination directory.";
-  ASSERT_EQ(driver_concat(output.c_str(), sources.data(), nsources), nSuccess) << "Concatenation failed.";
+  ASSERT_EQ(driver_concat(output.c_str(), tmpsources_as_cstr.data(), nsources), nSuccess) << "Concatenation failed.";
   // Check
-  for(const std::string &source : sources_as_strvec) {
-    ASSERT_EQ(driver_fileExists(source.c_str()), nFalse) << "Source file " << source << " was not deleted after concatenation.";
+  for(const char *tmpsource : tmpsources_as_cstr) {
+    ASSERT_EQ(driver_fileExists(tmpsource), nFalse) << "Source file " << tmpsource << " was not deleted after concatenation.";
   }
   ASSERT_EQ(driver_fileExists(output.c_str()), nTrue) << "The concatenation created no output file.";
   ASSERT_EQ(driver_getFileSize(output.c_str()), driver_getFileSize(reference.c_str())) << "Incorrect output file size.";
@@ -226,11 +227,7 @@ TEST_P(CommonStorageTest, Concat) {
   ASSERT_EQ(driver_fileExists(output.c_str()), nFalse) << "Output file still exists after removal.";
   ASSERT_EQ(driver_rmdir(outputdir.c_str()), nSuccess) << "Could not delete destination directory.";
   if(storageType == SHARE) ASSERT_EQ(driver_dirExists(outputdir.c_str()), nFalse) << "The destination directory still exists after removal.";
-  // Restore sources
-  for(size_t i = 0ULL; i < nsources; i++) {
-    MoveFile(backupfiles[i], sources_as_strvec[i]);
-  }
-  ASSERT_EQ(driver_rmdir(backupdir.c_str()), nSuccess) << "Could not delete backup directory.";
-  if(storageType == SHARE) ASSERT_EQ(driver_dirExists(backupdir.c_str()), nFalse) << "The backup directory still exists after removal.";
+  ASSERT_EQ(driver_rmdir(tmpdir.c_str()), nSuccess) << "Could not delete temporary directory.";
+  if(storageType == SHARE) ASSERT_EQ(driver_dirExists(tmpdir.c_str()), nFalse) << "The temporary directory still exists after removal.";
   ASSERT_EQ(driver_disconnect(), nSuccess) << "Failed to disconnect.";
 }
