@@ -57,7 +57,8 @@ static int BuildAuth(Auth *result, const ServiceRequest &request) {
                 logging::getLogger()->error("Shared file path is empty.");
                 return -1;
             }
-            std::ostringstream oss(pathSegments[0]);
+            std::ostringstream oss;
+            oss << pathSegments[0];
             for (size_t i = 1ULL; i < pathSegments.size(); i++) {
                 oss << "/" << pathSegments[i];
             }
