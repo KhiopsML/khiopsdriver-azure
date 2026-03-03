@@ -207,13 +207,13 @@ TEST_P(CommonStorageTest, Concat) {
   ASSERT_EQ(driver_connect(), nSuccess) << "Failed to connect.";
   ASSERT_EQ(driver_fileExists(output.c_str()), nFalse) << "The output file exists before concatenation.";
   // Copy sources. The temporary copies will be the actual sources of the concatenation.
-  if(storageType == SHARE) ASSERT_EQ(driver_dirExists(tmpdir.c_str()), nFalse) << "The temporary directory already exists.";
+  if(storageType == SHARE) { ASSERT_EQ(driver_dirExists(tmpdir.c_str()), nFalse) << "The temporary directory already exists."; }
   ASSERT_EQ(driver_mkdir(tmpdir.c_str()), nSuccess) << "Could not create temporary directory.";
   for(size_t i = 0ULL; i < nsources; i++) {
     CopyFile(original_sources[i], tmpsources[i]);
   }
   // Concat
-  if(storageType == SHARE) ASSERT_EQ(driver_dirExists(outputdir.c_str()), nFalse) << "The destination directory already exists.";
+  if(storageType == SHARE) { ASSERT_EQ(driver_dirExists(outputdir.c_str()), nFalse) << "The destination directory already exists."; }
   ASSERT_EQ(driver_mkdir(outputdir.c_str()), nSuccess) << "Could not create the destination directory.";
   ASSERT_EQ(driver_concat(output.c_str(), tmpsources_as_cstr.data(), nsources), nSuccess) << "Concatenation failed.";
   // Check
@@ -226,8 +226,8 @@ TEST_P(CommonStorageTest, Concat) {
   ASSERT_EQ(driver_remove(output.c_str()), nSuccess) << "Failed to remove output file.";
   ASSERT_EQ(driver_fileExists(output.c_str()), nFalse) << "Output file still exists after removal.";
   ASSERT_EQ(driver_rmdir(outputdir.c_str()), nSuccess) << "Could not delete destination directory.";
-  if(storageType == SHARE) ASSERT_EQ(driver_dirExists(outputdir.c_str()), nFalse) << "The destination directory still exists after removal.";
+  if(storageType == SHARE) { ASSERT_EQ(driver_dirExists(outputdir.c_str()), nFalse) << "The destination directory still exists after removal."; }
   ASSERT_EQ(driver_rmdir(tmpdir.c_str()), nSuccess) << "Could not delete temporary directory.";
-  if(storageType == SHARE) ASSERT_EQ(driver_dirExists(tmpdir.c_str()), nFalse) << "The temporary directory still exists after removal.";
+  if(storageType == SHARE) { ASSERT_EQ(driver_dirExists(tmpdir.c_str()), nFalse) << "The temporary directory still exists after removal."; }
   ASSERT_EQ(driver_disconnect(), nSuccess) << "Failed to disconnect.";
 }

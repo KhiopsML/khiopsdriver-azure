@@ -23,8 +23,3 @@ static void CopyFile(std::string source, std::string dest) {
   ASSERT_EQ(driver_fileExists(source.c_str()), az::nTrue) << "Source file does not exist anymore: '" << source << "'.";
   ASSERT_EQ(driver_fileExists(dest.c_str()), az::nTrue) << "Destination file has not been created: '" << dest << "'.";
 }
-
-static void MoveFile(std::string source, std::string dest) {
-  CopyFile(source, dest);
-  ASSERT_EQ(driver_remove(source.c_str()), az::nSuccess) << "Failed to delete source file: '" << source << "'.";
-}
