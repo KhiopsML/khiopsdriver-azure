@@ -12,6 +12,7 @@ class EndToEndTest;
 #include <gtest/gtest.h>
 #include <string>
 
+// For tests that use a storage that may be emulated or not.
 class EmulatableStorageUser {
 protected:
   EmulatableStorageUser();
@@ -23,6 +24,17 @@ private:
 
 class CommonStorageTest : public EmulatableStorageUser,
                           public testing::TestWithParam<az::StorageType> {
+public:
+  static std::string
+  FormatParam(const testing::TestParamInfo<CommonStorageTest::ParamType>
+                  &testParamInfo);
+
+protected:
+  void SetUp() override;
+  StorageTestUrlProvider url;
+};
+
+class CommonNonEmulatableStorageTest : public testing::TestWithParam<az::StorageType> {
 public:
   static std::string
   FormatParam(const testing::TestParamInfo<CommonStorageTest::ParamType>

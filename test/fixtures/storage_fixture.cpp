@@ -8,16 +8,22 @@
 #include <exception>
 #include <sstream>
 
+#define SKIP_IF_EMULATED_SERVICE()                                             \
+  if (IsEmulatedStorage()) {                                                   \
+    GTEST_SKIP() << "emulated storage server does not support the necessary functionalities to run this test"; \
+  }
+
 // Macro that skips the test if emulated mode is ON,
 // because the emulator does not support SHARE services.
 // To be used only with SHARE-specific tests
-#define SKIP_IF_EMULATED_SERVICE()                                             \
+#define SKIP_IF_EMULATED_SERVICE_BECAUSE_OF_SHARE()                                             \
   if (IsEmulatedStorage()) {                                                   \
     GTEST_SKIP() << "emulated storage server does not support SHARE services"; \
   }
 
 // Macro that skips the test if emulated mode is ON but storage type is SHARE,
 // because the emulator does not support SHARE services.
+// To be used with common BLOB+SHARE tests
 #define SKIP_IF_EMULATED_SHARE_SERVICE()                                       \
   if (IsEmulatedStorage() && GetParam() == SHARE) {                            \
     GTEST_SKIP() << "emulated storage server does not support SHARE services"; \
@@ -45,10 +51,20 @@ string CommonStorageTest::FormatParam(
 
 void CommonStorageTest::SetUp() {
   SKIP_IF_EMULATED_SHARE_SERVICE();
-  if (IsEmulatedStorage() && GetParam() == SHARE) {
-    GTEST_SKIP() << "emulated storage server does not support SHARE service";
-  }
   url = StorageTestUrlProvider(GetParam(), IsEmulatedStorage());
+}
+
+// Common (blob + share) storage tests that are not supported by emulated storage
+string CommonNonEmulatableStorageTest::FormatParam(
+    const testing::TestParamInfo<CommonStorageTest::ParamType> &testParamInfo) {
+  ostringstream oss;
+  PrintTo(testParamInfo.param, &oss);
+  return oss.str();
+}
+
+void CommonNonEmulatableStorageTest::SetUp() {
+  SKIP_IF_EMULATED_SERVICE();
+  url = StorageTestUrlProvider(GetParam(), false);
 }
 
 // Blob-specific storage tests
@@ -58,7 +74,7 @@ void BlobStorageTest::SetUp() {
 
 // Share-specific storage tests
 void ShareStorageTest::SetUp() {
-  SKIP_IF_EMULATED_SERVICE();
+  SKIP_IF_EMULATED_SERVICE_BECAUSE_OF_SHARE();
   url = StorageTestUrlProvider(SHARE, IsEmulatedStorage());
 }
 
