@@ -1,86 +1,29 @@
 #pragma once
 
-class EmulatableStorageUser;
-class CommonStorageTest;
-class BlobStorageTest;
-class ShareStorageTest;
-class EndToEndTest;
-
-#include "../storagetype.hpp"
 #include "../urls.hpp"
+#include "returnval.hpp"
 #include <cstddef>
 #include <gtest/gtest.h>
 #include <string>
 
-// For tests that use a storage that may be emulated or not.
-class EmulatableStorageUser {
+namespace {
+class StorageTest : public testing::Test {
 protected:
-  EmulatableStorageUser();
-  bool IsEmulatedStorage() const;
-
-private:
-  bool bIsEmulatedStorage;
-};
-
-class CommonStorageTest : public EmulatableStorageUser,
-                          public testing::TestWithParam<az::StorageType> {
-public:
-  static std::string
-  FormatParam(const testing::TestParamInfo<CommonStorageTest::ParamType>
-                  &testParamInfo);
-
-protected:
-  void SetUp() override;
+  void SetUp() override {
+    url = StorageTestUrlProvider();
+    std::ostringstream oss;
+#ifdef _WIN32
+    oss << std::getenv("TEMP") << "\\out-" << boost::uuids::random_generator()()
+        << ".txt";
+#else
+    oss << "/tmp/out-" << boost::uuids::random_generator()() << ".txt";
+#endif
+    sLocalFilePath = oss.str();
+    ASSERT_EQ(driver_connect(), az::nSuccess) << "driver failed to connect during test initialization";
+    ASSERT_EQ(driver_isConnected(), az::nTrue) << "after driver connected, it is disconnected";
+  }
+  void TearDown() override { driver_disconnect(); }
   StorageTestUrlProvider url;
-};
-
-class CommonNonEmulatableStorageTest : public testing::TestWithParam<az::StorageType> {
-public:
-  static std::string
-  FormatParam(const testing::TestParamInfo<CommonStorageTest::ParamType>
-                  &testParamInfo);
-
-protected:
-  void SetUp() override;
-  StorageTestUrlProvider url;
-};
-
-class BlobStorageTest : public EmulatableStorageUser, public testing::Test {
-protected:
-  void SetUp() override;
-  StorageTestUrlProvider url;
-};
-
-class ShareStorageTest : public EmulatableStorageUser, public testing::Test {
-protected:
-  void SetUp() override;
-  StorageTestUrlProvider url;
-};
-
-class IoTest : public EmulatableStorageUser,
-               public testing::TestWithParam<az::StorageType> {
-public:
-  static std::string
-  FormatParam(const testing::TestParamInfo<IoTest::ParamType> &testParamInfo);
-
-protected:
-  void SetUp() override;
-  void TearDown() override;
-
-  IoTestUrlProvider url;
   std::string sLocalFilePath;
 };
-
-class EndToEndTest : public EmulatableStorageUser,
-                     public testing::TestWithParam<az::StorageType> {
-public:
-  static std::string FormatParam(
-      const testing::TestParamInfo<EndToEndTest::ParamType> &testParamInfo);
-
-protected:
-  void SetUp() override;
-  void TearDown() override;
-
-  EndToEndTestUrlProvider url;
-  std::string sLocalFilePath;
-};
+}

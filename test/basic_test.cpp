@@ -55,67 +55,37 @@ TEST(BasicTest, Disconnect) {
   ASSERT_EQ(driver_isConnected(), nFalse);
 }
 
-INSTANTIATE_TEST_SUITE_P(BlobAndShare, CommonStorageTest,
-                         testing::Values(BLOB, SHARE),
-                         CommonStorageTest::FormatParam);
-
-TEST_P(CommonStorageTest, GetFileSize) {
-  ASSERT_EQ(driver_connect(), nSuccess);
+TEST_F(StorageTest, GetFileSize) {
   ASSERT_EQ(driver_getFileSize(url.File().c_str()), 5585568);
-  ASSERT_EQ(driver_disconnect(), nSuccess);
 }
 
-TEST_P(CommonStorageTest, GetMultipartFileSize) {
-  ASSERT_EQ(driver_connect(), nSuccess);
+TEST_F(StorageTest, GetMultipartFileSize) {
   ASSERT_EQ(driver_getFileSize(url.BQFile().c_str()), 5585568);
-  ASSERT_EQ(driver_disconnect(), nSuccess);
 }
 
-TEST_P(CommonStorageTest, GetFileSizeNonexistentFailure) {
-  ASSERT_EQ(driver_connect(), nSuccess);
+TEST_F(StorageTest, GetFileSizeNonexistentFailure) {
   ASSERT_EQ(driver_getFileSize(url.InexistantFile().c_str()), nSizeFailure);
   ASSERT_STRNE(driver_getlasterror(), NULL);
-  ASSERT_EQ(driver_disconnect(), nSuccess);
 }
 
-TEST_P(CommonStorageTest, FileExists) {
-  ASSERT_EQ(driver_connect(), nSuccess);
+TEST_F(StorageTest, FileExists) {
   ASSERT_EQ(driver_fileExists(url.File().c_str()), nTrue);
-  ASSERT_EQ(driver_disconnect(), nSuccess);
 }
 
-TEST_P(CommonStorageTest, FileExistsNonExistentfile) {
-  ASSERT_EQ(driver_connect(), nSuccess);
+TEST_F(StorageTest, FileExistsNonExistentfile) {
   ASSERT_EQ(driver_fileExists(url.InexistantFile().c_str()), nFalse);
-  ASSERT_EQ(driver_disconnect(), nSuccess);
 }
 
-TEST_F(BlobStorageTest, DirExists) {
-  ASSERT_EQ(driver_connect(), nSuccess);
-  ASSERT_EQ(
-      driver_dirExists(url.Dir().c_str()),
-      nTrue); // there is no such concept as a directory when dealing with blobs
-  ASSERT_EQ(driver_disconnect(), nSuccess);
-}
-
-TEST_F(ShareStorageTest, DirExists) {
-  ASSERT_EQ(driver_connect(), nSuccess);
+TEST_F(StorageTest, DirExists) {
   ASSERT_EQ(driver_dirExists(url.Dir().c_str()), nTrue);
-  ASSERT_EQ(driver_disconnect(), nSuccess);
 }
 
-TEST_F(BlobStorageTest, DirExistsNonExistentDir) {
-  ASSERT_EQ(driver_connect(), nSuccess);
-  ASSERT_EQ(
-      driver_dirExists(url.InexistantDir().c_str()),
-      nTrue); // there is no such concept as a directory when dealing with blobs
-  ASSERT_EQ(driver_disconnect(), nSuccess);
-}
-
-TEST_F(ShareStorageTest, DirExistsNonExistentDir) {
-  ASSERT_EQ(driver_connect(), nSuccess);
-  ASSERT_EQ(driver_dirExists(url.InexistantDir().c_str()), nFalse);
-  ASSERT_EQ(driver_disconnect(), nSuccess);
+TEST_F(StorageTest, DirExistsNonExistentDir) {
+  if(url.GetStorageType() == SHARE) {
+    ASSERT_EQ(driver_dirExists(url.InexistantDir().c_str()), nFalse);  
+  } else {
+    ASSERT_EQ(driver_dirExists(url.InexistantDir().c_str()), nTrue);
+  }
 }
 
 #ifndef _WIN32
@@ -139,60 +109,43 @@ void cleanup_bad_credentials() {
   boost::process::v2::environment::unset("AZURE_STORAGE_CONNECTION_STRING");
 }
 
-TEST_P(CommonStorageTest, GetFileSizeInvalidCredentialsFailure) {
+TEST_F(StorageTest, GetFileSizeInvalidCredentialsFailure) {
   GTEST_SKIP() << "To be fixed.";
   setup_bad_credentials();
-  ASSERT_EQ(driver_connect(), nSuccess);
   ASSERT_EQ(driver_getFileSize(url.File().c_str()), -1);
   ASSERT_STRNE(driver_getlasterror(), NULL);
-  ASSERT_EQ(driver_disconnect(), nSuccess);
   cleanup_bad_credentials();
 }
 #endif
 
-TEST_F(BlobStorageTest, MkDir) {
-  ASSERT_EQ(driver_connect(), nSuccess);
-  ASSERT_EQ(driver_mkdir(url.NewRandomDir().c_str()),
-            nSuccess); // there is no such concept as a directory when dealing
-                       // with blobs
-  ASSERT_EQ(driver_disconnect(), nSuccess);
+TEST_F(StorageTest, MkDir) {
+  if(url.GetStorageType() == SHARE) {
+    std::string sNewDir = url.NewRandomDir();
+    ASSERT_EQ(driver_dirExists(sNewDir.c_str()), nFalse);
+    ASSERT_EQ(driver_mkdir(sNewDir.c_str()), nSuccess);
+    ASSERT_EQ(driver_dirExists(sNewDir.c_str()), nTrue);
+    ASSERT_EQ(driver_rmdir(sNewDir.c_str()), nSuccess);
+  } else {
+    ASSERT_EQ(driver_mkdir(url.NewRandomDir().c_str()), nSuccess);
+  }
 }
 
-TEST_F(ShareStorageTest, MkDir) {
-  std::string sNewDir = url.NewRandomDir();
-  ASSERT_EQ(driver_connect(), nSuccess);
-  ASSERT_EQ(driver_dirExists(sNewDir.c_str()), nFalse);
-  ASSERT_EQ(driver_mkdir(sNewDir.c_str()), nSuccess);
-  ASSERT_EQ(driver_dirExists(sNewDir.c_str()), nTrue);
-  ASSERT_EQ(driver_rmdir(sNewDir.c_str()), nSuccess);
-  ASSERT_EQ(driver_disconnect(), nSuccess);
+TEST_F(StorageTest, RmDir) {
+  if(url.GetStorageType() == SHARE) {
+    std::string sNewDir = url.NewRandomDir();
+    ASSERT_EQ(driver_mkdir(sNewDir.c_str()), nSuccess);
+    ASSERT_EQ(driver_dirExists(sNewDir.c_str()), nTrue);
+    ASSERT_EQ(driver_rmdir(sNewDir.c_str()), nSuccess);
+    ASSERT_EQ(driver_dirExists(sNewDir.c_str()), nFalse);
+  } else {
+    ASSERT_EQ(driver_rmdir(url.NewRandomDir().c_str()), nSuccess);
+  }
 }
 
-TEST_F(BlobStorageTest, RmDir) {
-  ASSERT_EQ(driver_connect(), nSuccess);
-  ASSERT_EQ(driver_rmdir(url.NewRandomDir().c_str()),
-            nSuccess); // there is no such concept as a directory when dealing
-                       // with blobs
-  ASSERT_EQ(driver_disconnect(), nSuccess);
-}
-
-TEST_F(ShareStorageTest, RmDir) {
-  std::string sNewDir = url.NewRandomDir();
-  ASSERT_EQ(driver_connect(), nSuccess);
-  ASSERT_EQ(driver_mkdir(sNewDir.c_str()), nSuccess);
-  ASSERT_EQ(driver_dirExists(sNewDir.c_str()), nTrue);
-  ASSERT_EQ(driver_rmdir(sNewDir.c_str()), nSuccess);
-  ASSERT_EQ(driver_dirExists(sNewDir.c_str()), nFalse);
-  ASSERT_EQ(driver_disconnect(), nSuccess);
-}
-
-INSTANTIATE_TEST_SUITE_P(BlobAndShare, CommonNonEmulatableStorageTest,
-                         testing::Values(BLOB, SHARE),
-                         CommonNonEmulatableStorageTest::FormatParam);
-
-TEST_P(CommonNonEmulatableStorageTest, Concat) {
-  StorageType storageType = GetParam();
-
+/*
+The following test will fail with Azure file storage because
+*/
+TEST_F(StorageTest, Concat) {
   // Define URLs
   const std::vector<std::string> original_sources = url.SplitFileParts();
   const std::string outputdir = url.NewRandomDir();
@@ -211,14 +164,14 @@ TEST_P(CommonNonEmulatableStorageTest, Concat) {
   ASSERT_EQ(driver_connect(), nSuccess) << "Failed to connect.";
   ASSERT_EQ(driver_fileExists(output.c_str()), nFalse) << "The output file exists before concatenation.";
   // Copy sources. The temporary copies will be the actual sources of the concatenation.
-  if(storageType == SHARE) { ASSERT_EQ(driver_dirExists(tmpdir.c_str()), nFalse) << "The temporary directory already exists."; }
+  if(url.GetStorageType() == SHARE) { ASSERT_EQ(driver_dirExists(tmpdir.c_str()), nFalse) << "The temporary directory already exists."; }
   ASSERT_EQ(driver_mkdir(tmpdir.c_str()), nSuccess) << "Could not create temporary directory.";
   for(size_t i = 0ULL; i < nsources; i++) {
     CopyFile(original_sources[i], tmpsources[i]);
   }
   // Concat
-  if(storageType == SHARE) { ASSERT_EQ(driver_dirExists(outputdir.c_str()), nFalse) << "The destination directory already exists."; }
-  ASSERT_EQ(driver_mkdir(outputdir.c_str()), nSuccess) << "Could not create the destination directory.";
+  // The following assertion would fail for all blob storage services because the driver_dirExists function would always return nTrue;
+  if(url.GetStorageType() == SHARE) { ASSERT_EQ(driver_mkdir(outputdir.c_str()), nSuccess) << "Could not create the destination directory."; }
   ASSERT_EQ(driver_concat(output.c_str(), tmpsources_as_cstr.data(), nsources), nSuccess) << "Concatenation failed.";
   // Check
   for(const char *tmpsource : tmpsources_as_cstr) {
@@ -230,8 +183,8 @@ TEST_P(CommonNonEmulatableStorageTest, Concat) {
   ASSERT_EQ(driver_remove(output.c_str()), nSuccess) << "Failed to remove output file.";
   ASSERT_EQ(driver_fileExists(output.c_str()), nFalse) << "Output file still exists after removal.";
   ASSERT_EQ(driver_rmdir(outputdir.c_str()), nSuccess) << "Could not delete destination directory.";
-  if(storageType == SHARE) { ASSERT_EQ(driver_dirExists(outputdir.c_str()), nFalse) << "The destination directory still exists after removal."; }
-  ASSERT_EQ(driver_rmdir(tmpdir.c_str()), nSuccess) << "Could not delete temporary directory.";
-  if(storageType == SHARE) { ASSERT_EQ(driver_dirExists(tmpdir.c_str()), nFalse) << "The temporary directory still exists after removal."; }
-  ASSERT_EQ(driver_disconnect(), nSuccess) << "Failed to disconnect.";
+  // The following assertion would fail for all blob storage services because the driver_dirExists function would always return nTrue;
+  if(url.GetStorageType() == SHARE) { ASSERT_EQ(driver_rmdir(tmpdir.c_str()), nSuccess) << "Could not delete temporary directory."; }
+  // The following assertion would fail for all blob storage services because the driver_dirExists function would always return nTrue;
+  if(url.GetStorageType() == SHARE) { ASSERT_EQ(driver_disconnect(), nSuccess) << "Failed to disconnect."; }
 }

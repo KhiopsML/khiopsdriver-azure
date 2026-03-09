@@ -26,12 +26,9 @@ using namespace az;
 
 void TestFSeek(string sUrl, bool bCrLf = false);
 
-INSTANTIATE_TEST_SUITE_P(BlobAndShare, IoTest, testing::Values(BLOB, SHARE),
-                         IoTest::FormatParam);
+TEST_F(StorageTest, FSeekSingleFile) { TestFSeek(url.File()); }
 
-TEST_P(IoTest, FSeekSingleFile) { TestFSeek(url.File()); }
-
-TEST_P(IoTest, FSeekMultipartFile) { TestFSeek(url.MultisplitFile(), true); }
+TEST_F(StorageTest, FSeekMultipartFile) { TestFSeek(url.MultisplitFile(), true); }
 
 void TestFSeek(string sUrl, bool bCrLf) {
   void *handle;
@@ -59,7 +56,7 @@ void TestFSeek(string sUrl, bool bCrLf) {
   delete[] buffer;
 }
 
-TEST_P(IoTest, FReadAtEndOfFile) {
+TEST_F(StorageTest, FReadAtEndOfFile) {
   char ibuffer[64];
   void *ihandle;
   long long int filesize;
@@ -97,7 +94,7 @@ TEST_P(IoTest, FReadAtEndOfFile) {
   ASSERT_EQ(driver_disconnect(), nSuccess);
 }
 
-TEST_P(IoTest, FReadWithConcurrentWrite) {
+TEST_F(StorageTest, FReadWithConcurrentWrite) {
   string file = url.RandomOutputFile();
   char ibuffer[64]{};
   void *ihandle;

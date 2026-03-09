@@ -71,6 +71,13 @@ jobs:
         with:
           skip-api-version-check: true
 
+      - name: Set STORAGE_DRIVER_TEST_URL_PREFIX values
+        run: |
+          EMULATED_BLOB_ENDPOINT="$(echo '${{ steps.azuright.outputs.connstring }}' | sed -Ee 's/^(.*;)?BlobEndpoint=([^;]*).*$/\2/')"
+          echo "STORAGE_DRIVER_TEST_URL_PREFIX_EMULATED_BLOB='$EMULATED_BLOB_ENDPOINT'" >> $GITHUB_ENV
+          echo "STORAGE_DRIVER_TEST_URL_PREFIX_CLOUD_BLOB='https://khiopsdriverazure.blob.core.windows.net/'" >> $GITHUB_ENV
+          echo "STORAGE_DRIVER_TEST_URL_PREFIX_CLOUD_FILE='https://khiopsdriverazure.file.core.windows.net/'" >> $GITHUB_ENV
+
       # Populate storage emulator
       - name:  Install test data in Azurite
         if: matrix.os == 'ubuntu-latest'
@@ -100,7 +107,7 @@ jobs:
           configurePresetAdditionalArgs: '["-DBUILD_TESTS=ON"]'
           buildPreset: 'ninja-dbg'
   
-      - name: Test debug (emulated storage)
+      - name: Test debug (emulated blob storage)
         if: matrix.os == 'ubuntu-latest'
         uses: lukka/run-cmake@v10
         with:
@@ -109,8 +116,9 @@ jobs:
           AZURE_EMULATED_STORAGE: 'true'
           AZURE_STORAGE_CONNECTION_STRING: '${{ steps.azuright.outputs.connstring }}'
           AZURE_DRIVER_LOGLEVEL: "trace"
+          STORAGE_DRIVER_TEST_URL_PREFIX: '${{ env.STORAGE_DRIVER_TEST_URL_PREFIX_EMULATED_BLOB }}'
 
-      - name: Test debug (cloud storage)
+      - name: Test debug (cloud blob storage)
         if: matrix.os == 'ubuntu-latest'
         uses: lukka/run-cmake@v10
         with:
@@ -120,6 +128,19 @@ jobs:
           AZURE_STORAGE_CONNECTION_STRING: '${{ secrets.AZURE_CONNECTION_STRING }}'
           CTEST_PARALLEL_LEVEL: ''
           AZURE_DRIVER_LOGLEVEL: "trace"
+          STORAGE_DRIVER_TEST_URL_PREFIX: '${{ env.STORAGE_DRIVER_TEST_URL_PREFIX_CLOUD_BLOB }}'
+
+      - name: Test debug (cloud file storage)
+        if: matrix.os == 'ubuntu-latest'
+        uses: lukka/run-cmake@v10
+        with:
+          testPreset: 'ninja-dbg'
+        env:
+          AZURE_EMULATED_STORAGE: 'false'
+          AZURE_STORAGE_CONNECTION_STRING: '${{ secrets.AZURE_CONNECTION_STRING }}'
+          CTEST_PARALLEL_LEVEL: ''
+          AZURE_DRIVER_LOGLEVEL: "trace"
+          STORAGE_DRIVER_TEST_URL_PREFIX: '${{ env.STORAGE_DRIVER_TEST_URL_PREFIX_CLOUD_FILE }}'
 
       # Disable coverage until we find how to fix the "line mismatch error"
       # cmake --build --preset ninja-vcpkg-debug --target khiops-gcs_coverage --target khiops-gcs_cobertura
@@ -151,20 +172,31 @@ jobs:
       - if: github.ref_type == 'tag'
         run: echo "AZURE_STORAGE_CONNECTION_STRING='${{ secrets.AZURE_CONNECTION_STRING }}'" >> $GITHUB_ENV
 
-      - name: Test release (cloud storage)
+      - name: Test release (cloud blob storage)
         uses: lukka/run-cmake@v10
         with:
           testPreset: 'ninja-rel'
-          testPresetAdditionalArgs: '["--output-junit", "test_results.xml"]'
+          testPresetAdditionalArgs: '["--output-junit", "test_results_blob.xml"]'
         env:
           CTEST_PARALLEL_LEVEL: ''
           AZURE_DRIVER_LOGLEVEL: "trace"
+          STORAGE_DRIVER_TEST_URL_PREFIX: '${{ env.STORAGE_DRIVER_TEST_URL_PREFIX_CLOUD_BLOB }}'
+
+      - name: Test release (cloud file storage)
+        uses: lukka/run-cmake@v10
+        with:
+          testPreset: 'ninja-rel'
+          testPresetAdditionalArgs: '["--output-junit", "test_results_file.xml"]'
+        env:
+          CTEST_PARALLEL_LEVEL: ''
+          AZURE_DRIVER_LOGLEVEL: "trace"
+          STORAGE_DRIVER_TEST_URL_PREFIX: '${{ env.STORAGE_DRIVER_TEST_URL_PREFIX_CLOUD_FILE }}'
 
       - name: Upload results of cloud storage tests
         if: always()
         uses: test-summary/action@v2
         with:
-          paths: ${{ github.workspace }}/build/ninja-rel/test_results.xml
+          paths: ${{ github.workspace }}/build/ninja-rel/test_results_*.xml
   
       - name: Upload the packages as artifacts
         uses: actions/upload-artifact@v4
