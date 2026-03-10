@@ -9,8 +9,6 @@
 #include <cstdlib>
 
 namespace {
-enum StorageType { BLOB, SHARE };
-
 class StorageTestUrlProvider {
 protected:
   /*

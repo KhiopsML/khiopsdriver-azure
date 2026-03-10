@@ -1,9 +1,28 @@
 #pragma once
 
-#include "azureplugin.hpp"
+#include "plugin.hpp"
 #include "returnval.hpp"
 #include <gtest/gtest.h>
 #include <string>
+#include <cstdlib>
+
+enum struct StorageType { BLOB, FILE };
+
+static StorageType GetStorageType() {
+  char *test_url_prefix = getenv("STORAGE_DRIVER_TEST_URL_PREFIX");
+  return test_url_prefix && std::string(test_url_prefix).find("https://khiopsdriverazure.file.core.windows.net/") == 0ULL ? StorageType::FILE : StorageType::BLOB;
+}
+
+static bool IsAzuriteStorage() {
+  char *azure_emulated_storage = getenv("AZURE_EMULATED_STORAGE");
+  if(azure_emulated_storage) {
+    std::string azure_emulated_storage_str(azure_emulated_storage);
+    if(!azure_emulated_storage_str.empty() && azure_emulated_storage_str != "false") {
+      return true;
+    }
+  }
+  return false;
+}
 
 static void CopyFile(std::string source, std::string dest) {
   void *sourceptr, *destptr;

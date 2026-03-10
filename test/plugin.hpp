@@ -2,7 +2,15 @@
 
 #define KHIOPS_STR(s) #s
 // Driver version
-#define DRIVER_VERSION KHIOPS_STR(0.0.5)
+#if defined S3_DRIVER
+    #define DRIVER_VERSION KHIOPS_STR(0.0.15)
+#elif defined GCS_DRIVER
+    #define DRIVER_VERSION KHIOPS_STR(0.0.16)
+#elif defined AZURE_DRIVER
+    #define DRIVER_VERSION KHIOPS_STR(0.0.5)
+#else
+    #error "S3_DRIVER, GCS_DRIVER or AZURE_DRIVER must be defined."
+#endif
 
 // Release versions must have 3 digits, for example KHIOPS_STR(1.2.0)
 // Alpha, beta ou release candidate have an extra suffix, for example :

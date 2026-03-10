@@ -34,11 +34,17 @@ target_compile_options(
   PRIVATE $<$<CXX_COMPILER_ID:AppleClang>:-Wall;-Wextra;-pedantic;-Wno-unused-lambda-capture>
   PRIVATE $<$<CXX_COMPILER_ID:Clang,GNU>:-Wall;-Wextra;-pedantic>)
 
-if(DEFINED ENV{STORAGE_DRIVER_TEST_URL_PREFIX} AND NOT ENV{STORAGE_DRIVER_TEST_URL_PREFIX} MATCHES "^https://khiopsdriverazure\.file\.core\.windows\.net/")
-  target_compile_definitions(basic_test PRIVATE FILE_STORAGE)
+if(NOT DEFINED ENV{STORAGE_DRIVER_NAME})
+  message(FATAL_ERROR "Environment variable STORAGE_DRIVER_NAME is not defined.")
 endif()
-if(DEFINED ENV{AZURE_EMULATED_STORAGE} AND NOT ENV{AZURE_EMULATED_STORAGE} STREQUAL "false")
-  target_compile_definitions(basic_test PRIVATE AZURITE)
+if($ENV{STORAGE_DRIVER_NAME} STREQUAL "S3")
+  target_compile_definitions(basic_test PRIVATE S3_DRIVER)
+elseif($ENV{STORAGE_DRIVER_NAME} STREQUAL "GCS")
+  target_compile_definitions(basic_test PRIVATE GCS_DRIVER)
+elseif($ENV{STORAGE_DRIVER_NAME} STREQUAL "AZURE")
+  target_compile_definitions(basic_test PRIVATE AZURE_DRIVER)
+else()
+  message(FATAL_ERROR "Environment variable STORAGE_DRIVER_NAME is set to '$ENV{STORAGE_DRIVER_NAME}' but should be set to 'S3', 'GCS' or 'AZURE').")
 endif()
 
 # MSVC requires /bigobj to build in debug config
