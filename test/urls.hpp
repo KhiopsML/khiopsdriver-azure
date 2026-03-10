@@ -114,7 +114,7 @@ public:
   const std::string RandomOutputFile() const {
     std::ostringstream oss;
     oss << sPrefix
-        << "//khiops_data/output/CREATED_BY_TESTS_"
+        << "/khiops_data/output/CREATED_BY_TESTS_"
         << boost::uuids::random_generator()() << ".txt";
     return oss.str();
   }
