@@ -71,10 +71,14 @@ jobs:
         with:
           skip-api-version-check: true
 
-      - name: Set STORAGE_DRIVER_TEST_URL_PREFIX values
+      - name: Set STORAGE_DRIVER_TEST_URL_PREFIX values (emulated)
+        if: matrix.os == 'ubuntu-latest'
         run: |
           EMULATED_BLOB_ENDPOINT=$(echo '${{ steps.azuright.outputs.connstring }}' | tr ';' '\n' | grep -E '^BlobEndpoint=' | cut -d'=' -f2)
           echo "STORAGE_DRIVER_TEST_URL_PREFIX_EMULATED_BLOB=$EMULATED_BLOB_ENDPOINT/data-test-khiops-driver-azure" >> $GITHUB_ENV
+
+      - name: Set STORAGE_DRIVER_TEST_URL_PREFIX values (cloud)
+        run: |
           echo "STORAGE_DRIVER_TEST_URL_PREFIX_CLOUD_BLOB=https://khiopsdriverazure.blob.core.windows.net/data-test-khiops-driver-azure" >> $GITHUB_ENV
           echo "STORAGE_DRIVER_TEST_URL_PREFIX_CLOUD_FILE=https://khiopsdriverazure.file.core.windows.net/data-test-khiops-driver-azure" >> $GITHUB_ENV
 
