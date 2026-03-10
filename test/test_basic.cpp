@@ -79,11 +79,11 @@ TEST_F(StorageTest, DirExists) {
 }
 
 TEST_F(StorageTest, DirExistsNonExistentDir) {
-  if(url.GetStorageType() == SHARE) {
+#ifdef FILE_STORAGE
     ASSERT_EQ(driver_dirExists(url.InexistantDir().c_str()), nFalse);  
-  } else {
+#else
     ASSERT_EQ(driver_dirExists(url.InexistantDir().c_str()), nTrue);
-  }
+#endif
 }
 
 #ifndef _WIN32
@@ -117,32 +117,30 @@ TEST_F(StorageTest, GetFileSizeInvalidCredentialsFailure) {
 #endif
 
 TEST_F(StorageTest, MkDir) {
-  if(url.GetStorageType() == SHARE) {
+#ifdef FILE_STORAGE
     std::string sNewDir = url.NewRandomDir();
     ASSERT_EQ(driver_dirExists(sNewDir.c_str()), nFalse);
     ASSERT_EQ(driver_mkdir(sNewDir.c_str()), nSuccess);
     ASSERT_EQ(driver_dirExists(sNewDir.c_str()), nTrue);
     ASSERT_EQ(driver_rmdir(sNewDir.c_str()), nSuccess);
-  } else {
+#else
     ASSERT_EQ(driver_mkdir(url.NewRandomDir().c_str()), nSuccess);
-  }
+#endif
 }
 
 TEST_F(StorageTest, RmDir) {
-  if(url.GetStorageType() == SHARE) {
+#ifdef FILE_STORAGE
     std::string sNewDir = url.NewRandomDir();
     ASSERT_EQ(driver_mkdir(sNewDir.c_str()), nSuccess);
     ASSERT_EQ(driver_dirExists(sNewDir.c_str()), nTrue);
     ASSERT_EQ(driver_rmdir(sNewDir.c_str()), nSuccess);
     ASSERT_EQ(driver_dirExists(sNewDir.c_str()), nFalse);
-  } else {
+#else
     ASSERT_EQ(driver_rmdir(url.NewRandomDir().c_str()), nSuccess);
-  }
+#endif
 }
 
-/*
-The following test will fail with Azure file storage because
-*/
+#ifndef AZURITE
 TEST_F(StorageTest, Concat) {
   // Define URLs
   const std::vector<std::string> original_sources = url.SplitFileParts();
@@ -162,14 +160,20 @@ TEST_F(StorageTest, Concat) {
   ASSERT_EQ(driver_connect(), nSuccess) << "Failed to connect.";
   ASSERT_EQ(driver_fileExists(output.c_str()), nFalse) << "The output file exists before concatenation.";
   // Copy sources. The temporary copies will be the actual sources of the concatenation.
-  if(url.GetStorageType() == SHARE) { ASSERT_EQ(driver_dirExists(tmpdir.c_str()), nFalse) << "The temporary directory already exists."; }
+#ifdef FILE_STORAGE
+  ASSERT_EQ(driver_dirExists(tmpdir.c_str()), nFalse) << "The temporary directory already exists.";
+#endif
   ASSERT_EQ(driver_mkdir(tmpdir.c_str()), nSuccess) << "Could not create temporary directory.";
+  ASSERT_EQ(driver_dirExists(tmpdir.c_str()), nTrue) << "The temporary directory already exists.";
   for(size_t i = 0ULL; i < nsources; i++) {
     CopyFile(original_sources[i], tmpsources[i]);
   }
   // Concat
-  // The following assertion would fail for all blob storage services because the driver_dirExists function would always return nTrue;
-  if(url.GetStorageType() == SHARE) { ASSERT_EQ(driver_mkdir(outputdir.c_str()), nSuccess) << "Could not create the destination directory."; }
+#ifdef FILE_STORAGE
+  ASSERT_EQ(driver_dirExists(outputdir.c_str()), nFalse) << "The destination directory already exists.";
+#endif
+  ASSERT_EQ(driver_mkdir(outputdir.c_str()), nSuccess) << "Could not create the destination directory.";
+  ASSERT_EQ(driver_dirExists(outputdir.c_str()), nTrue) << "The destination directory already exists.";
   ASSERT_EQ(driver_concat(output.c_str(), tmpsources_as_cstr.data(), nsources), nSuccess) << "Concatenation failed.";
   // Check
   for(const char *tmpsource : tmpsources_as_cstr) {
@@ -181,8 +185,13 @@ TEST_F(StorageTest, Concat) {
   ASSERT_EQ(driver_remove(output.c_str()), nSuccess) << "Failed to remove output file.";
   ASSERT_EQ(driver_fileExists(output.c_str()), nFalse) << "Output file still exists after removal.";
   ASSERT_EQ(driver_rmdir(outputdir.c_str()), nSuccess) << "Could not delete destination directory.";
-  // The following assertion would fail for all blob storage services because the driver_dirExists function would always return nTrue;
-  if(url.GetStorageType() == SHARE) { ASSERT_EQ(driver_rmdir(tmpdir.c_str()), nSuccess) << "Could not delete temporary directory."; }
-  // The following assertion would fail for all blob storage services because the driver_dirExists function would always return nTrue;
-  if(url.GetStorageType() == SHARE) { ASSERT_EQ(driver_disconnect(), nSuccess) << "Failed to disconnect."; }
+#ifdef FILE_STORAGE
+  ASSERT_EQ(driver_dirExists(outputdir.c_str()), nFalse) << "Failed to remove destination directory.";
+#endif
+  ASSERT_EQ(driver_rmdir(tmpdir.c_str()), nSuccess) << "Could not delete temporary directory.";
+#ifdef FILE_STORAGE
+  ASSERT_EQ(driver_dirExists(tmpdir.c_str()), nFalse) << "Failed to remove temporary directory.";
+#endif
+  ASSERT_EQ(driver_disconnect(), nSuccess) << "Failed to disconnect.";
 }
+#endif

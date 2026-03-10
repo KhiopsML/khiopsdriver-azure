@@ -36,18 +36,6 @@ protected:
   */
   std::string sPrefix;
 
-  /*
-  The driver interface supports non-blob, file storage services because it includes
-  directory-related functions while there is no such concept as a directory when
-  dealing with blob storage services. In some tests, we need to know whether we are
-  using a file storage service because it makes the following functions behave
-  differently:
-  - driver_dirExists
-  - driver_mkdir
-  - driver_rmdir.
-  */
-  StorageType storageType;
-
 private:
   static std::string GetUrlPrefix() {
     char *prefix_as_cstr = getenv("STORAGE_DRIVER_TEST_URL_PREFIX");
@@ -59,8 +47,6 @@ private:
 
 public:
   StorageTestUrlProvider(): sPrefix(GetUrlPrefix()) {}
-
-  StorageType GetStorageType() const { return storageType; }
 
   const std::string InexistantDir() const {
     return sPrefix + "/khiops_data/bq_export/non_existent_dir/";
