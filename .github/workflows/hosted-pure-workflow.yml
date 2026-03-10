@@ -77,7 +77,7 @@ jobs:
 
       - name: Set STORAGE_DRIVER_TEST_URL_PREFIX values
         run: |
-          EMULATED_BLOB_ENDPOINT="$(echo '${{ steps.azuright.outputs.connstring }}' | tr ';' '\n' | grep -P '^BlobEndpoint=' | cut -d'=' -f2
+          EMULATED_BLOB_ENDPOINT=$(echo '${{ steps.azuright.outputs.connstring }}' | tr ';' '\n' | grep -P '^BlobEndpoint=' | cut -d'=' -f2)
           echo "STORAGE_DRIVER_TEST_URL_PREFIX_EMULATED_BLOB=$EMULATED_BLOB_ENDPOINT/data-test-khiops-driver-azure" >> $GITHUB_ENV
           echo "STORAGE_DRIVER_TEST_URL_PREFIX_CLOUD_BLOB=https://khiopsdriverazure.blob.core.windows.net/data-test-khiops-driver-azure" >> $GITHUB_ENV
           echo "STORAGE_DRIVER_TEST_URL_PREFIX_CLOUD_FILE=https://khiopsdriverazure.file.core.windows.net/data-test-khiops-driver-azure" >> $GITHUB_ENV
