@@ -24,9 +24,9 @@ using namespace std;
 
 void TestFSeek(string sUrl, bool bCrLf = false);
 
-TEST_F(StorageTest, FSeekSingleFile) { TestFSeek(url.File()); }
+TEST_F(IoTest, FSeekSingleFile) { TestFSeek(url.File()); }
 
-TEST_F(StorageTest, FSeekMultipartFile) { TestFSeek(url.MultisplitFile(), true); }
+TEST_F(IoTest, FSeekMultipartFile) { TestFSeek(url.MultisplitFile(), true); }
 
 void TestFSeek(string sUrl, bool bCrLf) {
   void *handle;
@@ -54,7 +54,7 @@ void TestFSeek(string sUrl, bool bCrLf) {
   delete[] buffer;
 }
 
-TEST_F(StorageTest, FReadAtEndOfFile) {
+TEST_F(IoTest, FReadAtEndOfFile) {
   char ibuffer[64];
   void *ihandle;
   long long int filesize;
@@ -92,7 +92,7 @@ TEST_F(StorageTest, FReadAtEndOfFile) {
   ASSERT_EQ(driver_disconnect(), nSuccess);
 }
 
-TEST_F(StorageTest, FReadWithConcurrentWrite) {
+TEST_F(IoTest, FReadWithConcurrentWrite) {
   string file = url.RandomOutputFile();
   char ibuffer[64]{};
   void *ihandle;

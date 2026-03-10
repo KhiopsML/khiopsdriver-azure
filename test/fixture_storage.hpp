@@ -26,4 +26,8 @@ protected:
   StorageTestUrlProvider url;
   std::string sLocalFilePath;
 };
+
+class IoTest : public StorageTest {};
+
+class EndToEndTest : public StorageTest {};
 }

@@ -26,39 +26,39 @@ int compareSize(const char *file_name_output, long long int filesize);
 void EndToEndTest_(string sInputUrl, string sOutputUrl, string sLocalFilePath,
                    size_t nBufferSize);
 
-TEST_F(StorageTest, SingleFile512KB) {
+TEST_F(EndToEndTest, SingleFile512KB) {
   EndToEndTest_(url.BQSomeFilePart(), url.RandomOutputFile(), sLocalFilePath,
                 512ULL * 1024);
 }
 
-TEST_F(StorageTest, SingleFile2MB) {
+TEST_F(EndToEndTest, SingleFile2MB) {
   EndToEndTest_(url.BQSomeFilePart(), url.RandomOutputFile(), sLocalFilePath,
                 2ULL * 1024 * 1024);
 }
 
-TEST_F(StorageTest, SingleFile512B) {
+TEST_F(EndToEndTest, SingleFile512B) {
   /* use this particular file because it is short and buffer size triggers lots
    * of read operations */
   EndToEndTest_(url.BQShortFilePart(), url.RandomOutputFile(), sLocalFilePath,
                 512ULL);
 }
 
-TEST_F(StorageTest, MultipartBQFile512KB) {
+TEST_F(EndToEndTest, MultipartBQFile512KB) {
   EndToEndTest_(url.BQFile(), url.RandomOutputFile(), sLocalFilePath,
                 512ULL * 1024);
 }
 
-TEST_F(StorageTest, MultipartBQEmptyFile512KB) {
+TEST_F(EndToEndTest, MultipartBQEmptyFile512KB) {
   EndToEndTest_(url.BQEmptyFile(), url.RandomOutputFile(), sLocalFilePath,
                 512ULL * 1024);
 }
 
-TEST_F(StorageTest, MultipartSplitFile512KB) {
+TEST_F(EndToEndTest, MultipartSplitFile512KB) {
   EndToEndTest_(url.SplitFile(), url.RandomOutputFile(), sLocalFilePath,
                 512ULL * 1024);
 }
 
-TEST_F(StorageTest, MultipartSubsplitFile512KB) {
+TEST_F(EndToEndTest, MultipartSubsplitFile512KB) {
   EndToEndTest_(url.MultisplitFile(), url.RandomOutputFile(), sLocalFilePath,
                 512ULL * 1024);
 }
