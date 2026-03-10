@@ -147,6 +147,7 @@ if(BUILD_TESTS)
     PRIVATE $<$<CXX_COMPILER_ID:AppleClang,Clang,GNU>:-Wall;-Wextra;-pedantic>)
 
   add_subdirectory(test)
+  add_subdirectory("shared/integrationtests")
 endif(BUILD_TESTS)
 
 install(
