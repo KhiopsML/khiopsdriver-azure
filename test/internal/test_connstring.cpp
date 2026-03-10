@@ -1,5 +1,5 @@
 #include "../../src/util.hpp"
-#include "fixtures/connstring_fixture.hpp"
+#include "fixture_connstring.hpp"
 #include <azure/core/url.hpp>
 #include <gtest/gtest.h>
 #include <memory>

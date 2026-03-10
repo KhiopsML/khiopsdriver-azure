@@ -20,12 +20,12 @@ find_package(
 
 add_executable(
   basic_test
-  basic_test.cpp
-  io_test.cpp
-  drivertest.cpp
-  fixtures/storage_fixture.hpp
-  ../src/returnval.hpp
-  testutil.hpp
+  test_basic.cpp
+  test_io.cpp
+  test_end_to_end.cpp
+  fixture_storage.hpp
+  returnval.hpp
+  utils.hpp
   urls.hpp)
 
 target_compile_options(
@@ -36,8 +36,6 @@ target_compile_options(
 
 # MSVC requires /bigobj to build in debug config
 target_compile_options(basic_test PRIVATE $<$<AND:$<CONFIG:Debug>,$<CXX_COMPILER_ID:MSVC>>:/bigobj>)
-
-target_include_directories(basic_test PRIVATE ${${PROJECT_NAME}_SOURCE_DIR}/src)
 
 if(WIN32)
   target_link_libraries(

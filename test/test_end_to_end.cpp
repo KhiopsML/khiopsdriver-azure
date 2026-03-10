@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
 #include "azureplugin.hpp"
-#include "fixtures/storage_fixture.hpp"
+#include "fixture_storage.hpp"
 #include "returnval.hpp"
 
 #include <iostream>
@@ -13,7 +13,6 @@
 #include <boost/uuid/uuid_io.hpp>         // streaming operators etc.
 
 using namespace std;
-using namespace az;
 
 int CopyFile(const char *file_name_input, const char *file_name_output,
              size_t nBufferSize);

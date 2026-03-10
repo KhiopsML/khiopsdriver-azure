@@ -1,6 +1,5 @@
 #include "azureplugin.hpp"
-#include "driver.hpp"
-#include "fixtures/storage_fixture.hpp"
+#include "fixture_storage.hpp"
 #include "returnval.hpp"
 
 #include <cstring>
@@ -22,7 +21,6 @@
 #include <gtest/gtest.h>
 
 using namespace std;
-using namespace az;
 
 void TestFSeek(string sUrl, bool bCrLf = false);
 

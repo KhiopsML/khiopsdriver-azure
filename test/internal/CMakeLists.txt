@@ -1,4 +1,4 @@
-add_executable(internal_test connstring_test.cpp fixtures/connstring_fixture.hpp fixtures/connstring_fixture.cpp)
+add_executable(internal_test test_connstring.cpp fixture_connstring.hpp)
 target_compile_options(
   internal_test
   PRIVATE $<$<CXX_COMPILER_ID:MSVC>:/W4;/wd4101;/wd4710;/wd4711;/permissive->

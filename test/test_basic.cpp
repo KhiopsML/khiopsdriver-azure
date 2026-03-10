@@ -1,6 +1,6 @@
 #include "azureplugin.hpp"
-#include "fixtures/storage_fixture.hpp"
-#include "testutil.hpp"
+#include "fixture_storage.hpp"
+#include "utils.hpp"
 #include "returnval.hpp"
 
 #include <algorithm>
@@ -17,8 +17,6 @@
 #include <sstream>
 #include <string>
 #include <vector>
-
-using namespace az;
 
 TEST(BasicTest, GetDriverName) {
   ASSERT_STREQ(driver_getDriverName(), "Azure driver");

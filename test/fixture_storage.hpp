@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../urls.hpp"
+#include "urls.hpp"
 #include "returnval.hpp"
 #include <cstddef>
 #include <gtest/gtest.h>
@@ -19,8 +19,8 @@ protected:
     oss << "/tmp/out-" << boost::uuids::random_generator()() << ".txt";
 #endif
     sLocalFilePath = oss.str();
-    ASSERT_EQ(driver_connect(), az::nSuccess) << "driver failed to connect during test initialization";
-    ASSERT_EQ(driver_isConnected(), az::nTrue) << "after driver connected, it is disconnected";
+    ASSERT_EQ(driver_connect(), nSuccess) << "driver failed to connect during test initialization";
+    ASSERT_EQ(driver_isConnected(), nTrue) << "after driver connected, it is disconnected";
   }
   void TearDown() override { driver_disconnect(); }
   StorageTestUrlProvider url;

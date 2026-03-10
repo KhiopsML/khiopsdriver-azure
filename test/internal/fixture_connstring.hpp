@@ -6,6 +6,6 @@ class ConnectionStringTest;
 
 class ConnectionStringTest : public testing::TestWithParam<bool> {
 protected:
-  void SetUp() override;
+  void SetUp() override { bIsEmulatedStorage = GetParam(); }
   bool bIsEmulatedStorage;
 };
