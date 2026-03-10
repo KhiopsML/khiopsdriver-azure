@@ -34,6 +34,13 @@ target_compile_options(
   PRIVATE $<$<CXX_COMPILER_ID:AppleClang>:-Wall;-Wextra;-pedantic;-Wno-unused-lambda-capture>
   PRIVATE $<$<CXX_COMPILER_ID:Clang,GNU>:-Wall;-Wextra;-pedantic>)
 
+if(DEFINED ENV{STORAGE_DRIVER_TEST_URL_PREFIX} AND NOT ENV{STORAGE_DRIVER_TEST_URL_PREFIX} MATCHES "^https://khiopsdriverazure\.file\.core\.windows\.net/")
+  target_compile_definitions(basic_test PRIVATE FILE_STORAGE)
+endif()
+if(DEFINED ENV{AZURE_EMULATED_STORAGE} AND NOT ENV{AZURE_EMULATED_STORAGE} STREQUAL "false")
+  target_compile_definitions(basic_test PRIVATE AZURITE)
+endif()
+
 # MSVC requires /bigobj to build in debug config
 target_compile_options(basic_test PRIVATE $<$<AND:$<CONFIG:Debug>,$<CXX_COMPILER_ID:MSVC>>:/bigobj>)
 
