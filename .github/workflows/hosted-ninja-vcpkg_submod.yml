@@ -201,7 +201,9 @@ jobs:
         if: always()
         uses: test-summary/action@v2
         with:
-          paths: ${{ github.workspace }}/build/ninja-rel/test_results_*.xml
+          paths: |
+            ${{ github.workspace }}/build/ninja-rel/test_results_blob.xml
+            ${{ github.workspace }}/build/ninja-rel/test_results_file.xml
   
       - name: Upload the packages as artifacts
         uses: actions/upload-artifact@v4
