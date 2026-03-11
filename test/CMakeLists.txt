@@ -36,7 +36,7 @@ else()
   target_link_libraries(metadata_test PRIVATE
     GTest::gtest GTest::gmock GTest::gmock_main
     fmt::fmt
-    khiopsdriver_file_azure
+    khiopsdriver_file_azure)
 endif()
 
 gtest_discover_tests(metadata_test)
