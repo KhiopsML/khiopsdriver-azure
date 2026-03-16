@@ -193,15 +193,15 @@ int FileStream::Read(size_t *nRead, void *dest, size_t nSize, size_t nCount) {
       }
     } catch (const Azure::Storage::StorageException &exc) {
       if (exc.StatusCode ==
+          Azure::Core::Http::HttpStatusCode::PreconditionFailed) {
+        getLogger()->error("The file has been updated while reading it.");
+        return -1;
+      }
+      if (exc.StatusCode ==
           Azure::Core::Http::HttpStatusCode::RangeNotSatisfiable) {
         getLogger()->error("Cannot read after end of file.");
         *nRead = 0;
         return -2;
-      }
-      if (exc.StatusCode ==
-          Azure::Core::Http::HttpStatusCode::PreconditionFailed) {
-        getLogger()->error("The file has been updated while reading it.");
-        return -1;
       }
       throw;
     }
