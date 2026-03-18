@@ -1,11 +1,12 @@
 #include "sharepathresolve.hpp"
-#include "contrib.hpp"
-#include "util.hpp"
+#include "khiops_driver_common/contrib.hpp"
+#include "khiops_driver_common/util.hpp"
 #include <functional>
 
 using namespace std;
 
 namespace az {
+using namespace khiops_driver_common;
 using ShareDirectoryClient =
     Azure::Storage::Files::Shares::ShareDirectoryClient;
 using ShareFileClient = Azure::Storage::Files::Shares::ShareFileClient;

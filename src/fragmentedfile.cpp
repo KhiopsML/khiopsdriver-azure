@@ -1,6 +1,6 @@
 #include "fragmentedfile.hpp"
 #include "logging.hpp"
-#include "util.hpp"
+#include "khiops_driver_common/util.hpp"
 #include <algorithm>
 #include <azure/core/http/http.hpp>
 #include <azure/storage/blobs/rest_client.hpp>
@@ -12,6 +12,7 @@
 #include <vector>
 
 using namespace std;
+using namespace khiops_driver_common;
 using HttpRange = Azure::Core::Http::HttpRange;
 using BodyStream = Azure::Core::IO::BodyStream;
 using DownloadBlobOptions = Azure::Storage::Blobs::DownloadBlobOptions;

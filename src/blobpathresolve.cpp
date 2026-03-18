@@ -1,9 +1,10 @@
 #include "blobpathresolve.hpp"
-#include "contrib.hpp"
-#include "util.hpp"
+#include "khiops_driver_common/contrib.hpp"
+#include "khiops_driver_common/util.hpp"
 #include <functional>
 
 using namespace std;
+using namespace khiops_driver_common;
 
 namespace az {
 using BlobClient = Azure::Storage::Blobs::BlobClient;

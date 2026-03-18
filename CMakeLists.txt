@@ -81,33 +81,26 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_BUILD_TYPE STREQUAL "Release
 endif()
 
 set(SourceList
-    azureplugin.hpp
-    azureplugin.cpp
-    driver.hpp
-    driver.cpp
-    servicerequest.hpp
-    servicerequest.cpp
+    azureplugin.hpp azureplugin.cpp
+    driver.hpp driver.cpp
+    servicerequest.hpp servicerequest.cpp
     auth.hpp
-    contrib.hpp
-    util.hpp
-    util.cpp
-    logging.hpp
-    logging.cpp
+    connstr.hpp connstr.cpp
+    logging.hpp logging.cpp
     returnval.hpp
     objectclient.hpp
     storagetype.hpp
-    filestream.hpp
-    filestream.cpp
-    fragmentedfile.hpp
-    fragmentedfile.cpp
-    blobpathresolve.hpp
-    blobpathresolve.cpp
-    sharepathresolve.hpp
-    sharepathresolve.cpp)
+    filestream.hpp filestream.cpp
+    fragmentedfile.hpp fragmentedfile.cpp
+    blobpathresolve.hpp blobpathresolve.cpp
+    sharepathresolve.hpp sharepathresolve.cpp)
 list(TRANSFORM SourceList PREPEND src/)
 
-add_library(khiopsdriver_file_azure SHARED ${SourceList})
-target_include_directories(khiopsdriver_file_azure PRIVATE src/contrib)
+set(SharedSourceList util.hpp logging.hpp logging.cpp contrib.hpp)
+list(TRANSFORM SharedSourceList PREPEND shared/src/khiops_driver_common/)
+
+add_library(khiopsdriver_file_azure SHARED ${SourceList} ${SharedSourceList})
+target_include_directories(khiopsdriver_file_azure PRIVATE shared/src)
 target_link_options(khiopsdriver_file_azure PRIVATE $<$<CONFIG:RELEASE>:-s>) # stripping
 set_target_properties(khiopsdriver_file_azure PROPERTIES SOVERSION ${PROJECT_VERSION_MAJOR} VERSION ${PROJECT_VERSION})
 if(WIN32)

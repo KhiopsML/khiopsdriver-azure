@@ -14,7 +14,8 @@ in this file, to basic C types.
 #include "driver.hpp"
 #include "logging.hpp"
 #include "returnval.hpp"
-#include "util.hpp"
+#include "khiops_driver_common/logging.hpp"
+#include "khiops_driver_common/util.hpp"
 #include <memory>
 #include <spdlog/spdlog.h>
 
@@ -23,6 +24,7 @@ in this file, to basic C types.
 
 using namespace std;
 using namespace az;
+using namespace khiops_driver_common;
 // Use this function to get the logger that should be used to log anything.
 using az::logging::getLogger;
 
@@ -406,7 +408,7 @@ int driver_fseek(void *handle, long long int offset, int whence) {
 const char *driver_getlasterror() {
   try {
     getLogger()->info("Retrieving last error...");
-    const string &logstring = ::az::logging::getLastError();
+    const string &logstring = khiops_driver_common::logging::getLastError();
     if (logstring.empty()) {
       return nullptr;
     }

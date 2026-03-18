@@ -5,7 +5,9 @@
 #include "servicerequest.hpp"
 #include "sharepathresolve.hpp"
 #include "storagetype.hpp"
-#include "util.hpp"
+#include "connstr.hpp"
+#include "logging.hpp"
+#include "khiops_driver_common/util.hpp"
 #include <algorithm>
 #include <azure/core.hpp>
 #include <azure/core/diagnostics/logger.hpp>
@@ -25,7 +27,7 @@
 #include <unordered_map>
 
 using namespace std;
-using namespace az::util;
+using namespace khiops_driver_common::util;
 using az::logging::getLogger;
 
 namespace az {

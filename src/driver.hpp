@@ -11,7 +11,7 @@ class Driver;
 
 #include "azureplugin.hpp"
 #include "filestream.hpp"
-#include "util.hpp"
+#include "khiops_driver_common/util.hpp"
 #include <azure/storage/blobs/blob_client.hpp>
 #include <azure/storage/blobs/blob_container_client.hpp>
 #include <azure/storage/blobs/blob_service_client.hpp>
