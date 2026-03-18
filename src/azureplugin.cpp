@@ -131,26 +131,26 @@ const char *driver_getScheme() {
 int driver_isReadOnly() {
   try {
     getLogger()->info("Retrieving read-only state...");
-    return nFalse;
+    return kFalse;
   } catch (const exception& exc) {
     getLogger()->error(ERR_EXC_RAISED, exc.what());
   } catch (...) {
     getLogger()->error(ERR_NONEXC_RAISED);
   }
-  return nGenericFailure;
+  return kFailure;
 }
 
 int driver_connect() {
   try {
     getLogger()->info("Connecting...");
     driver = make_unique<Driver>(GetSystemPreferredBufferSize());
-    return nSuccess;
+    return kOtherSuccess;
   } catch (const exception& exc) {
     getLogger()->error(ERR_EXC_RAISED, exc.what());
   } catch (...) {
     getLogger()->error(ERR_NONEXC_RAISED);
   }
-  return nFailure;
+  return kOtherFailure;
 }
 
 int driver_disconnect() {
@@ -158,28 +158,28 @@ int driver_disconnect() {
     getLogger()->info("Disconnecting...");
     if (!IsConnected()) {
       getLogger()->error("Cannot disconnect when already disconnected.");
-      return nFailure;
+      return kOtherFailure;
     }
     driver = nullptr;
-    return nSuccess;
+    return kOtherSuccess;
   } catch (const exception& exc) {
     getLogger()->error(ERR_EXC_RAISED, exc.what());
   } catch (...) {
     getLogger()->error(ERR_NONEXC_RAISED);
   }
-  return nFailure;
+  return kOtherFailure;
 }
 
 int driver_isConnected() {
   try {
     getLogger()->info("Retrieving connection state...");
-    return IsConnected() ? nTrue : nFalse;
+    return IsConnected() ? kTrue : kFalse;
   } catch (const exception& exc) {
     getLogger()->error(ERR_EXC_RAISED, exc.what());
   } catch (...) {
     getLogger()->error(ERR_NONEXC_RAISED);
   }
-  return nGenericFailure;
+  return kFailure;
 }
 
 long long int driver_getSystemPreferredBufferSize() {
@@ -191,7 +191,7 @@ long long int driver_getSystemPreferredBufferSize() {
   } catch (...) {
     getLogger()->error(ERR_NONEXC_RAISED);
   }
-  return nGenericFailure;
+  return kFailure;
 }
 
 int driver_fileExists(const char *sUrl) {
@@ -199,23 +199,23 @@ int driver_fileExists(const char *sUrl) {
     getLogger()->info("Checking if file exists at URL {}...", sUrl);
     if (!IsConnected()) {
       getLogger()->error("Cannot check if file exists when disconnected.");
-      return nGenericFailure;
+      return kFailure;
     }
     if (!sUrl) {
       getLogger()->error(ERR_NULL_ARG, __func__, STRINGIFY(sUrl));
-      return nGenericFailure;
+      return kFailure;
     }
     bool result;
     if (driver->Exists(&result, sUrl)) {
-      return nGenericFailure;
+      return kFailure;
     }
-    return result ? nTrue : nFalse;
+    return result ? kTrue : kFalse;
   } catch (const exception& exc) {
     getLogger()->error(ERR_EXC_RAISED, exc.what());
   } catch (...) {
     getLogger()->error(ERR_NONEXC_RAISED);
   }
-  return nGenericFailure;
+  return kFailure;
 }
 
 int driver_dirExists(const char *sUrl) {
@@ -223,23 +223,23 @@ int driver_dirExists(const char *sUrl) {
     getLogger()->info("Checking if directory exists at URL {}...", sUrl);
     if (!IsConnected()) {
       getLogger()->error("Cannot check if directory exists when disconnected.");
-      return nGenericFailure;
+      return kFailure;
     }
     if (!sUrl) {
       getLogger()->error(ERR_NULL_ARG, __func__, STRINGIFY(sUrl));
-      return nGenericFailure;
+      return kFailure;
     }
     bool result;
     if (driver->Exists(&result, sUrl)) {
-      return nGenericFailure;
+      return kFailure;
     }
-    return result ? nTrue : nFalse;
+    return result ? kTrue : kFalse;
   } catch (const exception& exc) {
     getLogger()->error(ERR_EXC_RAISED, exc.what());
   } catch (...) {
     getLogger()->error(ERR_NONEXC_RAISED);
   }
-  return nGenericFailure;
+  return kFailure;
 }
 
 long long int driver_getFileSize(const char *sUrl) {
@@ -247,15 +247,15 @@ long long int driver_getFileSize(const char *sUrl) {
     getLogger()->info("Retrieving size of file at URL {}...", sUrl);
     if (!IsConnected()) {
       getLogger()->error("Cannot get object size when disconnected.");
-      return nSizeFailure;
+      return kFailure;
     }
     if (!sUrl) {
       getLogger()->error(ERR_NULL_ARG, __func__, STRINGIFY(sUrl));
-      return nSizeFailure;
+      return kFailure;
     }
     size_t result;
     if (driver->GetSize(&result, sUrl)) {
-      return nSizeFailure;
+      return kFailure;
     }
     return static_cast<long long int>(result);
   } catch (const exception& exc) {
@@ -263,7 +263,7 @@ long long int driver_getFileSize(const char *sUrl) {
   } catch (...) {
     getLogger()->error(ERR_NONEXC_RAISED);
   }
-  return nSizeFailure;
+  return kFailure;
 }
 
 void *driver_fopen(const char *sUrl, char mode) {
@@ -312,22 +312,22 @@ int driver_fclose(void *handle) {
     getLogger()->info("Closing file with handle {}...", handle);
     if (!IsConnected()) {
       getLogger()->error("Cannot close file when disconnected.");
-      return nCloseFailure;
+      return kFailure;
     }
     if (!handle) {
       getLogger()->error(ERR_NULL_ARG, __func__, STRINGIFY(handle));
-      return nCloseFailure;
+      return kFailure;
     }
     if (driver->Close(handle)) {
-      return nCloseFailure;
+      return kFailure;
     }
-    return nCloseSuccess;
+    return kSuccess;
   } catch (const exception& exc) {
     getLogger()->error(ERR_EXC_RAISED, exc.what());
   } catch (...) {
     getLogger()->error(ERR_NONEXC_RAISED);
   }
-  return nCloseFailure;
+  return kFailure;
 }
 
 long long int driver_fread(void *dest, size_t size, size_t count,
@@ -337,22 +337,22 @@ long long int driver_fread(void *dest, size_t size, size_t count,
                       size, count, handle, dest);
     if (!IsConnected()) {
       getLogger()->error("Cannot read from file when disconnected.");
-      return nReadFailure;
+      return kFailure;
     }
     if (!dest) {
       getLogger()->error(ERR_NULL_ARG, __func__, STRINGIFY(dest));
-      return nReadFailure;
+      return kFailure;
     }
     if (!handle) {
       getLogger()->error(ERR_NULL_ARG, __func__, STRINGIFY(handle));
-      return nReadFailure;
+      return kFailure;
     }
     size_t nRead;
     if (driver->Read(&nRead, handle, dest, size, count)) {
-      return nReadFailure;
+      return kFailure;
     }
     if (nRead == 0ULL) {
-      return nReadFailure;
+      return kFailure;
     }
     return static_cast<long long int>(nRead);
   } catch (const exception& exc) {
@@ -360,7 +360,7 @@ long long int driver_fread(void *dest, size_t size, size_t count,
   } catch (...) {
     getLogger()->error(ERR_NONEXC_RAISED);
   }
-  return nReadFailure;
+  return kFailure;
 }
 
 int driver_fseek(void *handle, long long int offset, int whence) {
@@ -370,11 +370,11 @@ int driver_fseek(void *handle, long long int offset, int whence) {
         whence, handle);
     if (!IsConnected()) {
       getLogger()->error("Cannot seek into file when disconnected.");
-      return nSeekFailure;
+      return kFailure;
     }
     if (!handle) {
       getLogger()->error(ERR_NULL_ARG, __func__, STRINGIFY(handle));
-      return nSeekFailure;
+      return kFailure;
     }
     int nOrigin;
     switch (whence) {
@@ -389,18 +389,18 @@ int driver_fseek(void *handle, long long int offset, int whence) {
       break;
     default:
       getLogger()->error(ERR_INVALID_SEEK_ORIGIN, whence);
-      return nSeekFailure;
+      return kFailure;
     }
     if (driver->Seek(handle, offset, nOrigin)) {
-      return nSeekFailure;
+      return kFailure;
     }
-    return nSeekSuccess;
+    return kSuccess;
   } catch (const exception& exc) {
     getLogger()->error(ERR_EXC_RAISED, exc.what());
   } catch (...) {
     getLogger()->error(ERR_NONEXC_RAISED);
   }
-  return nSeekFailure;
+  return kFailure;
 }
 
 const char *driver_getlasterror() {
@@ -426,19 +426,19 @@ long long int driver_fwrite(const void *source, size_t size, size_t count,
                       size, count, source, handle);
     if (!IsConnected()) {
       getLogger()->error("Cannot write to file when disconnected.");
-      return nWriteFailure;
+      return kFailure;
     }
     if (!source) {
       getLogger()->error(ERR_NULL_ARG, __func__, STRINGIFY(source));
-      return nWriteFailure;
+      return kFailure;
     }
     if (!handle) {
       getLogger()->error(ERR_NULL_ARG, __func__, STRINGIFY(handle));
-      return nWriteFailure;
+      return kFailure;
     }
     size_t nWritten;
     if (driver->Write(&nWritten, handle, source, size, count)) {
-      return nWriteFailure;
+      return kFailure;
     }
     return static_cast<long long int>(nWritten);
   } catch (const exception& exc) {
@@ -446,7 +446,7 @@ long long int driver_fwrite(const void *source, size_t size, size_t count,
   } catch (...) {
     getLogger()->error(ERR_NONEXC_RAISED);
   }
-  return nWriteFailure;
+  return kFailure;
 }
 
 int driver_fflush(void *handle) {
@@ -454,22 +454,22 @@ int driver_fflush(void *handle) {
     getLogger()->info("Flushing file with handle {}...", handle);
     if (!IsConnected()) {
       getLogger()->error("Cannot flush file when disconnected.");
-      return nFlushFailure;
+      return kFailure;
     }
     if (!handle) {
       getLogger()->error(ERR_NULL_ARG, __func__, STRINGIFY(handle));
-      return nFlushFailure;
+      return kFailure;
     }
     if (driver->Flush(handle)) {
-      return nFlushFailure;
+      return kFailure;
     }
-    return nFlushSuccess;
+    return kSuccess;
   } catch (const exception& exc) {
     getLogger()->error(ERR_EXC_RAISED, exc.what());
   } catch (...) {
     getLogger()->error(ERR_NONEXC_RAISED);
   }
-  return nFlushFailure;
+  return kFailure;
 }
 
 int driver_remove(const char *sUrl) {
@@ -477,22 +477,22 @@ int driver_remove(const char *sUrl) {
     getLogger()->info("Removing file at URL {}...", sUrl);
     if (!IsConnected()) {
       getLogger()->error("Cannot remove file when disconnected.");
-      return nFailure;
+      return kOtherFailure;
     }
     if (!sUrl) {
       getLogger()->error(ERR_NULL_ARG, __func__, STRINGIFY(sUrl));
-      return nFailure;
+      return kOtherFailure;
     }
     if (driver->Remove(sUrl)) {
-      return nFailure;
+      return kOtherFailure;
     }
-    return nSuccess;
+    return kOtherSuccess;
   } catch (const exception& exc) {
     getLogger()->error(ERR_EXC_RAISED, exc.what());
   } catch (...) {
     getLogger()->error(ERR_NONEXC_RAISED);
   }
-  return nFailure;
+  return kOtherFailure;
 }
 
 int driver_mkdir(const char *sUrl) {
@@ -500,22 +500,22 @@ int driver_mkdir(const char *sUrl) {
     getLogger()->info("Creating directory at URL {}...", sUrl);
     if (!IsConnected()) {
       getLogger()->error("Cannot make a directory when disconnected.");
-      return nFailure;
+      return kOtherFailure;
     }
     if (!sUrl) {
       getLogger()->error(ERR_NULL_ARG, __func__, STRINGIFY(sUrl));
-      return nFailure;
+      return kOtherFailure;
     }
     if (driver->MkDir(sUrl)) {
-      return nFailure;
+      return kOtherFailure;
     }
-    return nSuccess;
+    return kOtherSuccess;
   } catch (const exception& exc) {
     getLogger()->error(ERR_EXC_RAISED, exc.what());
   } catch (...) {
     getLogger()->error(ERR_NONEXC_RAISED);
   }
-  return nFailure;
+  return kOtherFailure;
 }
 
 int driver_rmdir(const char *sUrl) {
@@ -523,22 +523,22 @@ int driver_rmdir(const char *sUrl) {
     getLogger()->info("Removing directory at URL {}...", sUrl);
     if (!IsConnected()) {
       getLogger()->error("Cannot remove directory when disconnected.");
-      return nFailure;
+      return kOtherFailure;
     }
     if (!sUrl) {
       getLogger()->error(ERR_NULL_ARG, __func__, STRINGIFY(sUrl));
-      return nFailure;
+      return kOtherFailure;
     }
     if (driver->RmDir(sUrl)) {
-      return nFailure;
+      return kOtherFailure;
     }
-    return nSuccess;
+    return kOtherSuccess;
   } catch (const exception& exc) {
     getLogger()->error(ERR_EXC_RAISED, exc.what());
   } catch (...) {
     getLogger()->error(ERR_NONEXC_RAISED);
   }
-  return nFailure;
+  return kOtherFailure;
 }
 
 long long int driver_diskFreeSpace(const char *sUrl) {
@@ -546,15 +546,15 @@ long long int driver_diskFreeSpace(const char *sUrl) {
     getLogger()->info("Retrieving free disk space at URL {}...", sUrl);
     if (!IsConnected()) {
       getLogger()->error("Cannot get free disk space when disconnected.");
-      return nFreeDiskSpaceFailure;
+      return kFailure;
     }
     if (!sUrl) {
       getLogger()->error(ERR_NULL_ARG, __func__, STRINGIFY(sUrl));
-      return nFreeDiskSpaceFailure;
+      return kFailure;
     }
     size_t nResult;
     if (driver->GetFreeDiskSpace(&nResult)) {
-      return nFreeDiskSpaceFailure;
+      return kFailure;
     }
     return nResult;
   } catch (const exception& exc) {
@@ -562,7 +562,7 @@ long long int driver_diskFreeSpace(const char *sUrl) {
   } catch (...) {
     getLogger()->error(ERR_NONEXC_RAISED);
   }
-  return nFreeDiskSpaceFailure;
+  return kFailure;
 }
 
 int driver_copyToLocal(const char *sSourceUrl, const char *sDestUrl) {
@@ -571,26 +571,26 @@ int driver_copyToLocal(const char *sSourceUrl, const char *sDestUrl) {
                       sDestUrl);
     if (!IsConnected()) {
       getLogger()->error("Cannot copy to a local file when disconnected.");
-      return nFailure;
+      return kOtherFailure;
     }
     if (!sSourceUrl) {
       getLogger()->error(ERR_NULL_ARG, __func__, STRINGIFY(sSourceUrl));
-      return nFailure;
+      return kOtherFailure;
     }
     if (!sDestUrl) {
       getLogger()->error(ERR_NULL_ARG, __func__, STRINGIFY(sDestUrl));
-      return nFailure;
+      return kOtherFailure;
     }
     if (driver->CopyTo(sSourceUrl, sDestUrl)) {
-      return nFailure;
+      return kOtherFailure;
     }
-    return nSuccess;
+    return kOtherSuccess;
   } catch (const exception& exc) {
     getLogger()->error(ERR_EXC_RAISED, exc.what());
   } catch (...) {
     getLogger()->error(ERR_NONEXC_RAISED);
   }
-  return nFailure;
+  return kOtherFailure;
 }
 
 int driver_copyFromLocal(const char *sSourceUrl, const char *sDestUrl) {
@@ -599,26 +599,26 @@ int driver_copyFromLocal(const char *sSourceUrl, const char *sDestUrl) {
                       sDestUrl);
     if (!IsConnected()) {
       getLogger()->error("Cannot copy from a local file when disconnected.");
-      return nFailure;
+      return kOtherFailure;
     }
     if (!sSourceUrl) {
       getLogger()->error(ERR_NULL_ARG, __func__, STRINGIFY(sSourceUrl));
-      return nFailure;
+      return kOtherFailure;
     }
     if (!sDestUrl) {
       getLogger()->error(ERR_NULL_ARG, __func__, STRINGIFY(sDestUrl));
-      return nFailure;
+      return kOtherFailure;
     }
     if (driver->CopyFrom(sDestUrl, sSourceUrl)) {
-      return nFailure;
+      return kOtherFailure;
     }
-    return nSuccess;
+    return kOtherSuccess;
   } catch (const exception& exc) {
     getLogger()->error(ERR_EXC_RAISED, exc.what());
   } catch (...) {
     getLogger()->error(ERR_NONEXC_RAISED);
   }
-  return nFailure;
+  return kOtherFailure;
 }
 
 int driver_concat(const char *destfilename, const char **sourcefilenames,
@@ -631,26 +631,26 @@ int driver_concat(const char *destfilename, const char **sourcefilenames,
     }
     if (!IsConnected()) {
       getLogger()->error("Cannot concatenate objects when disconnected.");
-      return nFailure;
+      return kOtherFailure;
     }
     if (!destfilename) {
       getLogger()->error(ERR_NULL_ARG, __func__, STRINGIFY(destfilename));
-      return nFailure;
+      return kOtherFailure;
     }
     if (!sourcefilenames) {
       getLogger()->error(ERR_NULL_ARG, __func__, STRINGIFY(sourcefilenames));
-      return nFailure;
+      return kOtherFailure;
     }
     if (driver->Concatenate(
             vector<string>(sourcefilenames, sourcefilenames + sourcefilecount),
             destfilename)) {
-      return nFailure;
+      return kOtherFailure;
     }
-    return nSuccess;
+    return kOtherSuccess;
   } catch (const exception& exc) {
     getLogger()->error(ERR_EXC_RAISED, exc.what());
   } catch (...) {
     getLogger()->error(ERR_NONEXC_RAISED);
   }
-  return nFailure;
+  return kOtherFailure;
 }
