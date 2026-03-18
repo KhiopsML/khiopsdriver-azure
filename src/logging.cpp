@@ -1,6 +1,5 @@
 #include "logging.hpp"
 #include "util.hpp"
-#include <azure/core/diagnostics/logger.hpp>
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/ostream_sink.h>
 #include <spdlog/sinks/stdout_sinks.h>
@@ -54,13 +53,6 @@ public:
     logger->set_level(
         spdlog::level::trace); // Let the sinks choose the log level.
     spdlog::register_logger(logger);
-
-    /* Disable Azure SDK logging.
-       Note: This will not prevent Azure CLI, called as a subprocess by the
-       Azure SDK, to log errors such as "Please run 'az login' to authenticate".
-    */
-    Azure::Core::Diagnostics::Logger::SetListener(
-        [](Azure::Core::Diagnostics::Logger::Level, string const &) {});
   }
 
   ~LogInitializer() {

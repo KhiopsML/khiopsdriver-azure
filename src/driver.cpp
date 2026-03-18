@@ -8,6 +8,7 @@
 #include "util.hpp"
 #include <algorithm>
 #include <azure/core.hpp>
+#include <azure/core/diagnostics/logger.hpp>
 #include <azure/identity.hpp>
 #include <azure/storage/blobs/blob_options.hpp>
 #include <azure/storage/blobs/block_blob_client.hpp>
@@ -29,7 +30,14 @@ using az::logging::getLogger;
 
 namespace az {
 
-Driver::Driver(size_t nPreferredBufferSize) : nPreferredBufferSize(nPreferredBufferSize) {}
+Driver::Driver(size_t nPreferredBufferSize) : nPreferredBufferSize(nPreferredBufferSize) {
+  /* Disable Azure SDK logging.
+      Note: This will not prevent Azure CLI, called as a subprocess by the
+      Azure SDK, to log errors such as "Please run 'az login' to authenticate".
+  */
+  Azure::Core::Diagnostics::Logger::SetListener(
+      [](Azure::Core::Diagnostics::Logger::Level, string const &) {});
+}
 
 Driver::~Driver() {}
 
