@@ -1,4 +1,4 @@
-#include "../../src/util.hpp"
+#include "../../src/connstr.hpp"
 #include "fixture_connstring.hpp"
 #include <azure/core/url.hpp>
 #include <gtest/gtest.h>
@@ -60,11 +60,11 @@ INSTANTIATE_TEST_SUITE_P(EmulatedAndNotEmulatedStorage, ConnectionStringTest,
                          testing::Values(false, true));
 
 TEST_P(ConnectionStringTest, ParseValidConnString) {
-  az::util::connstr::ConnectionString actual;
-  ASSERT_EQ(az::util::connstr::ConnectionString::ParseConnectionString(
+  az::connstr::ConnectionString actual;
+  ASSERT_EQ(az::connstr::ConnectionString::ParseConnectionString(
                 &actual, sValidConnString, bIsEmulatedStorage),
             0);
-  az::util::connstr::ConnectionString expected(
+  az::connstr::ConnectionString expected(
       "devstoreaccount1",
       "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/"
       "K1SZFPTOtr/KBHBeksoGMGw==");
@@ -74,12 +74,12 @@ TEST_P(ConnectionStringTest, ParseValidConnString) {
 }
 
 TEST_P(ConnectionStringTest, ParseValidConnStringWithoutTrailingSemicolon) {
-  az::util::connstr::ConnectionString actual;
-  ASSERT_EQ(az::util::connstr::ConnectionString::ParseConnectionString(
+  az::connstr::ConnectionString actual;
+  ASSERT_EQ(az::connstr::ConnectionString::ParseConnectionString(
                 &actual, sValidConnStringWithoutTrailingSemicolon,
                 bIsEmulatedStorage),
             0);
-  az::util::connstr::ConnectionString expected(
+  az::connstr::ConnectionString expected(
       "devstoreaccount1",
       "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/"
       "K1SZFPTOtr/KBHBeksoGMGw==");
@@ -95,11 +95,11 @@ const char *sValidAzuriteConnString =
     "devstoreaccount1;QueueEndpoint=http://localhost:10001/devstoreaccount1;";
 
 TEST_P(ConnectionStringTest, ParseAzuriteValidConnString) {
-  az::util::connstr::ConnectionString actual;
-  ASSERT_EQ(az::util::connstr::ConnectionString::ParseConnectionString(
+  az::connstr::ConnectionString actual;
+  ASSERT_EQ(az::connstr::ConnectionString::ParseConnectionString(
                 &actual, sValidAzuriteConnString, bIsEmulatedStorage),
             0);
-  az::util::connstr::ConnectionString expected(
+  az::connstr::ConnectionString expected(
       "devstoreaccount1",
       "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/"
       "K1SZFPTOtr/KBHBeksoGMGw==");
@@ -109,38 +109,38 @@ TEST_P(ConnectionStringTest, ParseAzuriteValidConnString) {
 }
 
 TEST_P(ConnectionStringTest, ParseIllFormedConnString) {
-  az::util::connstr::ConnectionString actual;
-  ASSERT_EQ(az::util::connstr::ConnectionString::ParseConnectionString(
+  az::connstr::ConnectionString actual;
+  ASSERT_EQ(az::connstr::ConnectionString::ParseConnectionString(
                 &actual, sIllFormedConnString, bIsEmulatedStorage),
             -1);
 }
 
 TEST_P(ConnectionStringTest, ParseConnStringMissingAccountName) {
-  az::util::connstr::ConnectionString actual;
-  ASSERT_EQ(az::util::connstr::ConnectionString::ParseConnectionString(
+  az::connstr::ConnectionString actual;
+  ASSERT_EQ(az::connstr::ConnectionString::ParseConnectionString(
                 &actual, sConnStringMissingAccountName, bIsEmulatedStorage),
             -1);
 }
 
 TEST_P(ConnectionStringTest, ParseConnStringMissingAccountKey) {
-  az::util::connstr::ConnectionString actual;
-  ASSERT_EQ(az::util::connstr::ConnectionString::ParseConnectionString(
+  az::connstr::ConnectionString actual;
+  ASSERT_EQ(az::connstr::ConnectionString::ParseConnectionString(
                 &actual, sConnStringMissingAccountKey, bIsEmulatedStorage),
             -1);
 }
 
 TEST(ConnectionStringTest, ParseConnStringMissingBlobEndpoint) {
-  az::util::connstr::ConnectionString actual;
-  az::util::connstr::ConnectionString expected(
+  az::connstr::ConnectionString actual;
+  az::connstr::ConnectionString expected(
       "devstoreaccount1",
       "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/"
       "K1SZFPTOtr/KBHBeksoGMGw==");
-  ASSERT_EQ(az::util::connstr::ConnectionString::ParseConnectionString(
+  ASSERT_EQ(az::connstr::ConnectionString::ParseConnectionString(
                 &actual, sConnStringMissingBlobEndpoint, false),
             0);
   ASSERT_EQ(actual, expected);
 
-  ASSERT_EQ(az::util::connstr::ConnectionString::ParseConnectionString(
+  ASSERT_EQ(az::connstr::ConnectionString::ParseConnectionString(
                 &actual, sConnStringMissingBlobEndpoint, true),
             -1);
 }

@@ -121,9 +121,9 @@ target_compile_options(
 
 option(BUILD_TESTS "Build test programs" OFF)
 if(BUILD_TESTS)
-  add_library(khiopsdriver_file_azure_testing STATIC ${SourceList})
+  add_library(khiopsdriver_file_azure_testing STATIC ${SourceList} ${SharedSourceList})
 
-  target_include_directories(khiopsdriver_file_azure_testing PRIVATE src/contrib)
+  target_include_directories(khiopsdriver_file_azure_testing PRIVATE shared/src)
   target_link_options(khiopsdriver_file_azure_testing PRIVATE $<$<CONFIG:RELEASE>:-s>) # stripping
   if(WIN32)
     target_link_libraries(
