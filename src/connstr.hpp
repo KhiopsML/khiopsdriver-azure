@@ -17,11 +17,15 @@ struct ConnectionString {
   std::unique_ptr<Azure::Core::Url> fileEndpointPtr; // Optional
 
   ConnectionString();
-  ConnectionString(const std::string &sAccountName, const std::string &sAccountKey);
+  ConnectionString(const std::string &sAccountName,
+                   const std::string &sAccountKey);
   ConnectionString(ConnectionString &&other);
   ConnectionString &operator=(ConnectionString &&other);
-  static int ParseConnectionString(ConnectionString *result, const std::string &sConnectionString, bool bIsEmulatedStorage);
-  int CheckAgainstUrl(const Azure::Core::Url &url, StorageType storageType) const;
+  static int ParseConnectionString(ConnectionString *result,
+                                   const std::string &sConnectionString,
+                                   bool bIsEmulatedStorage);
+  int CheckAgainstUrl(const Azure::Core::Url &url,
+                      StorageType storageType) const;
   friend bool operator==(const ConnectionString &a, const ConnectionString &b);
 };
 

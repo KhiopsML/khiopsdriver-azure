@@ -1,6 +1,6 @@
 #include "fragmentedfile.hpp"
-#include "logging.hpp"
 #include "khiops_driver_common/util.hpp"
+#include "logging.hpp"
 #include <algorithm>
 #include <azure/core/http/http.hpp>
 #include <azure/storage/blobs/rest_client.hpp>
@@ -131,7 +131,8 @@ FragmentedFile::FragmentedFile(const vector<ObjectClient> &clients)
       fragments[i].nUserOffset = nSize;
       nSize += fragments[i].nContentSize;
       if (i != nFreePosition)
-        fragments[nFreePosition] = std::move(fragments[i]); // Shift the fragment.
+        fragments[nFreePosition] =
+            std::move(fragments[i]); // Shift the fragment.
       nFreePosition++;
     }
   }
@@ -169,9 +170,7 @@ int FragmentedFile::GetFragmentIndexOfUserOffset(size_t *nFragmentIndex,
   return 0;
 }
 
-size_t FragmentedFile::GetNumberOfFragments() const {
-  return fragments.size();
-}
+size_t FragmentedFile::GetNumberOfFragments() const { return fragments.size(); }
 
 static string ReadHeaderFromBodyStream(unique_ptr<BodyStream> &&bodyStream) {
   string sHeader;

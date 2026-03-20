@@ -1,29 +1,30 @@
 #include "connstr.hpp"
+#include "khiops_driver_common/util.hpp"
+#include "logging.hpp"
 #include <regex>
 #include <unordered_map>
-#include "logging.hpp"
-#include "khiops_driver_common/util.hpp"
 
 using namespace std;
 using namespace khiops_driver_common::util;
 using az::logging::getLogger;
 
-
 namespace az {
 namespace connstr {
 
-ConnectionString::ConnectionString() : sAccountName(""), sAccountKey(""), blobEndpointPtr(nullptr), fileEndpointPtr(nullptr) {}
+ConnectionString::ConnectionString()
+    : sAccountName(""), sAccountKey(""), blobEndpointPtr(nullptr),
+      fileEndpointPtr(nullptr) {}
 
-ConnectionString::ConnectionString(const string &sAccountName, const string &sAccountKey):
-  sAccountName(sAccountName), sAccountKey(sAccountKey), blobEndpointPtr(nullptr), fileEndpointPtr(nullptr)
-{}
+ConnectionString::ConnectionString(const string &sAccountName,
+                                   const string &sAccountKey)
+    : sAccountName(sAccountName), sAccountKey(sAccountKey),
+      blobEndpointPtr(nullptr), fileEndpointPtr(nullptr) {}
 
-ConnectionString::ConnectionString(ConnectionString &&other):
-  sAccountName(std::move(other.sAccountName)),
-  sAccountKey(std::move(other.sAccountKey)),
-  blobEndpointPtr(std::move(other.blobEndpointPtr)),
-  fileEndpointPtr(std::move(other.fileEndpointPtr))
-{}
+ConnectionString::ConnectionString(ConnectionString &&other)
+    : sAccountName(std::move(other.sAccountName)),
+      sAccountKey(std::move(other.sAccountKey)),
+      blobEndpointPtr(std::move(other.blobEndpointPtr)),
+      fileEndpointPtr(std::move(other.fileEndpointPtr)) {}
 
 ConnectionString &ConnectionString::operator=(ConnectionString &&other) {
   sAccountName = std::move(other.sAccountName);
@@ -33,7 +34,9 @@ ConnectionString &ConnectionString::operator=(ConnectionString &&other) {
   return *this;
 }
 
-int ConnectionString::ParseConnectionString(ConnectionString *result, const string &sConnectionString, bool bIsEmulatedStorage) {
+int ConnectionString::ParseConnectionString(ConnectionString *result,
+                                            const string &sConnectionString,
+                                            bool bIsEmulatedStorage) {
   smatch match;
   if (!regex_match(sConnectionString, match,
                    regex("(?:[^=]+=[^;]+;)*[^=]+=[^;]+;?"))) {
@@ -65,7 +68,8 @@ int ConnectionString::ParseConnectionString(ConnectionString *result, const stri
     return -1;
   }
 
-  ConnectionString connectionString(accountNameIt->second, accountKeyIt->second);
+  ConnectionString connectionString(accountNameIt->second,
+                                    accountKeyIt->second);
 
   auto blobEndpointIt =
       kvPairs.find("BlobEndpoint"); // Optional for read Azure cloud storage,
@@ -106,14 +110,14 @@ int ConnectionString::CheckAgainstUrl(const Azure::Core::Url &url,
   // present, check them
   if (blobEndpointPtr && storageType == BLOB &&
       !str::StartsWith(url.GetAbsoluteUrl(),
-                             blobEndpointPtr->GetAbsoluteUrl())) {
+                       blobEndpointPtr->GetAbsoluteUrl())) {
     getLogger()->error("URL {} does not start with expected blob endpoint {}.",
                        url.GetAbsoluteUrl(), blobEndpointPtr->GetAbsoluteUrl());
     return -1;
   }
   if (fileEndpointPtr && storageType == SHARE &&
       !str::StartsWith(url.GetAbsoluteUrl(),
-                             fileEndpointPtr->GetAbsoluteUrl())) {
+                       fileEndpointPtr->GetAbsoluteUrl())) {
     getLogger()->error("URL {} does not start with expected file endpoint {}.",
                        url.GetAbsoluteUrl(), fileEndpointPtr->GetAbsoluteUrl());
     return -1;

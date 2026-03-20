@@ -1,13 +1,12 @@
 #include "driver.hpp"
 #include "auth.hpp"
 #include "blobpathresolve.hpp"
+#include "connstr.hpp"
+#include "khiops_driver_common/util.hpp"
 #include "logging.hpp"
 #include "servicerequest.hpp"
 #include "sharepathresolve.hpp"
 #include "storagetype.hpp"
-#include "connstr.hpp"
-#include "logging.hpp"
-#include "khiops_driver_common/util.hpp"
 #include <algorithm>
 #include <azure/core.hpp>
 #include <azure/core/diagnostics/logger.hpp>
@@ -32,7 +31,8 @@ using az::logging::getLogger;
 
 namespace az {
 
-Driver::Driver(size_t nPreferredBufferSize) : nPreferredBufferSize(nPreferredBufferSize) {
+Driver::Driver(size_t nPreferredBufferSize)
+    : nPreferredBufferSize(nPreferredBufferSize) {
   /* Disable Azure SDK logging.
       Note: This will not prevent Azure CLI, called as a subprocess by the
       Azure SDK, to log errors such as "Please run 'az login' to authenticate".
@@ -495,12 +495,13 @@ int Driver::Concatenate(const vector<string> &inputUrls,
 
   try {
     if (output.storageType == BLOB) {
-      Azure::Storage::Blobs::BlockBlobClient destBlob = GetBlobClient(output).AsBlockBlobClient();
+      Azure::Storage::Blobs::BlockBlobClient destBlob =
+          GetBlobClient(output).AsBlockBlobClient();
       vector<string> destBlockIds;
 
       for (const ServiceRequest &input : inputs) {
         Auth sourceAuth;
-        if(BuildAuth(&sourceAuth, input)) {
+        if (BuildAuth(&sourceAuth, input)) {
           return -1;
         }
         Azure::Storage::Blobs::StageBlockFromUriOptions opts;
@@ -522,54 +523,65 @@ int Driver::Concatenate(const vector<string> &inputUrls,
       destBlob.CommitBlockList(destBlockIds);
     } else /* SHARE */ {
       Azure::Core::Http::HttpRange range;
-      getLogger()->trace("Concatenating / Output: {}", output.azureUrl.GetAbsoluteUrl());
-      Azure::Storage::Files::Shares::ShareFileClient destFile = GetFileClient(output);
+      getLogger()->trace("Concatenating / Output: {}",
+                         output.azureUrl.GetAbsoluteUrl());
+      Azure::Storage::Files::Shares::ShareFileClient destFile =
+          GetFileClient(output);
 
       unordered_map<const ServiceRequest *, int64_t> sourceSizes;
       int64_t nTotalSize = 0LL;
       for (const ServiceRequest &input : inputs) {
-        getLogger()->trace("Concatenating / Input: {}", input.azureUrl.GetAbsoluteUrl());
-        int64_t nSourceSize = GetFileClient(input).GetProperties().Value.FileSize;
+        getLogger()->trace("Concatenating / Input: {}",
+                           input.azureUrl.GetAbsoluteUrl());
+        int64_t nSourceSize =
+            GetFileClient(input).GetProperties().Value.FileSize;
         getLogger()->trace("Concatenating / Size of input: {}", nSourceSize);
         sourceSizes[&input] = nSourceSize;
         nTotalSize += nSourceSize;
       }
       destFile.Create(nTotalSize);
-      getLogger()->trace("Concatenating / Created destination file of size: {}", nTotalSize);
+      getLogger()->trace("Concatenating / Created destination file of size: {}",
+                         nTotalSize);
       int64_t nGlobalOffset = 0LL;
       for (const ServiceRequest &input : inputs) {
         int64_t nSourceSize = sourceSizes[&input];
         Auth sourceAuth;
-        if(BuildAuth(&sourceAuth, input)) {
+        if (BuildAuth(&sourceAuth, input)) {
           return -1;
         }
         Azure::Storage::Files::Shares::UploadFileRangeFromUriOptions opts;
         if (sourceAuth.HasHeader()) {
           opts.SourceAuthorization = sourceAuth.sAuthHeader;
         }
-        // See size limitation of source range: header x-ms-source-range at https://learn.microsoft.com/en-us/rest/api/storageservices/put-range-from-url .
+        // See size limitation of source range: header x-ms-source-range at
+        // https://learn.microsoft.com/en-us/rest/api/storageservices/put-range-from-url
+        // .
         constexpr int64_t MAX_SOURCE_SIZE = 4LL * 1024LL * 1024LL;
-        for (int64_t nOffsetInSource = 0LL; nOffsetInSource < nSourceSize; nOffsetInSource += MAX_SOURCE_SIZE)
-        {
-          int64_t nToUpload = min(nSourceSize - nOffsetInSource, MAX_SOURCE_SIZE);
+        for (int64_t nOffsetInSource = 0LL; nOffsetInSource < nSourceSize;
+             nOffsetInSource += MAX_SOURCE_SIZE) {
+          int64_t nToUpload =
+              min(nSourceSize - nOffsetInSource, MAX_SOURCE_SIZE);
           range = Azure::Core::Http::HttpRange{nOffsetInSource, nToUpload};
-          destFile.UploadRangeFromUri(nGlobalOffset + nOffsetInSource, sourceAuth.sUriAuth, range, opts);
+          destFile.UploadRangeFromUri(nGlobalOffset + nOffsetInSource,
+                                      sourceAuth.sUriAuth, range, opts);
         }
         nGlobalOffset += nSourceSize;
       }
     }
-  } catch (const Azure::Core::RequestFailedException& exc) {
-    getLogger()->error("Failed to upload range from URI. Details of Azure error:");
+  } catch (const Azure::Core::RequestFailedException &exc) {
+    getLogger()->error(
+        "Failed to upload range from URI. Details of Azure error:");
     getLogger()->error("  Exception message: {}", exc.what());
     getLogger()->error("  HTTP response headers:");
-    for(const auto &header : exc.RawResponse->GetHeaders()) {
-      getLogger()->error("    Header name: '{}'   Header value: '{}'", header.first, header.second);
+    for (const auto &header : exc.RawResponse->GetHeaders()) {
+      getLogger()->error("    Header name: '{}'   Header value: '{}'",
+                         header.first, header.second);
     }
     return -1;
   }
 
   for (const string &sInputUrl : inputUrls) {
-    if(Remove(sInputUrl)) {
+    if (Remove(sInputUrl)) {
       return -1;
     }
   }

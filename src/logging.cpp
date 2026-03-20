@@ -16,9 +16,12 @@ static shared_ptr<spdlog::logger> logger;
 namespace {
 struct LazyLoggerInitializer {
   LazyLoggerInitializer() {
-    loglevel = khiops_driver_common::util::env::GetEnvVarOrDefault("AZURE_DRIVER_LOGLEVEL", "off", true);
-    logfile = khiops_driver_common::util::env::GetEnvVar("AZURE_DRIVER_LOGFILE", true);
-    logger = khiops_driver_common::logging::getLogger("azdriver", loglevel, logfile, false);
+    loglevel = khiops_driver_common::util::env::GetEnvVarOrDefault(
+        "AZURE_DRIVER_LOGLEVEL", "off", true);
+    logfile = khiops_driver_common::util::env::GetEnvVar("AZURE_DRIVER_LOGFILE",
+                                                         true);
+    logger = khiops_driver_common::logging::getLogger("azdriver", loglevel,
+                                                      logfile, false);
   }
 };
 } // anonymous namespace

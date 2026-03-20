@@ -81,19 +81,28 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_BUILD_TYPE STREQUAL "Release
 endif()
 
 set(SourceList
-    azureplugin.hpp azureplugin.cpp
-    driver.hpp driver.cpp
-    servicerequest.hpp servicerequest.cpp
+    azureplugin.hpp
+    azureplugin.cpp
+    driver.hpp
+    driver.cpp
+    servicerequest.hpp
+    servicerequest.cpp
     auth.hpp
-    connstr.hpp connstr.cpp
-    logging.hpp logging.cpp
+    connstr.hpp
+    connstr.cpp
+    logging.hpp
+    logging.cpp
     returnval.hpp
     objectclient.hpp
     storagetype.hpp
-    filestream.hpp filestream.cpp
-    fragmentedfile.hpp fragmentedfile.cpp
-    blobpathresolve.hpp blobpathresolve.cpp
-    sharepathresolve.hpp sharepathresolve.cpp)
+    filestream.hpp
+    filestream.cpp
+    fragmentedfile.hpp
+    fragmentedfile.cpp
+    blobpathresolve.hpp
+    blobpathresolve.cpp
+    sharepathresolve.hpp
+    sharepathresolve.cpp)
 list(TRANSFORM SourceList PREPEND src/)
 
 set(SharedSourceList util.hpp logging.hpp logging.cpp contrib.hpp)

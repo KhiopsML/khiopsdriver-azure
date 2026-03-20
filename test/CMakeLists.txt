@@ -12,8 +12,7 @@ FetchContent_MakeAvailable(googletest)
 
 include(GoogleTest)
 
-
-########### METADATA TEST
+# ########## METADATA TEST
 
 add_executable(metadata_test test_drivermetadata.cpp ../src/azureplugin.hpp)
 
@@ -27,22 +26,16 @@ target_compile_options(
 target_compile_options(metadata_test PRIVATE $<$<AND:$<CONFIG:Debug>,$<CXX_COMPILER_ID:MSVC>>:/bigobj>)
 
 if(WIN32)
-  target_link_libraries(metadata_test PRIVATE
-    GTest::gtest GTest::gmock GTest::gmock_main
-    fmt::fmt
-    khiopsdriver_file_azure
-    bcrypt)
+  target_link_libraries(metadata_test PRIVATE GTest::gtest GTest::gmock GTest::gmock_main fmt::fmt
+                                              khiopsdriver_file_azure bcrypt)
 else()
-  target_link_libraries(metadata_test PRIVATE
-    GTest::gtest GTest::gmock GTest::gmock_main
-    fmt::fmt
-    khiopsdriver_file_azure)
+  target_link_libraries(metadata_test PRIVATE GTest::gtest GTest::gmock GTest::gmock_main fmt::fmt
+                                              khiopsdriver_file_azure)
 endif()
 
 gtest_discover_tests(metadata_test)
 
-
-########### PLUGIN TEST
+# ########## PLUGIN TEST
 add_executable(plugin_test plugin_test.cpp path_helper.cpp)
 target_include_directories(plugin_test PRIVATE ${${PROJECT_NAME}_SOURCE_DIR}/src)
 target_compile_options(
