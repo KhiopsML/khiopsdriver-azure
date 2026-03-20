@@ -3,7 +3,7 @@
 #include "blobpathresolve.hpp"
 #include "connstr.hpp"
 #include "khiops_driver_common/util.hpp"
-#include "logging.hpp"
+#include "khiops_driver_common/logging.hpp"
 #include "servicerequest.hpp"
 #include "sharepathresolve.hpp"
 #include "storagetype.hpp"
@@ -27,7 +27,7 @@
 
 using namespace std;
 using namespace khiops_driver_common::util;
-using az::logging::getLogger;
+using khiops_driver_common::logging::getLogger;
 
 namespace az {
 

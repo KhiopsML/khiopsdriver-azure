@@ -1,9 +1,9 @@
 #include "servicerequest.hpp"
-#include "logging.hpp"
+#include "khiops_driver_common/logging.hpp"
 #include <spdlog/spdlog.h>
 
 using namespace std;
-using az::logging::getLogger;
+using khiops_driver_common::logging::getLogger;
 
 namespace az {
 ServiceRequest::ServiceRequest(

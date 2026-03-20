@@ -10,7 +10,7 @@ merely URL strings. Thus we must be correctly authenticated for the sources.
 
 #pragma once
 
-#include "logging.hpp"
+#include "khiops_driver_common/logging.hpp"
 #include "servicerequest.hpp"
 #include <azure/core/credentials/credentials.hpp>
 #include <azure/core/datetime.hpp>
@@ -33,13 +33,13 @@ struct Auth {
 };
 
 static int BuildAuth(Auth *result, const ServiceRequest &request) {
-  logging::getLogger()->debug("Building authentication object...");
-  logging::getLogger()->debug("  Using connection string: {}",
+  khiops_driver_common::logging::getLogger()->debug("Building authentication object...");
+  khiops_driver_common::logging::getLogger()->debug("  Using connection string: {}",
                               request.bUsingConnectionString ? "true"
                                                              : "false");
-  logging::getLogger()->debug("  Storage type: {}",
+  khiops_driver_common::logging::getLogger()->debug("  Storage type: {}",
                               request.storageType == BLOB ? "BLOB" : "FILE");
-  logging::getLogger()->debug("  URL: {}", request.azureUrl.GetAbsoluteUrl());
+  khiops_driver_common::logging::getLogger()->debug("  URL: {}", request.azureUrl.GetAbsoluteUrl());
   if (request.bUsingConnectionString) {
     std::string sToken;
     if (request.storageType == BLOB) {
@@ -52,17 +52,17 @@ static int BuildAuth(Auth *result, const ServiceRequest &request) {
       sasbuilder.ExpiresOn =
           Azure::DateTime::clock::now() + std::chrono::hours(2);
       sasbuilder.SetPermissions(Azure::Storage::Sas::BlobSasPermissions::Read);
-      logging::getLogger()->debug("  BLOB SAS builder:");
-      logging::getLogger()->debug("    BLOB container name: {}",
+      khiops_driver_common::logging::getLogger()->debug("  BLOB SAS builder:");
+      khiops_driver_common::logging::getLogger()->debug("    BLOB container name: {}",
                                   sasbuilder.BlobContainerName);
-      logging::getLogger()->debug("    BLOB name: {}", sasbuilder.BlobName);
+      khiops_driver_common::logging::getLogger()->debug("    BLOB name: {}", sasbuilder.BlobName);
       sToken = sasbuilder.GenerateSasToken(*request.connectionStringCredential);
     } else /* SHARE */ {
       Azure::Storage::Sas::ShareSasBuilder sasbuilder;
       sasbuilder.ShareName = request.share.sShare;
       std::vector<std::string> pathSegments = request.share.path;
       if (pathSegments.empty()) {
-        logging::getLogger()->error("Shared file path is empty.");
+        khiops_driver_common::logging::getLogger()->error("Shared file path is empty.");
         return -1;
       }
       std::ostringstream oss;
@@ -77,9 +77,9 @@ static int BuildAuth(Auth *result, const ServiceRequest &request) {
       sasbuilder.ExpiresOn =
           Azure::DateTime::clock::now() + std::chrono::hours(2);
       sasbuilder.SetPermissions(Azure::Storage::Sas::ShareSasPermissions::Read);
-      logging::getLogger()->debug("  SHARE SAS builder:");
-      logging::getLogger()->debug("    SHARE name: {}", sasbuilder.ShareName);
-      logging::getLogger()->debug("    FILE path: {}", sasbuilder.FilePath);
+      khiops_driver_common::logging::getLogger()->debug("  SHARE SAS builder:");
+      khiops_driver_common::logging::getLogger()->debug("    SHARE name: {}", sasbuilder.ShareName);
+      khiops_driver_common::logging::getLogger()->debug("    FILE path: {}", sasbuilder.FilePath);
       sToken = sasbuilder.GenerateSasToken(*request.connectionStringCredential);
     }
     *result = {request.azureUrl.GetAbsoluteUrl() + "?" + sToken, ""};

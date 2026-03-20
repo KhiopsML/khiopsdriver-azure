@@ -14,7 +14,7 @@ in this file, to basic C types.
 #include "driver.hpp"
 #include "khiops_driver_common/logging.hpp"
 #include "khiops_driver_common/util.hpp"
-#include "logging.hpp"
+#include "khiops_driver_common/logging.hpp"
 #include "returnval.hpp"
 #include <memory>
 #include <spdlog/spdlog.h>
@@ -26,7 +26,7 @@ using namespace std;
 using namespace az;
 using namespace khiops_driver_common;
 // Use this function to get the logger that should be used to log anything.
-using az::logging::getLogger;
+using khiops_driver_common::logging::getLogger;
 
 /*********************
  * THE DRIVER OBJECT *

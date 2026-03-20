@@ -1,6 +1,6 @@
 #include "filestream.hpp"
 #include "khiops_driver_common/util.hpp"
-#include "logging.hpp"
+#include "khiops_driver_common/logging.hpp"
 #include <azure/storage/blobs/block_blob_client.hpp>
 #include <azure/storage/common/storage_exception.hpp>
 #include <chrono>
@@ -10,7 +10,7 @@
 
 using namespace std;
 using namespace khiops_driver_common;
-using az::logging::getLogger;
+using khiops_driver_common::logging::getLogger;
 
 namespace az {
 int FileStream::OpenForReading(

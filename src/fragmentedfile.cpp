@@ -1,6 +1,6 @@
 #include "fragmentedfile.hpp"
 #include "khiops_driver_common/util.hpp"
-#include "logging.hpp"
+#include "khiops_driver_common/logging.hpp"
 #include <algorithm>
 #include <azure/core/http/http.hpp>
 #include <azure/storage/blobs/rest_client.hpp>
@@ -17,7 +17,7 @@ using HttpRange = Azure::Core::Http::HttpRange;
 using BodyStream = Azure::Core::IO::BodyStream;
 using DownloadBlobOptions = Azure::Storage::Blobs::DownloadBlobOptions;
 using DownloadFileOptions = Azure::Storage::Files::Shares::DownloadFileOptions;
-using az::logging::getLogger;
+using khiops_driver_common::logging::getLogger;
 
 namespace az {
 static string

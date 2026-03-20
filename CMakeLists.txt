@@ -90,8 +90,6 @@ set(SourceList
     auth.hpp
     connstr.hpp
     connstr.cpp
-    logging.hpp
-    logging.cpp
     returnval.hpp
     objectclient.hpp
     storagetype.hpp
@@ -127,6 +125,10 @@ target_compile_options(
   khiopsdriver_file_azure
   PRIVATE $<$<CXX_COMPILER_ID:MSVC>:-Wall;/wd4582;/wd4583;/wd4625;/wd4626;/wd4710;/wd4711;/wd4820;/wd4868;/permissive->
   PRIVATE $<$<CXX_COMPILER_ID:AppleClang,Clang,GNU>:-Wall;-Wextra;-pedantic>)
+target_compile_definitions(khiopsdriver_file_azure PRIVATE
+  LOGGERNAME="azdriver"
+  LOGLEVEL_ENVVARNAME="AZURE_DRIVER_LOGLEVEL"
+  LOGFILE_ENVVARNAME="AZURE_DRIVER_LOGFILE")
 
 option(BUILD_TESTS "Build test programs" OFF)
 if(BUILD_TESTS)
@@ -147,6 +149,11 @@ if(BUILD_TESTS)
     PRIVATE
       $<$<CXX_COMPILER_ID:MSVC>:-Wall;/wd4582;/wd4583;/wd4625;/wd4626;/wd4710;/wd4711;/wd4820;/wd4868;/permissive->
     PRIVATE $<$<CXX_COMPILER_ID:AppleClang,Clang,GNU>:-Wall;-Wextra;-pedantic>)
+
+  target_compile_definitions(khiopsdriver_file_azure_testing PRIVATE
+    LOGGERNAME="azdriver"
+    LOGLEVEL_ENVVARNAME="AZURE_DRIVER_LOGLEVEL"
+    LOGFILE_ENVVARNAME="AZURE_DRIVER_LOGFILE")
 
   add_subdirectory(test)
   set(storage_driver_target_name khiopsdriver_file_azure)

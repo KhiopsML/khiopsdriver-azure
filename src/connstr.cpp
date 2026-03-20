@@ -1,12 +1,12 @@
 #include "connstr.hpp"
 #include "khiops_driver_common/util.hpp"
-#include "logging.hpp"
+#include "khiops_driver_common/logging.hpp"
 #include <regex>
 #include <unordered_map>
 
 using namespace std;
 using namespace khiops_driver_common::util;
-using az::logging::getLogger;
+using khiops_driver_common::logging::getLogger;
 
 namespace az {
 namespace connstr {
