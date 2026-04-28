@@ -95,39 +95,47 @@ int Driver::GetSize(size_t *result, const string &sUrl) const {
 }
 
 int Driver::OpenForReading(FileStream **result, const string &sUrl) {
-  ServiceRequest request;
-  if (ParseUrl(&request, sUrl)) {
-    return -1;
-  }
-  if (request.bDir) {
-    getLogger()->error(
-        "Cannot open a directory for reading: operation not supported.");
-    return -1;
-  }
-  int nOpenStatus;
-  FileStream fs;
-  if (request.storageType == BLOB) {
-    auto blobs = ListBlobs(request);
-    if (blobs.empty()) {
-      getLogger()->error("No blob matches URL {}.", sUrl);
+  try {
+    ServiceRequest request;
+    if (ParseUrl(&request, sUrl)) {
       return -1;
     }
-    if ((nOpenStatus = FileStream::OpenForReading(&fs, blobs))) {
-      return nOpenStatus;
-    }
-  } else // SHARE
-  {
-    auto files = ListFiles(request);
-    if (files.empty()) {
-      getLogger()->error("No file matches URL {}.", sUrl);
+    if (request.bDir) {
+      getLogger()->error(
+          "Cannot open a directory for reading: operation not supported.");
       return -1;
     }
-    if ((nOpenStatus = FileStream::OpenForReading(&fs, files))) {
-      return nOpenStatus;
+    int nOpenStatus;
+    FileStream fs;
+    if (request.storageType == BLOB) {
+      auto blobs = ListBlobs(request);
+      if (blobs.empty()) {
+        getLogger()->error("No blob matches URL {}.", sUrl);
+        return -1;
+      }
+      if ((nOpenStatus = FileStream::OpenForReading(&fs, blobs))) {
+        return nOpenStatus;
+      }
+    } else // SHARE
+    {
+      auto files = ListFiles(request);
+      if (files.empty()) {
+        getLogger()->error("No file matches URL {}.", sUrl);
+        return -1;
+      }
+      if ((nOpenStatus = FileStream::OpenForReading(&fs, files))) {
+        return nOpenStatus;
+      }
     }
+    *result = RegisterFileStream(std::move(fs));
+    return 0;
+  } catch (const exception &exc) {
+    getLogger()->error("Failed to open file for reading: {}", exc.what());
+    return -1;
+  } catch (...) {
+    getLogger()->error("Failed to open file for reading: unknown exception");
+    return -1;
   }
-  *result = RegisterFileStream(std::move(fs));
-  return 0;
 }
 
 int Driver::OpenForWriting(FileStream **result, const string &sUrl) {
@@ -375,43 +383,50 @@ int Driver::GetFreeDiskSpace(size_t *result) const {
 }
 
 int Driver::CopyTo(const string &sUrl, const string &destUrl) {
-  ServiceRequest request;
-  if (ParseUrl(&request, sUrl)) {
-    return -1;
-  }
-  if (request.bDir) {
-    getLogger()->error(
-        "Cannot copy a directory to a local file: operation not supported.");
-    return -1;
-  }
-  FileStream *readerPtr;
-  if (OpenForReading(&readerPtr, sUrl)) {
-    return -1;
-  }
-  char *buffer = new char[nPreferredBufferSize];
-  ofstream ofs(destUrl, ios::binary);
-  size_t nRead;
-
-  for (;;) {
-    getLogger()->trace("Copying at most {} bytes from remote to local file...",
-                       nPreferredBufferSize);
-    switch (readerPtr->Read(&nRead, buffer, 1, nPreferredBufferSize)) {
-    case 0:
-      ofs.write(buffer, (streamsize)nRead);
-      continue;
-    case -1:
+  try {
+    ServiceRequest request;
+    if (ParseUrl(&request, sUrl)) {
       return -1;
-    case -2: // Read at EOF
+    }
+    if (request.bDir) {
+      getLogger()->error(
+          "Cannot copy a directory to a local file: operation not supported.");
+      return -1;
+    }
+    FileStream *readerPtr;
+    if (OpenForReading(&readerPtr, sUrl)) {
+      return -1;
+    }
+    std::unique_ptr<char[]> buffer = std::make_unique<char[]>(nPreferredBufferSize);
+    ofstream ofs(destUrl, ios::binary);
+    size_t nRead;
+
+    for (;;) {
+      getLogger()->trace("Copying at most {} bytes from remote to local file...",
+                         nPreferredBufferSize);
+      switch (readerPtr->Read(&nRead, buffer.get(), 1, nPreferredBufferSize)) {
+      case 0:
+        ofs.write(buffer.get(), (streamsize)nRead);
+        continue;
+      case -1:
+        return -1;
+      case -2: // Read at EOF
+        break;
+      }
       break;
     }
-    break;
-  }
 
-  delete[] buffer;
-  if (Close(readerPtr->GetHandle())) {
+    if (Close(readerPtr->GetHandle())) {
+      return -1;
+    }
+    return 0;
+  } catch (const exception &exc) {
+    getLogger()->error("Copy operation failed: {}", exc.what());
+    return -1;
+  } catch (...) {
+    getLogger()->error("Copy operation failed: unknown exception");
     return -1;
   }
-  return 0;
 }
 
 int Driver::CopyFrom(const string &sUrl, const string &sourceUrl) {

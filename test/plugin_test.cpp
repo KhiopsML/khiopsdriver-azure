@@ -223,6 +223,45 @@ TEST(AzurePluginTest, GetScheme) {
   deinit_plugin(library_handle);
 }
 
+TEST(AzurePluginTest, CopyToLocalNonExistentFile) {
+  auto library_handle = init_plugin();
+
+  ASSERT_NE(ptr_driver_copyToLocal, nullptr)
+      << "driver_copyToLocal function is not exported by the plugin";
+
+  // Connect to the driver
+  int connect_result = ptr_driver_connect();
+  ASSERT_EQ(connect_result, 1) << "Failed to connect to driver";
+
+  // Create a temporary destination file path
+  // Use environment variable or a temp path
+  const char *temp_dir = getenv("TMPDIR");
+  if (!temp_dir) {
+#ifdef __windows__
+    temp_dir = getenv("TEMP");
+#else
+    temp_dir = "/tmp";
+#endif
+  }
+  std::string dest_path = std::string(temp_dir) + "/test_copytolocal_dest.bin";
+
+  // Try to copy a non-existent blob/file from Azure
+  // This should fail gracefully (return non-zero) instead of segfaulting
+  const char *nonexistent_url =
+      "https://nonexistent.blob.core.windows.net/container/missing.txt";
+  int copy_result = ptr_driver_copyToLocal(nonexistent_url, dest_path.c_str());
+
+  // Should return failure, not segfault.
+  EXPECT_EQ(copy_result, 0)
+      << "Expected copyToLocal to fail for non-existent file";
+
+  // Disconnect
+  int disconnect_result = ptr_driver_disconnect();
+    ASSERT_EQ(disconnect_result, 1) << "Failed to disconnect from driver";
+
+  deinit_plugin(library_handle);
+}
+
 int main(int argc, char **argv) {
   ::testing::InitGoogleTest(&argc, argv);
 

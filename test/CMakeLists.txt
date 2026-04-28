@@ -55,6 +55,10 @@ else()
   target_link_libraries(plugin_test PRIVATE gtest ${CMAKE_DL_LIBS}) # Link to dl
 endif()
 
-gtest_discover_tests(plugin_test WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+gtest_discover_tests(
+  plugin_test
+  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+  PROPERTIES ENVIRONMENT
+             "LSAN_OPTIONS=suppressions=${PROJECT_SOURCE_DIR}/lsan_suppressions.txt")
 
 add_subdirectory("internal")

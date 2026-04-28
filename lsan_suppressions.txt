@@ -1,2 +1,2 @@
-# Ignore leaky library function
-leak:url_share_init
+# Ignore Azure SDK curl share initialization leak
+leak:curl_share_init
