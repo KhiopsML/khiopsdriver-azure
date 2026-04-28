@@ -246,7 +246,7 @@ TEST(AzurePluginTest, CopyToLocalNonExistentFile) {
   std::string dest_path = std::string(temp_dir) + "/test_copytolocal_dest.bin";
 
   // Try to copy a non-existent blob/file from Azure
-  // This should fail gracefully (return non-zero) instead of segfaulting
+  // This should fail gracefully instead of segfaulting
   const char *nonexistent_url =
       "https://nonexistent.blob.core.windows.net/container/missing.txt";
   int copy_result = ptr_driver_copyToLocal(nonexistent_url, dest_path.c_str());
