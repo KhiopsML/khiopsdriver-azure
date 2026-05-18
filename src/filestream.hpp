@@ -74,5 +74,6 @@ private:
     FragmentedFile readInfo; // Reader-only attributes
     WriteInfo writeInfo;     // Writer-only attributes
   };
+  bool bInfoUnionIsActive;
 };
 } // namespace az

@@ -87,7 +87,8 @@ void FileStream::OpenForWriting(FileStream *result, OutputMode mode,
 
 FileStream::FileStream()
     : handle((void *)chrono::steady_clock::now().time_since_epoch().count()),
-      nCurrentPos(0ULL) {}
+      nCurrentPos(0ULL),
+      bInfoUnionIsActive(false) {}
 
 FileStream::FileStream(FileStream &&source)
     : handle(std::move(source.handle)),
@@ -98,6 +99,8 @@ FileStream::FileStream(FileStream &&source)
   } else {
     new (&writeInfo) WriteInfo(std::move(source.writeInfo));
   }
+  source.bInfoUnionIsActive = false;
+  bInfoUnionIsActive = true;
 }
 
 FileStream &FileStream::operator=(FileStream &&other) {
@@ -114,10 +117,12 @@ FileStream &FileStream::operator=(FileStream &&other) {
 }
 
 FileStream::~FileStream() {
-  if (mode == Mode::READ) {
-    readInfo.~FragmentedFile();
-  } else {
-    writeInfo.~WriteInfo();
+  if (bInfoUnionIsActive) {
+    if (mode == Mode::READ) {
+      readInfo.~FragmentedFile();
+    } else {
+      writeInfo.~WriteInfo();
+    }
   }
 }
 
