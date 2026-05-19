@@ -21,6 +21,22 @@ struct ObjectClient {
       new (&shareFile)
           Azure::Storage::Files::Shares::ShareFileClient(source.shareFile);
   }
+  ObjectClient(ObjectClient&& source) noexcept : tag(source.tag) {
+    if (tag == BLOB)
+      new (&blob) Azure::Storage::Blobs::BlobClient(std::move(source.blob));
+    else
+      new (&shareFile) Azure::Storage::Files::Shares::ShareFileClient(std::move(source.shareFile));
+  }
+  ObjectClient& operator=(ObjectClient&& source) noexcept {
+    if (this == &source) return *this;
+    this->~ObjectClient();
+    tag = source.tag;
+    if (tag == BLOB)
+      new (&blob) Azure::Storage::Blobs::BlobClient(std::move(source.blob));
+    else
+      new (&shareFile) Azure::Storage::Files::Shares::ShareFileClient(std::move(source.shareFile));
+    return *this;
+  }
   ObjectClient(const Azure::Storage::Blobs::BlobClient &client) : tag(BLOB) {
     new (&blob) Azure::Storage::Blobs::BlobClient(client);
   }
