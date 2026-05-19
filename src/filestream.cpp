@@ -37,7 +37,7 @@ int FileStream::OpenForReading(FileStream *result,
   FileStream fs;
   fs.storageType = clients.front().tag;
   fs.mode = Mode::READ;
-  new (&fs.readInfo) FragmentedFile(clients);
+  fs.readInfo = new FragmentedFile(clients);
   *result = std::move(fs);
   return 0;
 }
@@ -59,28 +59,28 @@ void FileStream::OpenForWriting(FileStream *result, OutputMode mode,
   FileStream fs;
   fs.storageType = client.tag;
   fs.mode = Mode::WRITE;
-  new (&fs.writeInfo) WriteInfo(mode, client, vector<string>());
+  fs.writeInfo = new WriteInfo(mode, client, vector<string>());
 
   if (fs.storageType == BLOB) {
-    if (fs.writeInfo.mode == OutputMode::APPEND) {
+    if (fs.writeInfo->mode == OutputMode::APPEND) {
       try {
         vector<Azure::Storage::Blobs::Models::BlobBlock> blocks;
         auto blockListRequestResponse =
-            fs.writeInfo.client.blob.AsBlockBlobClient().GetBlockList();
+            fs.writeInfo->client.blob.AsBlockBlobClient().GetBlockList();
         blocks = blockListRequestResponse.Value.CommittedBlocks;
         transform(blocks.begin(), blocks.end(),
-                  back_inserter(fs.writeInfo.blockIds),
+                  back_inserter(fs.writeInfo->blockIds),
                   [](const auto &block) { return block.Name; });
       } catch (const Azure::Storage::StorageException &) {
       }
     }
   } else // SHARE storage
   {
-    if (fs.writeInfo.mode == OutputMode::WRITE)
-      fs.writeInfo.client.shareFile.Create(0);
+    if (fs.writeInfo->mode == OutputMode::WRITE)
+      fs.writeInfo->client.shareFile.Create(0);
     else // APPEND mode
       fs.nCurrentPos =
-          (size_t)fs.writeInfo.client.shareFile.GetProperties().Value.FileSize;
+          (size_t)fs.writeInfo->client.shareFile.GetProperties().Value.FileSize;
   }
   *result = std::move(fs);
 }
@@ -88,19 +88,17 @@ void FileStream::OpenForWriting(FileStream *result, OutputMode mode,
 FileStream::FileStream()
     : handle((void *)chrono::steady_clock::now().time_since_epoch().count()),
       nCurrentPos(0ULL),
-      bInfoUnionIsActive(false) {}
+      readInfo(nullptr),
+      writeInfo(nullptr) {}
 
 FileStream::FileStream(FileStream &&source)
-    : handle(std::move(source.handle)),
-      storageType(std::move(source.storageType)), mode(std::move(source.mode)),
-      nCurrentPos(std::move(source.nCurrentPos)) {
-  if (mode == Mode::READ) {
-    new (&readInfo) FragmentedFile(std::move(source.readInfo));
-  } else {
-    new (&writeInfo) WriteInfo(std::move(source.writeInfo));
-  }
-  source.bInfoUnionIsActive = false;
-  bInfoUnionIsActive = true;
+  : handle(std::move(source.handle)),
+    storageType(std::move(source.storageType)), mode(std::move(source.mode)),
+    nCurrentPos(std::move(source.nCurrentPos)),
+    readInfo(std::move(source.readInfo)),
+    writeInfo(std::move(source.writeInfo)) {
+  source.readInfo = nullptr;
+  source.writeInfo = nullptr;
 }
 
 FileStream &FileStream::operator=(FileStream &&other) {
@@ -108,21 +106,21 @@ FileStream &FileStream::operator=(FileStream &&other) {
   storageType = std::move(other.storageType);
   mode = std::move(other.mode);
   nCurrentPos = std::move(other.nCurrentPos);
-  if (mode == Mode::READ) {
-    new (&readInfo) FragmentedFile(std::move(other.readInfo));
-  } else {
-    new (&writeInfo) WriteInfo(std::move(other.writeInfo));
-  }
+  readInfo = std::move(other.readInfo);
+  writeInfo = std::move(other.writeInfo);
+  other.readInfo = nullptr;
+  other.writeInfo = nullptr;
   return *this;
 }
 
 FileStream::~FileStream() {
-  if (bInfoUnionIsActive) {
-    if (mode == Mode::READ) {
-      readInfo.~FragmentedFile();
-    } else {
-      writeInfo.~WriteInfo();
-    }
+  if (readInfo != nullptr) {
+    delete readInfo;
+    readInfo = nullptr;
+  }
+  if (writeInfo != nullptr) {
+    delete writeInfo;
+    writeInfo = nullptr;
   }
 }
 
@@ -135,7 +133,7 @@ FileStream::WriteInfo::WriteInfo(OutputMode mode, const ObjectClient &client,
     : mode(mode), client(client), blockIds(blockIds) {}
 
 FileStream::WriteInfo::WriteInfo(WriteInfo &&source)
-    : mode(std::move(source.mode)), client(source.client),
+    : mode(std::move(source.mode)), client(std::move(source.client)),
       blockIds(std::move(source.blockIds)) {}
 
 FileStream::WriteInfo::~WriteInfo() { blockIds.clear(); }
@@ -151,23 +149,23 @@ int FileStream::Read(size_t *nRead, void *dest, size_t nSize, size_t nCount) {
     return -1;
   }
 
-  size_t nTotalFileSize = readInfo.GetSize();
+  size_t nTotalFileSize = readInfo->GetSize();
   size_t nToRead = nSize * nCount;
   size_t nRead_ = 0;
   size_t nTotalRead = 0;
   size_t nFragmentIndex;
   int nStatus;
-  if ((nStatus = readInfo.GetFragmentIndexOfUserOffset(&nFragmentIndex,
+  if ((nStatus = readInfo->GetFragmentIndexOfUserOffset(&nFragmentIndex,
                                                        nCurrentPos))) {
     return nStatus;
   }
 
   while (nToRead != 0) {
     const FragmentedFile::Fragment &fragment =
-        readInfo.GetFragment(nFragmentIndex);
+        readInfo->GetFragment(nFragmentIndex);
 
     Azure::Core::Http::HttpRange range{
-        (int64_t)((nFragmentIndex == 0 ? 0 : readInfo.GetHeaderLen()) +
+        (int64_t)((nFragmentIndex == 0 ? 0 : readInfo->GetHeaderLen()) +
                   nCurrentPos - fragment.nUserOffset),
         (int64_t)(nToRead < fragment.nContentSize ? nToRead
                                                   : fragment.nContentSize)};
@@ -238,7 +236,7 @@ int FileStream::Seek(long long int nOffset, int nOrigin) {
     return -1;
   }
 
-  size_t nTotalFileSize = readInfo.GetSize();
+  size_t nTotalFileSize = readInfo->GetSize();
   long long int nSignedDest;
 
   switch (nOrigin) {
@@ -278,10 +276,10 @@ int FileStream::Write(size_t *nWritten, const void *source, size_t nSize,
 
   if (storageType == BLOB) {
     Azure::Storage::Blobs::BlockBlobClient bbclient =
-        writeInfo.client.blob.AsBlockBlobClient();
+        writeInfo->client.blob.AsBlockBlobClient();
 
     ostringstream oss;
-    oss << setfill('0') << setw(64) << writeInfo.blockIds.size();
+    oss << setfill('0') << setw(64) << writeInfo->blockIds.size();
     string sBlockIdInBase10 = oss.str();
     vector<uint8_t> blockIdInBase10(sBlockIdInBase10.begin(),
                                     sBlockIdInBase10.end());
@@ -291,7 +289,7 @@ int FileStream::Write(size_t *nWritten, const void *source, size_t nSize,
     Azure::Core::IO::MemoryBodyStream bodyStream((const uint8_t *)source,
                                                  nToWrite);
     bbclient.StageBlock(sBlockIdInBase64, bodyStream);
-    writeInfo.blockIds.push_back(sBlockIdInBase64);
+    writeInfo->blockIds.push_back(sBlockIdInBase64);
   } else // SHARE storage
   {
     Azure::Storage::Files::Shares::Models::FileHttpHeaders httpHeaders;
@@ -301,8 +299,8 @@ int FileStream::Write(size_t *nWritten, const void *source, size_t nSize,
     Azure::Core::IO::MemoryBodyStream bodyStream((const uint8_t *)source,
                                                  nToWrite);
     opts.Size = nCurrentPos + nToWrite;
-    writeInfo.client.shareFile.SetProperties(httpHeaders, smbProperties, opts);
-    writeInfo.client.shareFile.UploadRange((int64_t)nCurrentPos, bodyStream);
+    writeInfo->client.shareFile.SetProperties(httpHeaders, smbProperties, opts);
+    writeInfo->client.shareFile.UploadRange((int64_t)nCurrentPos, bodyStream);
     nCurrentPos += nToWrite;
   }
 
@@ -317,10 +315,10 @@ int FileStream::Flush() {
   }
 
   if (storageType == BLOB) {
-    writeInfo.client.blob.AsBlockBlobClient().CommitBlockList(
-        writeInfo.blockIds);
+    writeInfo->client.blob.AsBlockBlobClient().CommitBlockList(
+        writeInfo->blockIds);
   } else {
-    writeInfo.client.shareFile.ForceCloseAllHandles();
+    writeInfo->client.shareFile.ForceCloseAllHandles();
   }
 
   return 0;

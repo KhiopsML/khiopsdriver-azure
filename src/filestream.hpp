@@ -70,10 +70,7 @@ private:
     ~WriteInfo();
   };
 
-  union {
-    FragmentedFile readInfo; // Reader-only attributes
-    WriteInfo writeInfo;     // Writer-only attributes
-  };
-  bool bInfoUnionIsActive;
+  FragmentedFile *readInfo; // Reader-only attributes
+  WriteInfo *writeInfo;     // Writer-only attributes
 };
 } // namespace az
