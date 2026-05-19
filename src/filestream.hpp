@@ -12,6 +12,7 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <memory>
 
 namespace az {
 class FileStream {
@@ -38,7 +39,6 @@ public:
   FileStream();
   FileStream(FileStream &&source);
   FileStream &operator=(FileStream &&other);
-  ~FileStream();
 
   void *GetHandle() const;
   Mode GetMode() const;
@@ -70,7 +70,7 @@ private:
     ~WriteInfo();
   };
 
-  FragmentedFile *readInfo; // Reader-only attributes
-  WriteInfo *writeInfo;     // Writer-only attributes
+  std::unique_ptr<FragmentedFile> readInfo; // Reader-only attributes
+  std::unique_ptr<WriteInfo> writeInfo;     // Writer-only attributes
 };
 } // namespace az

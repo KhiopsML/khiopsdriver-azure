@@ -37,7 +37,7 @@ int FileStream::OpenForReading(FileStream *result,
   FileStream fs;
   fs.storageType = clients.front().tag;
   fs.mode = Mode::READ;
-  fs.readInfo = new FragmentedFile(clients);
+  fs.readInfo = make_unique<FragmentedFile>(clients);
   *result = std::move(fs);
   return 0;
 }
@@ -59,7 +59,7 @@ void FileStream::OpenForWriting(FileStream *result, OutputMode mode,
   FileStream fs;
   fs.storageType = client.tag;
   fs.mode = Mode::WRITE;
-  fs.writeInfo = new WriteInfo(mode, client, vector<string>());
+  fs.writeInfo = make_unique<WriteInfo>(mode, client, vector<string>());
 
   if (fs.storageType == BLOB) {
     if (fs.writeInfo->mode == OutputMode::APPEND) {
@@ -97,31 +97,17 @@ FileStream::FileStream(FileStream &&source)
     nCurrentPos(std::move(source.nCurrentPos)),
     readInfo(std::move(source.readInfo)),
     writeInfo(std::move(source.writeInfo)) {
-  source.readInfo = nullptr;
-  source.writeInfo = nullptr;
 }
 
 FileStream &FileStream::operator=(FileStream &&other) {
+  if (this == &other) return *this;
   handle = std::move(other.handle);
   storageType = std::move(other.storageType);
   mode = std::move(other.mode);
   nCurrentPos = std::move(other.nCurrentPos);
   readInfo = std::move(other.readInfo);
   writeInfo = std::move(other.writeInfo);
-  other.readInfo = nullptr;
-  other.writeInfo = nullptr;
   return *this;
-}
-
-FileStream::~FileStream() {
-  if (readInfo != nullptr) {
-    delete readInfo;
-    readInfo = nullptr;
-  }
-  if (writeInfo != nullptr) {
-    delete writeInfo;
-    writeInfo = nullptr;
-  }
 }
 
 void *FileStream::GetHandle() const { return handle; }
