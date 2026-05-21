@@ -18,7 +18,7 @@ number of remote files.
 #include <cstddef>
 #include <vector>
 
-namespace az {
+namespace khiops_driver_azure {
 class FragmentedFile {
 public:
   struct Fragment {
@@ -60,4 +60,4 @@ private:
   size_t nSize;
   std::vector<Fragment> fragments;
 };
-} // namespace az
+} // namespace khiops_driver_azure

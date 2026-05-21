@@ -5,7 +5,7 @@
 
 using namespace std;
 
-namespace az {
+namespace khiops_driver_azure {
 using namespace khiops_driver_common;
 using ShareDirectoryClient =
     Azure::Storage::Files::Shares::ShareDirectoryClient;
@@ -375,4 +375,4 @@ static string PrefixFromName(const string &sName) { return sName; }
 static string PrefixFromGlob(const string &sGlob) {
   return sGlob.substr(0, util::glob::FindGlobbingChar(sGlob));
 }
-} // namespace az
+} // namespace khiops_driver_azure

@@ -7,7 +7,7 @@
 #include <azure/storage/blobs/blob_client.hpp>
 #include <azure/storage/files/shares/share_file_client.hpp>
 
-namespace az {
+namespace khiops_driver_azure {
 struct ObjectClient {
   StorageType tag;
   union {
@@ -59,4 +59,4 @@ struct ObjectClient {
     return *this;
   }
 };
-} // namespace az
+} // namespace khiops_driver_azure

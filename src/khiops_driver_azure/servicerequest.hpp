@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 
-namespace az {
+namespace khiops_driver_azure {
 
 struct BlobInfo {
   std::string sAccountName;
@@ -54,4 +54,4 @@ struct ServiceRequest {
   void Info();
 };
 
-} // namespace az
+} // namespace khiops_driver_azure

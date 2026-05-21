@@ -2,12 +2,12 @@
 
 #pragma once
 
-namespace az {
+namespace khiops_driver_azure {
 struct BlobInfo;
 struct ShareInfo;
 struct ServiceRequest;
 class Driver;
-} // namespace az
+} // namespace khiops_driver_azure
 
 #include "azureplugin.hpp"
 #include "filestream.hpp"
@@ -24,7 +24,7 @@ class Driver;
 #include <unordered_map>
 #include <vector>
 
-namespace az {
+namespace khiops_driver_azure {
 
 class Driver {
 public:
@@ -96,4 +96,4 @@ private:
 
   size_t nPreferredBufferSize;
 };
-} // namespace az
+} // namespace khiops_driver_azure

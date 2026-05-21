@@ -12,7 +12,7 @@ using namespace std;
 using namespace khiops_driver_common;
 using khiops_driver_common::logging::getLogger;
 
-namespace az {
+namespace khiops_driver_azure {
 int FileStream::OpenForReading(
     FileStream *result,
     const std::vector<Azure::Storage::Blobs::BlobClient> &clients) {
@@ -309,4 +309,4 @@ int FileStream::Flush() {
 
   return 0;
 }
-} // namespace az
+} // namespace khiops_driver_azure

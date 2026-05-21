@@ -23,7 +23,7 @@ in this file, to basic C types.
 #define STRINGIFY(s) #s
 
 using namespace std;
-using namespace az;
+using namespace khiops_driver_azure;
 using namespace khiops_driver_common;
 // Use this function to get the logger that should be used to log anything.
 using khiops_driver_common::logging::getLogger;

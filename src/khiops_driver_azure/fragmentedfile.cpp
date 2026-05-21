@@ -19,7 +19,7 @@ using DownloadBlobOptions = Azure::Storage::Blobs::DownloadBlobOptions;
 using DownloadFileOptions = Azure::Storage::Files::Shares::DownloadFileOptions;
 using khiops_driver_common::logging::getLogger;
 
-namespace az {
+namespace khiops_driver_azure {
 static string
 ReadHeaderFromBodyStream(std::unique_ptr<BodyStream> &&bodyStream);
 
@@ -190,4 +190,4 @@ static string ReadHeaderFromBodyStream(unique_ptr<BodyStream> &&bodyStream) {
 
   return bFoundLineFeed ? sHeader : "";
 }
-} // namespace az
+} // namespace khiops_driver_azure

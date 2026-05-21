@@ -8,7 +8,7 @@ using namespace std;
 using namespace khiops_driver_common::util;
 using khiops_driver_common::logging::getLogger;
 
-namespace az {
+namespace khiops_driver_azure {
 namespace connstr {
 
 ConnectionString::ConnectionString()
@@ -165,4 +165,4 @@ bool operator==(const ConnectionString &a, const ConnectionString &b) {
 }
 
 } // namespace connstr
-} // namespace az
+} // namespace khiops_driver_azure

@@ -6,7 +6,7 @@
 using namespace std;
 using namespace khiops_driver_common;
 
-namespace az {
+namespace khiops_driver_azure {
 using BlobClient = Azure::Storage::Blobs::BlobClient;
 using BlobContainerClient = Azure::Storage::Blobs::BlobContainerClient;
 using ListBlobsOptions = Azure::Storage::Blobs::ListBlobsOptions;
@@ -84,4 +84,4 @@ static string PrefixFromName(const string &sName) { return sName; }
 static string PrefixFromGlob(const string &sGlob) {
   return sGlob.substr(0, util::glob::FindGlobbingChar(sGlob));
 }
-} // namespace az
+} // namespace khiops_driver_azure

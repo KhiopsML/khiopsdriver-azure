@@ -2,6 +2,6 @@
 
 #pragma once
 
-namespace az {
+namespace khiops_driver_azure {
 enum StorageType { BLOB, SHARE };
 }

@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 
-namespace az {
+namespace khiops_driver_azure {
 std::vector<Azure::Storage::Files::Shares::ShareDirectoryClient>
 ResolveDirsPathRecursively(
     const Azure::Storage::Files::Shares::ShareDirectoryClient &dirClient,
@@ -19,4 +19,4 @@ std::vector<Azure::Storage::Files::Shares::ShareFileClient>
 ResolveFilesPathRecursively(
     const Azure::Storage::Files::Shares::ShareDirectoryClient &dirClient,
     std::queue<std::string> pathSegments);
-} // namespace az
+} // namespace khiops_driver_azure

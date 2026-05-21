@@ -5,7 +5,7 @@
 using namespace std;
 using khiops_driver_common::logging::getLogger;
 
-namespace az {
+namespace khiops_driver_azure {
 ServiceRequest::ServiceRequest(
     const Azure::Core::Url azureUrl, bool bEmulated, StorageType storageType,
     bool bDir, const BlobInfo &blob,
@@ -111,4 +111,4 @@ void ServiceRequest::Info() {
     }
   }
 }
-} // namespace az
+} // namespace khiops_driver_azure

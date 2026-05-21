@@ -22,7 +22,7 @@ merely URL strings. Thus we must be correctly authenticated for the sources.
 #include <string>
 #include <vector>
 
-namespace az {
+namespace khiops_driver_azure {
 
 struct Auth {
   std::string
@@ -95,4 +95,4 @@ static int BuildAuth(Auth *result, const ServiceRequest &request) {
   return 0;
 }
 
-} // namespace az
+} // namespace khiops_driver_azure

@@ -7,7 +7,7 @@
 #include <memory>
 #include <string>
 
-namespace az {
+namespace khiops_driver_azure {
 namespace connstr {
 
 struct ConnectionString {
@@ -30,4 +30,4 @@ struct ConnectionString {
 };
 
 } // namespace connstr
-} // namespace az
+} // namespace khiops_driver_azure

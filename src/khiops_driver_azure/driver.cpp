@@ -29,7 +29,7 @@ using namespace std;
 using namespace khiops_driver_common::util;
 using khiops_driver_common::logging::getLogger;
 
-namespace az {
+namespace khiops_driver_azure {
 
 Driver::Driver(size_t nPreferredBufferSize)
     : nPreferredBufferSize(nPreferredBufferSize) {
@@ -939,4 +939,4 @@ int Driver::RetrieveFileStream(FileStream **result, void *handle) const {
   return 0;
 }
 
-} // namespace az
+} // namespace khiops_driver_azure

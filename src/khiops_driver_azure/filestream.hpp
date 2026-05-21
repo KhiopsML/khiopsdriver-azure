@@ -14,7 +14,7 @@
 #include <vector>
 #include <memory>
 
-namespace az {
+namespace khiops_driver_azure {
 class FileStream {
 public:
   enum class Mode { READ, WRITE };
@@ -73,4 +73,4 @@ private:
   std::unique_ptr<FragmentedFile> readInfo; // Reader-only attributes
   std::unique_ptr<WriteInfo> writeInfo;     // Writer-only attributes
 };
-} // namespace az
+} // namespace khiops_driver_azure
