@@ -42,8 +42,8 @@ int Initialize() {
 }
 
 int Finalize() {
-    GetLogger()->error("Not implemented!");
-    return -1;
+    // Nothing to do.
+    return 0;
 }
 
 int GetSystemPreferredBufferSize(size_t *result) {
