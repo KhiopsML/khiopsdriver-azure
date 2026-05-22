@@ -4,6 +4,7 @@
 #include "khiops_driver_azure/util.hpp"
 #include "khiops_driver_azure/version.hpp"
 #include "khiops_driver_azure/servicerequest.hpp"
+#include "khiops_driver_azure/fragmentedfile.hpp"
 #include <memory>
 #include <spdlog/spdlog.h>
 #include <azure/core/diagnostics/logger.hpp>
@@ -79,10 +80,6 @@ int FileExists(bool *result, const std::string &sFilePathName) {
     if (ParseUrl(&request, sFilePathName)) {
         return -1;
     }
-    if (request.bDir) {
-        GetLogger()->error("URL indicates a directory, not a file.");
-        return -1;
-    }
     if (request.storageType == BLOB) {
         *result = !ListBlobs(request).empty();
     } else /* SHARE */ {
@@ -96,10 +93,6 @@ int DirExists(bool *result, const std::string &sFilePathName) {
     if (ParseUrl(&request, sFilePathName)) {
         return -1;
     }
-    if (!request.bDir) {
-        GetLogger()->error("URL indicates a file, not a directory.");
-        return -1;
-    }
     if (request.storageType == BLOB) {
         *result = true;  // there is no such concept as a directory when dealing with blob services
     } else /* SHARE */ {
@@ -109,8 +102,26 @@ int DirExists(bool *result, const std::string &sFilePathName) {
 }
 
 int GetFileSize(size_t *result, const std::string &filename) {
-    GetLogger()->error("Not implemented!");
-    return -1;
+    ServiceRequest request;
+    if (ParseUrl(&request, filename)) {
+        return -1;
+    }
+    if (request.storageType == BLOB) {
+        auto blobs = ListBlobs(request);
+        if (blobs.empty()) {
+            GetLogger()->error("No blob matches URL {}.", filename);
+            return -1;
+        }
+        *result = FragmentedFile(std::move(blobs)).GetSize();
+    } else /* SHARE */ {
+        auto files = ListFiles(request);
+        if (files.empty()) {
+            GetLogger()->error("No file matches URL {}.", filename);
+            return -1;
+        }
+        *result = FragmentedFile(std::move(files)).GetSize();
+    }
+    return 0;
 }
 
 int FOpen(khiops_driver_common::FileStream &stream, const std::string &filename) {

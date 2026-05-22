@@ -17,7 +17,6 @@ using HttpRange = Azure::Core::Http::HttpRange;
 using BodyStream = Azure::Core::IO::BodyStream;
 using DownloadBlobOptions = Azure::Storage::Blobs::DownloadBlobOptions;
 using DownloadFileOptions = Azure::Storage::Files::Shares::DownloadFileOptions;
-using khiops_driver_common::logging::getLogger;
 
 namespace khiops_driver_azure {
 static string
@@ -158,7 +157,7 @@ FragmentedFile::GetFragment(size_t nIndex) const {
 int FragmentedFile::GetFragmentIndexOfUserOffset(size_t *nFragmentIndex,
                                                  size_t nUserOffset) const {
   if (fragments.empty()) {
-    getLogger()->error("No fragment found.");
+    GetLogger()->error("No fragment found.");
     return -1;
   }
   *nFragmentIndex =

@@ -108,8 +108,9 @@ set(KhiopsDriverAzureSources
 #    objectclient.hpp
 #    filestream.hpp
 #    filestream.cpp
-#    fragmentedfile.hpp
-#    fragmentedfile.cpp
+    ########## The files listed below should be removed in favor of components shared among the drivers.
+    fragmentedfile.hpp
+    fragmentedfile.cpp
 )
 list(TRANSFORM KhiopsDriverAzureSources PREPEND src/khiops_driver_azure/)
 
