@@ -85,7 +85,9 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_BUILD_TYPE STREQUAL "Release
   endif()
 endif()
 
-#set(KhiopsDriverAzureSources
+set(KhiopsDriverAzureSources
+  backend.cpp
+  version.hpp
 #    azureplugin.hpp
 #    azureplugin.cpp
 #    driver.hpp
@@ -105,8 +107,8 @@ endif()
 #    blobpathresolve.hpp
 #    blobpathresolve.cpp
 #    sharepathresolve.hpp
-#    sharepathresolve.cpp)
-set(KhiopsDriverAzureSources backend.cpp)
+#    sharepathresolve.cpp
+)
 list(TRANSFORM KhiopsDriverAzureSources PREPEND src/khiops_driver_azure/)
 
 include("${CMAKE_CURRENT_SOURCE_DIR}/shared/import_khiops_driver_common.cmake")
