@@ -3,6 +3,7 @@
 #include "khiops_driver_azure/version.hpp"
 #include <memory>
 #include <spdlog/spdlog.h>
+#include <azure/core/diagnostics/logger.hpp>
 
 using namespace std;
 
@@ -33,8 +34,11 @@ int IsReadOnly(bool *result) {
 }
 
 int Initialize() {
-    GetLogger()->error("Not implemented!");
-    return -1;
+    // Disable Azure SDK logging.
+    // Note: This will not prevent Azure CLI, called as a subprocess by the
+    // Azure SDK, to log errors such as "Please run 'az login' to authenticate".
+    Azure::Core::Diagnostics::Logger::SetListener([](Azure::Core::Diagnostics::Logger::Level, string const &) {});
+    return 0;
 }
 
 int Finalize() {
