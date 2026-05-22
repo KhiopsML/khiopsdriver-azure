@@ -155,8 +155,41 @@ int FFlush(const khiops_driver_common::FileStream &stream) {
 }
 
 int Remove(const std::string &filename) {
-    GetLogger()->error("Not implemented!");
-    return -1;
+    ServiceRequest request;
+    if (ParseUrl(&request, filename)) {
+        return -1;
+    }
+    if (request.storageType == BLOB) {
+        auto blobs = ListBlobs(request);
+        if (blobs.empty()) {
+            GetLogger()->error("No blob matches URL {}.", filename);
+            return -1;
+        }
+        Azure::Storage::Blobs::DeleteBlobOptions opts;
+        opts.DeleteSnapshots =
+                Azure::Storage::Blobs::Models::DeleteSnapshotsOption::IncludeSnapshots;
+        for (const auto &blob : blobs) {
+            const string sBlobUrl = blob.GetUrl();
+            if (!blob.Delete(opts).Value.Deleted) {
+                GetLogger()->error("Failed to delete blob {}.", sBlobUrl);
+                return -1;
+            }
+        }
+    } else /* SHARE */ {
+        auto files = ListFiles(request);
+        if (files.empty()) {
+            GetLogger()->error("No file matches URL {}.", filename);
+            return -1;
+        }
+        for (const auto &file : files) {
+            const string sFileUrl = file.GetUrl();
+            if (!file.Delete().Value.Deleted) {
+                GetLogger()->error("Failed to delete file {}.", sFileUrl);
+                return -1;
+            }
+        }
+    }
+    return 0;
 }
 
 int Mkdir(const std::string &pathname) {
