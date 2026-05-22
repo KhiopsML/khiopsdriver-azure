@@ -131,32 +131,38 @@ int GetFileSize(size_t *result, const std::string &filename) {
     return 0;
 }
 
-int FOpen(khiops_driver_common::FileStream &stream, const std::string &filename) {
+int FOpen(FileStream &stream, const std::string &filename) {
+    if (stream.mode == FileStream::Mode::READ) {
+        
+    } else if (stream.mode == FileStream::Mode::WRITE) {
+    } else if (stream.mode == FileStream::Mode::APPEND) {
+    } else {
+        GetLogger()->error("Invalid file stream mode.");
+        return -1;
+    }
+}
+
+int FClose(const FileStream &stream) {
     GetLogger()->error("Not implemented!");
     return -1;
 }
 
-int FClose(const khiops_driver_common::FileStream &stream) {
+int FRead(size_t *result, void *ptr, size_t size, size_t count, FileStream &stream) {
     GetLogger()->error("Not implemented!");
     return -1;
 }
 
-int FRead(size_t *result, void *ptr, size_t size, size_t count, khiops_driver_common::FileStream &stream) {
+int FSeek(FileStream &stream, long long int offset, int whence) {
     GetLogger()->error("Not implemented!");
     return -1;
 }
 
-int FSeek(khiops_driver_common::FileStream &stream, long long int offset, int whence) {
+int FWrite(size_t *result, const void *ptr, size_t size, size_t count, const FileStream &stream) {
     GetLogger()->error("Not implemented!");
     return -1;
 }
 
-int FWrite(size_t *result, const void *ptr, size_t size, size_t count, const khiops_driver_common::FileStream &stream) {
-    GetLogger()->error("Not implemented!");
-    return -1;
-}
-
-int FFlush(const khiops_driver_common::FileStream &stream) {
+int FFlush(const FileStream &stream) {
     GetLogger()->error("Not implemented!");
     return -1;
 }
