@@ -3,7 +3,7 @@
 #include <spdlog/spdlog.h>
 
 using namespace std;
-using khiops_driver_common::logging::getLogger;
+using namespace khiops_driver_common;
 
 namespace khiops_driver_azure {
 ServiceRequest::ServiceRequest(
@@ -79,35 +79,35 @@ ServiceRequest &ServiceRequest::operator=(ServiceRequest &&other) {
 }
 
 void ServiceRequest::Info() {
-  getLogger()->debug("Created service request:");
-  getLogger()->debug("  URL: {}", azureUrl.GetAbsoluteUrl());
-  getLogger()->debug("  emulated: {}", bEmulated ? "yes" : "no");
+  GetLogger()->debug("Created service request:");
+  GetLogger()->debug("  URL: {}", azureUrl.GetAbsoluteUrl());
+  GetLogger()->debug("  emulated: {}", bEmulated ? "yes" : "no");
   switch (storageType) {
   case BLOB:
-    getLogger()->debug("  storage type: blob");
+    GetLogger()->debug("  storage type: blob");
     break;
   case SHARE:
-    getLogger()->debug("  storage type: file");
+    GetLogger()->debug("  storage type: file");
     break;
   default:
-    getLogger()->debug("  storage type: <invalid: {}>",
+    GetLogger()->debug("  storage type: <invalid: {}>",
                        static_cast<int>(storageType));
     break;
   }
-  getLogger()->debug("  using connection string: {}",
+  GetLogger()->debug("  using connection string: {}",
                      bUsingConnectionString ? "yes" : "no");
-  getLogger()->debug("  directory: {}", bDir ? "yes" : "no");
+  GetLogger()->debug("  directory: {}", bDir ? "yes" : "no");
   if (storageType == BLOB) {
-    getLogger()->debug("  blob info:");
-    getLogger()->debug("    account name: {}", blob.sAccountName);
-    getLogger()->debug("    container: {}", blob.sContainer);
-    getLogger()->debug("    blob: {}", blob.sBlob);
+    GetLogger()->debug("  blob info:");
+    GetLogger()->debug("    account name: {}", blob.sAccountName);
+    GetLogger()->debug("    container: {}", blob.sContainer);
+    GetLogger()->debug("    blob: {}", blob.sBlob);
   } else {
-    getLogger()->debug("  file info:");
-    getLogger()->debug("    share: {}", share.sShare);
-    getLogger()->debug("    path:");
+    GetLogger()->debug("  file info:");
+    GetLogger()->debug("    share: {}", share.sShare);
+    GetLogger()->debug("    path:");
     for (size_t i = 0ULL; i < share.path.size(); i++) {
-      getLogger()->debug("      element #{}: {}", i + 1, share.path.at(i));
+      GetLogger()->debug("      element #{}: {}", i + 1, share.path.at(i));
     }
   }
 }

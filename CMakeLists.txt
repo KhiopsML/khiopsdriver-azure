@@ -87,27 +87,29 @@ endif()
 
 set(KhiopsDriverAzureSources
   backend.cpp
+  blobpathresolve.hpp
+  blobpathresolve.cpp
+  connstr.hpp
+  connstr.cpp
+  servicerequest.hpp
+  servicerequest.cpp
+  sharepathresolve.hpp
+  sharepathresolve.cpp
+  storagetype.hpp
+  util.hpp
+  util.cpp
   version.hpp
 #    azureplugin.hpp
 #    azureplugin.cpp
 #    driver.hpp
 #    driver.cpp
-#    servicerequest.hpp
-#    servicerequest.cpp
 #    auth.hpp
-#    connstr.hpp
-#    connstr.cpp
 #    returnval.hpp
 #    objectclient.hpp
-#    storagetype.hpp
 #    filestream.hpp
 #    filestream.cpp
 #    fragmentedfile.hpp
 #    fragmentedfile.cpp
-#    blobpathresolve.hpp
-#    blobpathresolve.cpp
-#    sharepathresolve.hpp
-#    sharepathresolve.cpp
 )
 list(TRANSFORM KhiopsDriverAzureSources PREPEND src/khiops_driver_azure/)
 

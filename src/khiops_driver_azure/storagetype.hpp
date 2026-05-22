@@ -1,4 +1,4 @@
-// Simple enumeration to distinguish blob and share file storage services.
+// Simple enumeration to distinguish between blob and share file storage services.
 
 #pragma once
 

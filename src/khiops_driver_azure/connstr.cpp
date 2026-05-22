@@ -5,8 +5,7 @@
 #include <unordered_map>
 
 using namespace std;
-using namespace khiops_driver_common::util;
-using khiops_driver_common::logging::getLogger;
+using namespace khiops_driver_common;
 
 namespace khiops_driver_azure {
 namespace connstr {
@@ -40,7 +39,7 @@ int ConnectionString::ParseConnectionString(ConnectionString *result,
   smatch match;
   if (!regex_match(sConnectionString, match,
                    regex("(?:[^=]+=[^;]+;)*[^=]+=[^;]+;?"))) {
-    getLogger()->error(
+    GetLogger()->error(
         "Connection string '{}' does not match expected pattern.",
         sConnectionString);
     return -1;
@@ -56,14 +55,14 @@ int ConnectionString::ParseConnectionString(ConnectionString *result,
 
   auto accountNameIt = kvPairs.find("AccountName"); // Mandatory
   if (accountNameIt == kvPairs.end()) {
-    getLogger()->error("Connection string '{}' misses 'AccountName' field.",
+    GetLogger()->error("Connection string '{}' misses 'AccountName' field.",
                        sConnectionString);
     return -1;
   }
 
   auto accountKeyIt = kvPairs.find("AccountKey"); // Mandatory
   if (accountKeyIt == kvPairs.end()) {
-    getLogger()->error("Connection string '{}' misses 'AccountKey' field.",
+    GetLogger()->error("Connection string '{}' misses 'AccountKey' field.",
                        sConnectionString);
     return -1;
   }
@@ -78,7 +77,7 @@ int ConnectionString::ParseConnectionString(ConnectionString *result,
     connectionString.blobEndpointPtr =
         make_unique<Azure::Core::Url>(blobEndpointIt->second);
   } else if (bIsEmulatedStorage) {
-    getLogger()->error("Connection string '{}' misses 'BlobEndpoint' field.",
+    GetLogger()->error("Connection string '{}' misses 'BlobEndpoint' field.",
                        sConnectionString);
     return -1;
   }
@@ -89,14 +88,14 @@ int ConnectionString::ParseConnectionString(ConnectionString *result,
         make_unique<Azure::Core::Url>(fileEndpointIt->second);
   }
 
-  getLogger()->debug("Parsed connection string:");
-  getLogger()->debug("  account name: {}", connectionString.sAccountName);
-  getLogger()->debug("  account key: ***REDACTED***");
-  getLogger()->debug("  blob endpoint: {}",
+  GetLogger()->debug("Parsed connection string:");
+  GetLogger()->debug("  account name: {}", connectionString.sAccountName);
+  GetLogger()->debug("  account key: ***REDACTED***");
+  GetLogger()->debug("  blob endpoint: {}",
                      connectionString.blobEndpointPtr
                          ? connectionString.blobEndpointPtr->GetAbsoluteUrl()
                          : "<none>");
-  getLogger()->debug("  file endpoint: {}",
+  GetLogger()->debug("  file endpoint: {}",
                      connectionString.fileEndpointPtr
                          ? connectionString.fileEndpointPtr->GetAbsoluteUrl()
                          : "<none>");
@@ -109,16 +108,16 @@ int ConnectionString::CheckAgainstUrl(const Azure::Core::Url &url,
   // For real Azure cloud storage access, endpoints are optional, but if
   // present, check them
   if (blobEndpointPtr && storageType == BLOB &&
-      !str::StartsWith(url.GetAbsoluteUrl(),
+      !util::str::StartsWith(url.GetAbsoluteUrl(),
                        blobEndpointPtr->GetAbsoluteUrl())) {
-    getLogger()->error("URL {} does not start with expected blob endpoint {}.",
+    GetLogger()->error("URL {} does not start with expected blob endpoint {}.",
                        url.GetAbsoluteUrl(), blobEndpointPtr->GetAbsoluteUrl());
     return -1;
   }
   if (fileEndpointPtr && storageType == SHARE &&
-      !str::StartsWith(url.GetAbsoluteUrl(),
+      !util::str::StartsWith(url.GetAbsoluteUrl(),
                        fileEndpointPtr->GetAbsoluteUrl())) {
-    getLogger()->error("URL {} does not start with expected file endpoint {}.",
+    GetLogger()->error("URL {} does not start with expected file endpoint {}.",
                        url.GetAbsoluteUrl(), fileEndpointPtr->GetAbsoluteUrl());
     return -1;
   }

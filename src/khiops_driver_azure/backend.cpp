@@ -1,12 +1,15 @@
 #include "khiops_driver_common/backend.hpp"
 #include "khiops_driver_common/logging.hpp"
 #include "khiops_driver_common/util.hpp"
+#include "khiops_driver_azure/util.hpp"
 #include "khiops_driver_azure/version.hpp"
+#include "khiops_driver_azure/servicerequest.hpp"
 #include <memory>
 #include <spdlog/spdlog.h>
 #include <azure/core/diagnostics/logger.hpp>
 
 using namespace std;
+using namespace khiops_driver_azure;
 
 namespace khiops_driver_common {
 
@@ -72,8 +75,25 @@ int GetSystemPreferredBufferSize(size_t *result) {
 }
 
 int FileExists(bool *result, const std::string &sFilePathName) {
-    GetLogger()->error("Not implemented!");
-    return -1;
+    ServiceRequest request;
+    if (ParseUrl(&request, sFilePathName)) {
+        return -1;
+    }
+    if (request.storageType == BLOB) {
+        if (request.bDir) {
+            *result = true;  // there is no such concept as a directory when dealing with blob services
+        } else {
+            *result = !ListBlobs(request).empty();
+        }
+    } else  // SHARE
+    {
+        if (request.bDir) {
+            *result = !ListDirs(request).empty();
+        } else {
+            *result = !ListFiles(request).empty();
+        }
+    }
+    return 0;
 }
 
 int DirExists(bool *result, const std::string &sFilePathName) {
