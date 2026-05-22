@@ -28,8 +28,8 @@ int GetDriverScheme(std::string *result) {
 }
 
 int IsReadOnly(bool *result) {
-    GetLogger()->error("Not implemented!");
-    return -1;
+    *result = false;
+    return 0;
 }
 
 int Initialize() {
