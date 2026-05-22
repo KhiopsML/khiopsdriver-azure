@@ -79,26 +79,33 @@ int FileExists(bool *result, const std::string &sFilePathName) {
     if (ParseUrl(&request, sFilePathName)) {
         return -1;
     }
+    if (request.bDir) {
+        GetLogger()->error("URL indicates a directory, not a file.");
+        return -1;
+    }
     if (request.storageType == BLOB) {
-        if (request.bDir) {
-            *result = true;  // there is no such concept as a directory when dealing with blob services
-        } else {
-            *result = !ListBlobs(request).empty();
-        }
-    } else  // SHARE
-    {
-        if (request.bDir) {
-            *result = !ListDirs(request).empty();
-        } else {
-            *result = !ListFiles(request).empty();
-        }
+        *result = !ListBlobs(request).empty();
+    } else /* SHARE */ {
+        *result = !ListFiles(request).empty();
     }
     return 0;
 }
 
 int DirExists(bool *result, const std::string &sFilePathName) {
-    GetLogger()->error("Not implemented!");
-    return -1;
+    ServiceRequest request;
+    if (ParseUrl(&request, sFilePathName)) {
+        return -1;
+    }
+    if (!request.bDir) {
+        GetLogger()->error("URL indicates a file, not a directory.");
+        return -1;
+    }
+    if (request.storageType == BLOB) {
+        *result = true;  // there is no such concept as a directory when dealing with blob services
+    } else /* SHARE */ {
+        *result = !ListDirs(request).empty();
+    }
+    return 0;
 }
 
 int GetFileSize(size_t *result, const std::string &filename) {
