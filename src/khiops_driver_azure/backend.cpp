@@ -193,13 +193,65 @@ int Remove(const std::string &filename) {
 }
 
 int Mkdir(const std::string &pathname) {
-    GetLogger()->error("Not implemented!");
-    return -1;
+    ServiceRequest request;
+    if (ParseUrl(&request, pathname)) {
+        return -1;
+    }
+    if (request.storageType == BLOB) {
+        GetLogger()->info("Making a directory for a blob storage does nothing.");
+    } else // SHARE
+    {
+        string sNewDir = request.share.path.back();
+        Azure::Storage::Files::Shares::ShareDirectoryClient parentDir("");
+        if (GetParentDir(&parentDir, request)) {
+            return -1;
+        }
+
+        Azure::Storage::Files::Shares::ListFilesAndDirectoriesOptions opts;
+        opts.Prefix = sNewDir;
+        for (auto pagedResponse = parentDir.ListFilesAndDirectories(opts);
+                 pagedResponse.HasPage(); pagedResponse.MoveToNextPage()) {
+            if (find_if(pagedResponse.Directories.begin(),
+                          pagedResponse.Directories.end(),
+                          [sNewDir](const auto &dirItem) {
+                            return dirItem.Name == sNewDir;
+                          }) != pagedResponse.Directories.end()) {
+                GetLogger()->error("Cannot make directory: directory already exists.");
+                return -1;
+            }
+        }
+
+        if (!parentDir.GetSubdirectoryClient(sNewDir).Create().Value.Created) {
+            GetLogger()->error("Failed to make directory.");
+            return -1;
+        }
+    }
+    return 0;
 }
 
 int Rmdir(const std::string &pathname) {
-    GetLogger()->error("Not implemented!");
-    return -1;
+    ServiceRequest request;
+    if (ParseUrl(&request, pathname)) {
+        return -1;
+    }
+    if (request.storageType == BLOB) {
+        GetLogger()->info("Removing a directory with a blob storage does nothing.");
+    } else // SHARE
+    {
+        auto dirs = ListDirs(request);
+        if (dirs.empty()) {
+            GetLogger()->error("No directory matches URL {}.", pathname);
+            return -1;
+        }
+        for (const auto &dir : dirs) {
+            const string sDirUrl = dir.GetUrl();
+            if (!dir.Delete().Value.Deleted) {
+                GetLogger()->error("Failed to delete directory {}.", sDirUrl);
+                return -1;
+            }
+        }
+    }
+    return 0;
 }
 
 int DiskFreeSpace(size_t *result, const std::string &filename) {

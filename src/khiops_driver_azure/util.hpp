@@ -28,5 +28,6 @@ Azure::Storage::Files::Shares::ShareClient GetShareClient(const ServiceRequest &
 Azure::Storage::Files::Shares::ShareDirectoryClient GetDirClient(const ServiceRequest &request);
 std::vector<Azure::Storage::Files::Shares::ShareDirectoryClient> ListDirs(const ServiceRequest &request);
 std::vector<Azure::Storage::Files::Shares::ShareFileClient> ListFiles(const ServiceRequest &request);
+int GetParentDir(Azure::Storage::Files::Shares::ShareDirectoryClient *result, const ServiceRequest &request);
 
 }

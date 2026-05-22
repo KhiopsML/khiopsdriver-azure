@@ -207,4 +207,44 @@ ListFiles(const ServiceRequest &request) {
 
 }
 
+int GetParentDir(
+        Azure::Storage::Files::Shares::ShareDirectoryClient *result,
+        const ServiceRequest &request) {
+    Azure::Storage::Files::Shares::ShareDirectoryClient dirClient =
+            GetDirClient(request);
+    vector<string> path = request.share.path;
+    path.pop_back();
+
+    for (string sPathFragment : path) {
+        Azure::Storage::Files::Shares::ListFilesAndDirectoriesOptions opts;
+        opts.Prefix = sPathFragment;
+
+        bool bAlreadyExisting = false;
+        for (auto pagedResponse = dirClient.ListFilesAndDirectories(opts);
+                 pagedResponse.HasPage(); pagedResponse.MoveToNextPage()) {
+            if (find_if(pagedResponse.Directories.begin(),
+                          pagedResponse.Directories.end(),
+                          [sPathFragment](const auto &dirItem) {
+                            return dirItem.Name == sPathFragment;
+                          }) != pagedResponse.Directories.end()) {
+                bAlreadyExisting = true;
+                break;
+            }
+        }
+
+        if (!bAlreadyExisting) {
+            GetLogger()->error("Ancestor directory {}/{} does not exist.",
+                                 dirClient.GetUrl(), sPathFragment,
+                                 request.azureUrl.GetAbsoluteUrl());
+            return -1;
+        }
+
+        dirClient = dirClient.GetSubdirectoryClient(sPathFragment);
+    }
+
+    if (result)
+        *result = dirClient;
+    return 0;
+}
+
 }
