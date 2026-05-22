@@ -1,5 +1,6 @@
 #include "khiops_driver_common/backend.hpp"
 #include "khiops_driver_common/logging.hpp"
+#include "khiops_driver_common/util.hpp"
 #include "khiops_driver_azure/version.hpp"
 #include <memory>
 #include <spdlog/spdlog.h>
@@ -47,8 +48,27 @@ int Finalize() {
 }
 
 int GetSystemPreferredBufferSize(size_t *result) {
-    GetLogger()->error("Not implemented!");
-    return -1;
+    constexpr size_t DEFAULT_PREFERRED_BUFFER_SIZE = 4ULL * 1024ULL * 1024ULL;
+    const string ENVIRONMENT_VARIABLE_NAME = "AZURE_PREFERRED_BUFFER_SIZE";
+    string environment_variable_preferred_buffer_size = util::env::GetEnvVar(ENVIRONMENT_VARIABLE_NAME);
+    if (!environment_variable_preferred_buffer_size.empty()) {
+        try {
+            *result = stoull(environment_variable_preferred_buffer_size);
+            return 0;
+        } catch (const invalid_argument &) {
+            GetLogger()->warn(
+                "Value {} of environment variable {} is not a valid number. Falling back to default {}...",
+                environment_variable_preferred_buffer_size, ENVIRONMENT_VARIABLE_NAME, DEFAULT_PREFERRED_BUFFER_SIZE
+            );
+        } catch (const out_of_range &) {
+            GetLogger()->warn(
+                "Value {} of environment variable {} is out of range. Falling back to default {}...",
+                environment_variable_preferred_buffer_size, ENVIRONMENT_VARIABLE_NAME, DEFAULT_PREFERRED_BUFFER_SIZE
+            );
+        }
+    }
+    *result = DEFAULT_PREFERRED_BUFFER_SIZE;
+    return 0;
 }
 
 int FileExists(bool *result, const std::string &sFilePathName) {
