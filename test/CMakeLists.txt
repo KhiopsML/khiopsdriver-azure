@@ -14,7 +14,7 @@ include(GoogleTest)
 
 # ########## METADATA TEST
 
-add_executable(metadata_test test_drivermetadata.cpp ../src/khiops_driver_azure/driver2.hpp)
+add_executable(metadata_test test_drivermetadata.cpp ../shared/src/khiops_driver_common/driver.h)
 
 target_compile_options(
   metadata_test

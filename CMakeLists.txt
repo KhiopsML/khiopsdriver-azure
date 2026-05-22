@@ -15,7 +15,7 @@ cmake_minimum_required(VERSION 3.21)
 set(CMAKE_CXX_STANDARD 14)
 
 # Get project version from the header file
-file(READ "src/khiops_driver_azure/driver2.hpp" H_FILE)
+file(READ "src/khiops_driver_azure/version.hpp" H_FILE)
 string(REGEX MATCH "#define DRIVER_VERSION \"([^\"]+)\"" _ ${H_FILE})
 set(DRIVER_VERSION ${CMAKE_MATCH_1})
 string(REGEX REPLACE "-.*" "" VERSION ${DRIVER_VERSION})
@@ -106,7 +106,7 @@ endif()
 #    blobpathresolve.cpp
 #    sharepathresolve.hpp
 #    sharepathresolve.cpp)
-set(KhiopsDriverAzureSources driver2.hpp driver2.cpp)
+set(KhiopsDriverAzureSources backend.cpp)
 list(TRANSFORM KhiopsDriverAzureSources PREPEND src/khiops_driver_azure/)
 
 include("${CMAKE_CURRENT_SOURCE_DIR}/shared/import_khiops_driver_common.cmake")
@@ -131,10 +131,6 @@ target_compile_options(
   khiopsdriver_file_azure
   PRIVATE $<$<CXX_COMPILER_ID:MSVC>:-Wall;/wd4582;/wd4583;/wd4625;/wd4626;/wd4710;/wd4711;/wd4820;/wd4868;/permissive->
   PRIVATE $<$<CXX_COMPILER_ID:AppleClang,Clang,GNU>:-Wall;-Wextra;-pedantic>)
-target_compile_definitions(khiopsdriver_file_azure PRIVATE
-  LOGGERNAME="azdriver"
-  LOGLEVEL_ENVVARNAME="AZURE_DRIVER_LOGLEVEL"
-  LOGFILE_ENVVARNAME="AZURE_DRIVER_LOGFILE")
 
 option(BUILD_TESTS "Build test programs" OFF)
 if(BUILD_TESTS)
