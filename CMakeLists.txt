@@ -105,10 +105,10 @@ set(KhiopsDriverAzureSources
 #    driver.cpp
 #    auth.hpp
 #    returnval.hpp
-#    objectclient.hpp
-#    filestream.hpp
-#    filestream.cpp
     ########## The files listed below should be removed in favor of components shared among the drivers.
+    objectclient.hpp
+    filestream.hpp
+    filestream.cpp
     fragmentedfile.hpp
     fragmentedfile.cpp
 )

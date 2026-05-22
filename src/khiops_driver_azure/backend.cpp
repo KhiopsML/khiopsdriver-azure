@@ -54,24 +54,31 @@ int Finalize() {
 int GetSystemPreferredBufferSize(size_t *result) {
     constexpr size_t DEFAULT_PREFERRED_BUFFER_SIZE = 4ULL * 1024ULL * 1024ULL;
     const string ENVIRONMENT_VARIABLE_NAME = "AZURE_PREFERRED_BUFFER_SIZE";
-    string environment_variable_preferred_buffer_size = util::env::GetEnvVar(ENVIRONMENT_VARIABLE_NAME);
-    if (!environment_variable_preferred_buffer_size.empty()) {
-        try {
-            *result = stoull(environment_variable_preferred_buffer_size);
-            return 0;
-        } catch (const invalid_argument &) {
-            GetLogger()->warn(
-                "Value {} of environment variable {} is not a valid number. Falling back to default {}...",
-                environment_variable_preferred_buffer_size, ENVIRONMENT_VARIABLE_NAME, DEFAULT_PREFERRED_BUFFER_SIZE
-            );
-        } catch (const out_of_range &) {
-            GetLogger()->warn(
-                "Value {} of environment variable {} is out of range. Falling back to default {}...",
-                environment_variable_preferred_buffer_size, ENVIRONMENT_VARIABLE_NAME, DEFAULT_PREFERRED_BUFFER_SIZE
-            );
+    static unique_ptr<size_t> system_preferred_buffer_size_memo = nullptr;
+    if (system_preferred_buffer_size_memo == nullptr) {
+        string environment_variable_preferred_buffer_size = util::env::GetEnvVar(ENVIRONMENT_VARIABLE_NAME);
+        if (!environment_variable_preferred_buffer_size.empty()) {
+            try {
+                *result = stoull(environment_variable_preferred_buffer_size);
+                system_preferred_buffer_size_memo = make_unique<size_t>(*result);
+                return 0;
+            } catch (const invalid_argument &) {
+                GetLogger()->warn(
+                    "Value {} of environment variable {} is not a valid number. Falling back to default {}...",
+                    environment_variable_preferred_buffer_size, ENVIRONMENT_VARIABLE_NAME, DEFAULT_PREFERRED_BUFFER_SIZE
+                );
+            } catch (const out_of_range &) {
+                GetLogger()->warn(
+                    "Value {} of environment variable {} is out of range. Falling back to default {}...",
+                    environment_variable_preferred_buffer_size, ENVIRONMENT_VARIABLE_NAME, DEFAULT_PREFERRED_BUFFER_SIZE
+                );
+            }
         }
+        *result = DEFAULT_PREFERRED_BUFFER_SIZE;
+        system_preferred_buffer_size_memo = make_unique<size_t>(*result);
+    } else {
+        *result = *system_preferred_buffer_size_memo;
     }
-    *result = DEFAULT_PREFERRED_BUFFER_SIZE;
     return 0;
 }
 
@@ -260,13 +267,73 @@ int DiskFreeSpace(size_t *result, const std::string &filename) {
 }
 
 int CopyToLocal(const std::string &sourcefilename, const std::string &destfilename) {
-    GetLogger()->error("Not implemented!");
-    return -1;
+    ServiceRequest request;
+    if (ParseUrl(&request, sourcefilename)) {
+        return -1;
+    }
+    FileStream *readerPtr;
+    if (OpenForReading(&readerPtr, sourcefilename)) {
+        return -1;
+    }
+    size_t system_preferred_buffer_size;
+    if (GetSystemPreferredBufferSize(&system_preferred_buffer_size) != 0) {
+        return -1;
+    }
+    std::unique_ptr<char[]> buffer = std::make_unique<char[]>(system_preferred_buffer_size);
+    ofstream ofs(destfilename, ios::binary);
+    size_t nRead;
+
+    for (;;) {
+        GetLogger()->trace("Copying at most {} bytes from remote to local file...", system_preferred_buffer_size);
+        switch (readerPtr->Read(&nRead, buffer.get(), 1, system_preferred_buffer_size)) {
+        case 0:
+            ofs.write(buffer.get(), (streamsize)nRead);
+            continue;
+        case -1:
+            return -1;
+        case -2: // Read at EOF
+            break;
+        }
+        break;
+    }
+
+    if (Close(readerPtr->GetHandle())) {
+        return -1;
+    }
+    return 0;
 }
 
 int CopyFromLocal(const std::string &sourcefilename, const std::string &destfilename) {
-    GetLogger()->error("Not implemented!");
-    return -1;
+    ServiceRequest request;
+    if (ParseUrl(&request, destfilename)) {
+        return -1;
+    }
+    FileStream *writerPtr;
+    if (OpenForWriting(&writerPtr, destfilename)) {
+        return -1;
+    }
+    std::unique_ptr<char[]> buffer = std::make_unique<char[]>(system_preferred_buffer_size);
+    size_t nRead;
+    ifstream ifs(sourcefilename, ios::binary);
+
+    for (;;) {
+        GetLogger()->trace("Copying at most {} bytes from local file to remote...", nPreferredBufferSize);
+        ifs.read(buffer.get(), nPreferredBufferSize);
+        nRead = (size_t)ifs.gcount();
+        if (nRead == 0) {
+            break;
+        }
+        int nWriteStatus;
+        size_t nWritten;
+        if ((nWriteStatus = writerPtr->Write(&nWritten, buffer.get(), 1, nRead))) {
+            return nWriteStatus;
+        }
+    }
+
+    if (Close(writerPtr->GetHandle())) {
+        return -1;
+    }
+    return 0;
 }
 
 int Concat(const std::string &destfilename, const std::vector<std::string> &sourcefilenames) {
