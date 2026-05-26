@@ -1,10 +1,10 @@
 #include "khiops_driver_common/backend.hpp"
 #include "khiops_driver_common/logging.hpp"
 #include "khiops_driver_common/util.hpp"
+#include "khiops_driver_common/filestream.hpp"
 #include "khiops_driver_azure/util.hpp"
 #include "khiops_driver_azure/version.hpp"
 #include "khiops_driver_azure/servicerequest.hpp"
-#include "khiops_driver_azure/fragmentedfile.hpp"
 #include <memory>
 #include <spdlog/spdlog.h>
 #include <azure/core/diagnostics/logger.hpp>
@@ -18,17 +18,26 @@ spdlog::logger *GetLogger() {
     return GetLogger("azdriver", "AZURE_DRIVER_LOGFILE", "AZURE_DRIVER_LOGLEVEL");
 }
 
-int GetDriverName(std::string *result) {
+int ListFragments(vector<string> *result, const string &url) {
+}
+
+int GetFragmentSize(size_t *result, const string &url) {
+}
+
+int ReadFragment(string *result, const string &url, size_t offset, size_t maxlength, char terminatorchar) {
+}
+
+int GetDriverName(string *result) {
     *result = "Azure driver";
     return 0;
 }
 
-int GetDriverVersion(std::string *result) {
+int GetDriverVersion(string *result) {
     *result = DRIVER_VERSION;
     return 0;
 }
 
-int GetDriverScheme(std::string *result) {
+int GetDriverScheme(string *result) {
     *result = "https";
     return 0;
 }
@@ -82,7 +91,7 @@ int GetSystemPreferredBufferSize(size_t *result) {
     return 0;
 }
 
-int FileExists(bool *result, const std::string &sFilePathName) {
+int FileExists(bool *result, const string &sFilePathName) {
     ServiceRequest request;
     if (ParseUrl(&request, sFilePathName)) {
         return -1;
@@ -95,7 +104,7 @@ int FileExists(bool *result, const std::string &sFilePathName) {
     return 0;
 }
 
-int DirExists(bool *result, const std::string &sFilePathName) {
+int DirExists(bool *result, const string &sFilePathName) {
     ServiceRequest request;
     if (ParseUrl(&request, sFilePathName)) {
         return -1;
@@ -108,7 +117,7 @@ int DirExists(bool *result, const std::string &sFilePathName) {
     return 0;
 }
 
-int GetFileSize(size_t *result, const std::string &filename) {
+int GetFileSize(size_t *result, const string &filename) {
     ServiceRequest request;
     if (ParseUrl(&request, filename)) {
         return -1;
@@ -119,19 +128,23 @@ int GetFileSize(size_t *result, const std::string &filename) {
             GetLogger()->error("No blob matches URL {}.", filename);
             return -1;
         }
-        *result = FragmentedFile(std::move(blobs)).GetSize();
+        FileReader file_reader;
+        PopulateFileReader(&file_reader, filename);
+        *result = file_reader.total_size;
     } else /* SHARE */ {
         auto files = ListFiles(request);
         if (files.empty()) {
             GetLogger()->error("No file matches URL {}.", filename);
             return -1;
         }
-        *result = FragmentedFile(std::move(files)).GetSize();
+        FileReader file_reader;
+        PopulateFileReader(&file_reader, filename);
+        *result = file_reader.total_size;
     }
     return 0;
 }
 
-int FOpen(FileStream &stream, const std::string &filename) {
+int FOpen(FileStream &stream, const string &filename) {
     if (stream.mode == FileStream::Mode::READ) {
         
     } else if (stream.mode == FileStream::Mode::WRITE) {
@@ -167,7 +180,7 @@ int FFlush(const FileStream &stream) {
     return -1;
 }
 
-int Remove(const std::string &filename) {
+int Remove(const string &filename) {
     ServiceRequest request;
     if (ParseUrl(&request, filename)) {
         return -1;
@@ -205,7 +218,7 @@ int Remove(const std::string &filename) {
     return 0;
 }
 
-int Mkdir(const std::string &pathname) {
+int Mkdir(const string &pathname) {
     ServiceRequest request;
     if (ParseUrl(&request, pathname)) {
         return -1;
@@ -242,7 +255,7 @@ int Mkdir(const std::string &pathname) {
     return 0;
 }
 
-int Rmdir(const std::string &pathname) {
+int Rmdir(const string &pathname) {
     ServiceRequest request;
     if (ParseUrl(&request, pathname)) {
         return -1;
@@ -267,12 +280,12 @@ int Rmdir(const std::string &pathname) {
     return 0;
 }
 
-int DiskFreeSpace(size_t *result, const std::string &filename) {
+int DiskFreeSpace(size_t *result, const string &filename) {
     *result = 5ULL * 1024ULL * 1024ULL * 1024ULL * 1024ULL;
     return 0;
 }
 
-int CopyToLocal(const std::string &sourcefilename, const std::string &destfilename) {
+int CopyToLocal(const string &sourcefilename, const string &destfilename) {
     ServiceRequest request;
     if (ParseUrl(&request, sourcefilename)) {
         return -1;
@@ -285,7 +298,7 @@ int CopyToLocal(const std::string &sourcefilename, const std::string &destfilena
     if (GetSystemPreferredBufferSize(&system_preferred_buffer_size) != 0) {
         return -1;
     }
-    std::unique_ptr<char[]> buffer = std::make_unique<char[]>(system_preferred_buffer_size);
+    unique_ptr<char[]> buffer = make_unique<char[]>(system_preferred_buffer_size);
     ofstream ofs(destfilename, ios::binary);
     size_t nRead;
 
@@ -309,7 +322,7 @@ int CopyToLocal(const std::string &sourcefilename, const std::string &destfilena
     return 0;
 }
 
-int CopyFromLocal(const std::string &sourcefilename, const std::string &destfilename) {
+int CopyFromLocal(const string &sourcefilename, const string &destfilename) {
     ServiceRequest request;
     if (ParseUrl(&request, destfilename)) {
         return -1;
@@ -318,7 +331,7 @@ int CopyFromLocal(const std::string &sourcefilename, const std::string &destfile
     if (OpenForWriting(&writerPtr, destfilename)) {
         return -1;
     }
-    std::unique_ptr<char[]> buffer = std::make_unique<char[]>(system_preferred_buffer_size);
+    unique_ptr<char[]> buffer = make_unique<char[]>(system_preferred_buffer_size);
     size_t nRead;
     ifstream ifs(sourcefilename, ios::binary);
 
@@ -342,12 +355,12 @@ int CopyFromLocal(const std::string &sourcefilename, const std::string &destfile
     return 0;
 }
 
-int Concat(const std::string &destfilename, const std::vector<std::string> &sourcefilenames) {
+int Concat(const string &destfilename, const vector<string> &sourcefilenames) {
     GetLogger()->error("Not implemented!");
     return -1;
 }
 
-int ComposeMultifile(const std::string &sDestFilePathName, const std::vector<std::string> &sSourceFilePathNames) {
+int ComposeMultifile(const string &sDestFilePathName, const vector<string> &sSourceFilePathNames) {
     GetLogger()->error("Not implemented!");
     return -1;
 }

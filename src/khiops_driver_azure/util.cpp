@@ -14,6 +14,22 @@ using namespace khiops_driver_common;
 
 namespace khiops_driver_azure {
 
+int StorageTypeOfUrl(StorageType *result, const Azure::Core::Url &url) {
+    std::string host = url.GetHost();
+    if (IsEmulatedStorage()) {
+        // The emulator supports only blob storage services, not file share storage services.
+        *result = BLOB;
+    } else if (util::str::EndsWith(host, ".blob.core.windows.net")) {
+        *result = BLOB;
+    } else if (util::str::EndsWith(host, ".file.core.windows.net")) {
+        *result = SHARE;
+    } else {
+        GetLogger()->error("URL {} contains invalid domain.", url.GetAbsoluteUrl());
+        return -1;
+    }
+    return 0;
+}
+
 bool IsEmulatedStorage() {
     string sEmulatedStorageEnvVarVal = util::env::GetEnvVar("AZURE_EMULATED_STORAGE");
     return !sEmulatedStorageEnvVarVal.empty() && sEmulatedStorageEnvVarVal != "false";

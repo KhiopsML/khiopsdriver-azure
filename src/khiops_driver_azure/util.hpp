@@ -10,8 +10,11 @@
 #include <azure/storage/files/shares/share_file_client.hpp>
 #include <azure/storage/files/shares/share_service_client.hpp>
 #include "khiops_driver_azure/servicerequest.hpp"
+#include "khiops_driver_azure/storagetype.hpp"
 
 namespace khiops_driver_azure {
+
+int StorageTypeOfUrl(StorageType *result, const Azure::Core::Url &url);
 
 bool IsEmulatedStorage();
 
