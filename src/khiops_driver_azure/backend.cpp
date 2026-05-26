@@ -93,7 +93,7 @@ int GetSystemPreferredBufferSize(size_t *result) {
 
 int FileExists(bool *result, const string &sFilePathName) {
     ServiceRequest request;
-    if (ParseUrl(&request, sFilePathName)) {
+    if (BuildServiceRequest(&request, sFilePathName)) {
         return -1;
     }
     if (request.storageType == BLOB) {
@@ -106,7 +106,7 @@ int FileExists(bool *result, const string &sFilePathName) {
 
 int DirExists(bool *result, const string &sFilePathName) {
     ServiceRequest request;
-    if (ParseUrl(&request, sFilePathName)) {
+    if (BuildServiceRequest(&request, sFilePathName)) {
         return -1;
     }
     if (request.storageType == BLOB) {
@@ -119,7 +119,7 @@ int DirExists(bool *result, const string &sFilePathName) {
 
 int GetFileSize(size_t *result, const string &filename) {
     ServiceRequest request;
-    if (ParseUrl(&request, filename)) {
+    if (BuildServiceRequest(&request, filename)) {
         return -1;
     }
     if (request.storageType == BLOB) {
@@ -182,7 +182,7 @@ int FFlush(const FileStream &stream) {
 
 int Remove(const string &filename) {
     ServiceRequest request;
-    if (ParseUrl(&request, filename)) {
+    if (BuildServiceRequest(&request, filename)) {
         return -1;
     }
     if (request.storageType == BLOB) {
@@ -220,7 +220,7 @@ int Remove(const string &filename) {
 
 int Mkdir(const string &pathname) {
     ServiceRequest request;
-    if (ParseUrl(&request, pathname)) {
+    if (BuildServiceRequest(&request, pathname)) {
         return -1;
     }
     if (request.storageType == BLOB) {
@@ -257,7 +257,7 @@ int Mkdir(const string &pathname) {
 
 int Rmdir(const string &pathname) {
     ServiceRequest request;
-    if (ParseUrl(&request, pathname)) {
+    if (BuildServiceRequest(&request, pathname)) {
         return -1;
     }
     if (request.storageType == BLOB) {
@@ -287,7 +287,7 @@ int DiskFreeSpace(size_t *result, const string &filename) {
 
 int CopyToLocal(const string &sourcefilename, const string &destfilename) {
     ServiceRequest request;
-    if (ParseUrl(&request, sourcefilename)) {
+    if (BuildServiceRequest(&request, sourcefilename)) {
         return -1;
     }
     FileStream *readerPtr;
@@ -324,7 +324,7 @@ int CopyToLocal(const string &sourcefilename, const string &destfilename) {
 
 int CopyFromLocal(const string &sourcefilename, const string &destfilename) {
     ServiceRequest request;
-    if (ParseUrl(&request, destfilename)) {
+    if (BuildServiceRequest(&request, destfilename)) {
         return -1;
     }
     FileStream *writerPtr;

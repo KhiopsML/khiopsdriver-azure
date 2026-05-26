@@ -92,7 +92,6 @@ set(KhiopsDriverAzureSources
   connstr.hpp
   connstr.cpp
   servicerequest.hpp
-  servicerequest.cpp
   sharepathresolve.hpp
   sharepathresolve.cpp
   storagetype.hpp

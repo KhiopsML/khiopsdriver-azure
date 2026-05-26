@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+#include <memory>
 #include <azure/storage/blobs/blob_client.hpp>
 #include <azure/storage/blobs/blob_container_client.hpp>
 #include <azure/storage/blobs/blob_service_client.hpp>
@@ -10,15 +11,25 @@
 #include <azure/storage/files/shares/share_file_client.hpp>
 #include <azure/storage/files/shares/share_service_client.hpp>
 #include "khiops_driver_azure/servicerequest.hpp"
-#include "khiops_driver_azure/storagetype.hpp"
 
 namespace khiops_driver_azure {
 
-int StorageTypeOfUrl(StorageType *result, const Azure::Core::Url &url);
+enum StorageType { BLOB, SHARE };
+int StorageTypeOfUrl(StorageType *result, const Azure::Core::Url &url, bool is_emulated_storage);
+
+struct ObjectPath {
+    std::unique_ptr<std::string> emulated_account_name;
+    std::unique_ptr<std::string> blob_container;
+    std::unique_ptr<std::string> blob;
+    std::unique_ptr<std::string> file_share;
+    std::unique_ptr<std::vector<std::string>> file_path;
+};
+std::string ObjectPathToString(const ObjectPath &object_path);
+int ObjectPathOfUrl(ObjectPath *result, const Azure::Core::Url &url, bool is_emulated_storage, StorageType storage_type);
 
 bool IsEmulatedStorage();
 
-int ParseUrl(ServiceRequest *result, const std::string &sUrl);
+int BuildServiceRequest(ServiceRequest *result, const std::string &url);
 
 std::string GetServiceUrl(const ServiceRequest &request);
 
