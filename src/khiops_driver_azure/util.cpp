@@ -159,45 +159,45 @@ int BuildServiceRequest(ServiceRequest *result, const string &url) {
 
 string GetServiceUrl(const ServiceRequest &request) {
     ostringstream oss;
-    if (request.bEmulated) {  // Emulated BLOB storage
-        oss << request.azureUrl.GetScheme() << "://" << request.azureUrl.GetHost()
-            << ":" << request.azureUrl.GetPort() << "/"
-            << request.blob.sAccountName;
+    if (request.is_emulated_storage) {  // Emulated BLOB storage
+        oss << request.azure_url.GetScheme() << "://" << request.azure_url.GetHost()
+            << ":" << request.azure_url.GetPort() << "/"
+            << request.object_path.emulated_account_name;
     } else if (request.storageType == BLOB) {  // Real Azure cloud BLOB storage
-        oss << request.azureUrl.GetScheme() << "://" << request.azureUrl.GetHost()
-            << ":" << request.azureUrl.GetPort();
+        oss << request.azure_url.GetScheme() << "://" << request.azure_url.GetHost()
+            << ":" << request.azure_url.GetPort();
     } else {  // Real Azure cloud FILE storage
-        oss << request.azureUrl.GetScheme() << "://" << request.azureUrl.GetHost()
-            << ":" << request.azureUrl.GetPort();
+        oss << request.azure_url.GetScheme() << "://" << request.azure_url.GetHost()
+            << ":" << request.azure_url.GetPort();
     }
-    std::string result = oss.str();
+    string result = oss.str();
     GetLogger()->debug("Service URL is: {}.", result);
     return result;
 }
 
 string GetBlobContainerUrl(const ServiceRequest &request) {
     ostringstream oss;
-    oss << GetServiceUrl(request) << "/" << request.blob.sContainer;
+    oss << GetServiceUrl(request) << "/" << request.object_path.blob_container;
     std::string result = oss.str();
     GetLogger()->debug("Blob container URL is: {}.", result);
     return result;
 }
 
 Azure::Storage::Blobs::BlobContainerClient GetBlobContainerClient(const ServiceRequest &request) {
-    if (request.bUsingConnectionString) {
-        return Azure::Storage::Blobs::BlobContainerClient(GetBlobContainerUrl(request), request.connectionStringCredential);
+    if (request.is_using_connection_string) {
+        return Azure::Storage::Blobs::BlobContainerClient(GetBlobContainerUrl(request), request.connection_string_credential);
     } else {
-        return Azure::Storage::Blobs::BlobContainerClient(GetBlobContainerUrl(request), request.noConnectionStringCredential);
+        return Azure::Storage::Blobs::BlobContainerClient(GetBlobContainerUrl(request), request.no_connection_string_credential);
     }
 }
 
 vector<Azure::Storage::Blobs::BlobClient> ListBlobs(const ServiceRequest &request) {
-    return ResolveBlobsSearchString(GetBlobContainerClient(request), request.blob.sBlob);
+    return ResolveBlobsSearchString(GetBlobContainerClient(request), request.object_path.blob);
 }
 
 string GetFileShareUrl(const ServiceRequest &request) {
     ostringstream oss;
-    oss << GetServiceUrl(request) << "/" << request.share.sShare;
+    oss << GetServiceUrl(request) << "/" << request.object_path.file_share;
     string result = oss.str();
     GetLogger()->debug("File share URL is: {}.", result);
     return result;
@@ -208,12 +208,12 @@ GetShareClient(const ServiceRequest &request) {
     Azure::Storage::Files::Shares::ShareClientOptions opts;
     opts.ShareTokenIntent =
             Azure::Storage::Files::Shares::Models::ShareTokenIntent::Backup;
-    if (request.bUsingConnectionString) {
+    if (request.is_using_connection_string) {
         return Azure::Storage::Files::Shares::ShareClient(
-                GetFileShareUrl(request), request.connectionStringCredential, opts);
+                GetFileShareUrl(request), request.connection_string_credential, opts);
     } else {
         return Azure::Storage::Files::Shares::ShareClient(
-                GetFileShareUrl(request), request.noConnectionStringCredential, opts);
+                GetFileShareUrl(request), request.no_connection_string_credential, opts);
     }
 }
 
@@ -227,7 +227,7 @@ ListDirs(const ServiceRequest &request) {
     return ResolveDirsPathRecursively(
             GetDirClient(request),
             queue<string, deque<string>>(
-                  deque<string>(request.share.path.begin(), request.share.path.end())));
+                  deque<string>(request.object_path.file_path.begin(), request.object_path.file_path.end())));
 }
 
 vector<Azure::Storage::Files::Shares::ShareFileClient>
@@ -235,7 +235,7 @@ ListFiles(const ServiceRequest &request) {
     return ResolveFilesPathRecursively(
             GetDirClient(request),
             queue<string, deque<string>>(
-                  deque<string>(request.share.path.begin(), request.share.path.end())));
+                  deque<string>(request.object_path.file_path.begin(), request.object_path.file_path.end())));
 
 }
 
@@ -244,7 +244,7 @@ int GetParentDir(
         const ServiceRequest &request) {
     Azure::Storage::Files::Shares::ShareDirectoryClient dirClient =
             GetDirClient(request);
-    vector<string> path = request.share.path;
+    vector<string> path = request.object_path.file_path;
     path.pop_back();
 
     for (string sPathFragment : path) {
@@ -267,7 +267,7 @@ int GetParentDir(
         if (!bAlreadyExisting) {
             GetLogger()->error("Ancestor directory {}/{} does not exist.",
                                  dirClient.GetUrl(), sPathFragment,
-                                 request.azureUrl.GetAbsoluteUrl());
+                                 request.azure_url.GetAbsoluteUrl());
             return -1;
         }
 
