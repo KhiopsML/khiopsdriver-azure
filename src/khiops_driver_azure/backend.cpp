@@ -14,14 +14,46 @@ using namespace khiops_driver_azure;
 
 namespace khiops_driver_common {
 
+FileReader::Fragment::~Fragment() {
+    if (this->version != nullptr) {
+        delete static_cast<Azure::ETag *>(this->version);
+    }
+}
+
 spdlog::logger *GetLogger() {
     return GetLogger("azdriver", "AZURE_DRIVER_LOGFILE", "AZURE_DRIVER_LOGLEVEL");
 }
 
 int ListFragments(vector<string> *result, const string &url) {
+    ServiceRequest request;
+    if (BuildServiceRequest(&request, url) == 0) {
+        if (request.storage_type == BLOB) {
+            *result = ListBlobs(request);
+            return 0;
+        } else /* SHARE */ {
+            *result = ListFiles(request);
+            return 0;
+        }
+    }
+    return -1;
 }
 
-int GetFragmentSize(size_t *result, const string &url) {
+int GetFragmentSizeAndVersion(size_t *size_result, void **version_result, const string &url) {
+    ServiceRequest request;
+    if (BuildServiceRequest(&request, url) == 0) {
+        if (request.storage_type == BLOB) {
+            auto blob_properties = std::move(GetBlobClient(request).GetProperties().Value);
+            *size_result = static_cast<size_t>(blob_properties.BlobSize);
+            *version_result = static_cast<void *>(new Azure::ETag(blob_properties.ETag.ToString()));
+            return 0;
+        } else /* SHARE */ {
+            auto file_properties = std::move(GetFileClient(request).GetProperties().Value);
+            *size_result = static_cast<size_t>(file_properties.FileSize);
+            *version_result = static_cast<void *>(new Azure::ETag(file_properties.ETag.ToString()));
+            return 0;
+        }
+    }
+    return -1;
 }
 
 int ReadFragment(string *result, const string &url, size_t offset, size_t maxlength, char terminatorchar) {
@@ -119,29 +151,28 @@ int DirExists(bool *result, const string &sFilePathName) {
 
 int GetFileSize(size_t *result, const string &filename) {
     ServiceRequest request;
-    if (BuildServiceRequest(&request, filename)) {
-        return -1;
-    }
-    if (request.storageType == BLOB) {
-        auto blobs = ListBlobs(request);
-        if (blobs.empty()) {
-            GetLogger()->error("No blob matches URL {}.", filename);
-            return -1;
+    if (BuildServiceRequest(&request, filename) == 0) {
+        if (request.storage_type == BLOB) {
+            auto blobs = ListBlobs(request);
+            if (blobs.empty()) {
+                GetLogger()->error("No blob matches URL {}.", filename);
+                return -1;
+            }
+            FileReader file_reader;
+            PopulateFileReader(&file_reader, filename);
+            *result = file_reader.total_size;
+        } else /* SHARE */ {
+            auto files = ListFiles(request);
+            if (files.empty()) {
+                GetLogger()->error("No file matches URL {}.", filename);
+                return -1;
+            }
+            FileReader file_reader;
+            PopulateFileReader(&file_reader, filename);
+            *result = file_reader.total_size;
         }
-        FileReader file_reader;
-        PopulateFileReader(&file_reader, filename);
-        *result = file_reader.total_size;
-    } else /* SHARE */ {
-        auto files = ListFiles(request);
-        if (files.empty()) {
-            GetLogger()->error("No file matches URL {}.", filename);
-            return -1;
-        }
-        FileReader file_reader;
-        PopulateFileReader(&file_reader, filename);
-        *result = file_reader.total_size;
     }
-    return 0;
+    return -1;
 }
 
 int FOpen(FileStream &stream, const string &filename) {

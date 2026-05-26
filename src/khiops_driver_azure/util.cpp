@@ -191,8 +191,16 @@ Azure::Storage::Blobs::BlobContainerClient GetBlobContainerClient(const ServiceR
     }
 }
 
-vector<Azure::Storage::Blobs::BlobClient> ListBlobs(const ServiceRequest &request) {
+vector<string> ListBlobs(const ServiceRequest &request) {
     return ResolveBlobsSearchString(GetBlobContainerClient(request), request.object_path.blob);
+}
+
+Azure::Storage::Blobs::BlobClient GetBlobClient(const ServiceRequest &request) {
+    if (request.is_using_connection_string) {
+        return Azure::Storage::Blobs::BlobClient(request.azure_url.GetAbsoluteUrl(), request.connection_string_credential);
+    } else {
+        return Azure::Storage::Blobs::BlobClient(request.azure_url.GetAbsoluteUrl(), request.no_connection_string_credential);
+    }
 }
 
 string GetFileShareUrl(const ServiceRequest &request) {
@@ -277,6 +285,17 @@ int GetParentDir(
     if (result)
         *result = dirClient;
     return 0;
+}
+
+Azure::Storage::Files::Shares::ShareFileClient GetFileClient(const ServiceRequest &request) {
+    Azure::Storage::Files::Shares::ShareClientOptions opts;
+    opts.ShareTokenIntent =
+            Azure::Storage::Files::Shares::Models::ShareTokenIntent::Backup;
+    if (request.is_using_connection_string) {
+        return Azure::Storage::Files::Shares::ShareFileClient(request.azure_url.GetAbsoluteUrl(), request.connection_string_credential, opts);
+    } else {
+        return Azure::Storage::Files::Shares::ShareFileClient(request.azure_url.GetAbsoluteUrl(), request.no_connection_string_credential, opts);
+    }
 }
 
 }

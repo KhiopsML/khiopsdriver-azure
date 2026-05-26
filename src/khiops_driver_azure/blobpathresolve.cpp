@@ -2,77 +2,28 @@
 #include "khiops_driver_common/contrib.hpp"
 #include "khiops_driver_common/util.hpp"
 #include <functional>
+#include <sstream>
 
 using namespace std;
 using namespace khiops_driver_common;
 
 namespace khiops_driver_azure {
-using BlobClient = Azure::Storage::Blobs::BlobClient;
-using BlobContainerClient = Azure::Storage::Blobs::BlobContainerClient;
-using ListBlobsOptions = Azure::Storage::Blobs::ListBlobsOptions;
-using BlobItem = Azure::Storage::Blobs::Models::BlobItem;
 
-static vector<BlobClient>
-FindBlobsByName(const BlobContainerClient &containerClient,
-                const string &sName);
-
-static vector<BlobClient>
-FindBlobsByGlob(const BlobContainerClient &containerClient,
-                const string &sGlob);
-
-static vector<BlobClient>
-FindBlobs(const BlobContainerClient &containerClient,
-          const function<bool(const BlobItem &item)> &Predicate,
-          const string &sPrefix);
-
-static string PrefixFromName(const string &sName);
-
-static string PrefixFromGlob(const string &sGlob);
-
-vector<BlobClient>
-ResolveBlobsSearchString(const BlobContainerClient &containerClient,
-                         const string &sSearchString) {
-  return util::glob::FindGlobbingChar(sSearchString) != string::npos
-             ? FindBlobsByGlob(containerClient, sSearchString)
-             : FindBlobsByName(containerClient, sSearchString);
-}
-
-static vector<BlobClient>
-FindBlobsByName(const BlobContainerClient &containerClient,
-                const string &sName) {
-  return FindBlobs(
-      containerClient,
-      [sName](const BlobItem &item) {
-        return !item.IsDeleted && item.Name == sName;
-      },
-      PrefixFromName(sName));
-}
-
-static vector<BlobClient>
-FindBlobsByGlob(const BlobContainerClient &containerClient,
-                const string &sGlob) {
-  return FindBlobs(
-      containerClient,
-      [sGlob](const BlobItem &item) {
-        return !item.IsDeleted &&
-               util::glob::GitignoreGlobMatch(item.Name, sGlob);
-      },
-      PrefixFromGlob(sGlob));
-}
-
-static vector<BlobClient>
-FindBlobs(const BlobContainerClient &containerClient,
-          const function<bool(const BlobItem &item)> &Predicate,
+static vector<string>
+FindBlobs(const Azure::Storage::Blobs::BlobContainerClient &containerClient,
+          const function<bool(const Azure::Storage::Blobs::Models::BlobItem &item)> &Predicate,
           const string &sPrefix) {
-  ListBlobsOptions listBlobsOptions;
+  Azure::Storage::Blobs::ListBlobsOptions listBlobsOptions;
   listBlobsOptions.Prefix = sPrefix;
 
-  vector<BlobClient> result;
+  vector<string> result;
   for (auto pagedBlobList = containerClient.ListBlobs(listBlobsOptions);
        pagedBlobList.HasPage(); pagedBlobList.MoveToNextPage()) {
     for (const auto &blobItem : pagedBlobList.Blobs) {
       if (Predicate(blobItem)) {
-        result.push_back(containerClient.GetBlobClient(blobItem.Name));
+        ostringstream oss;
+        oss << containerClient.GetUrl() << "/" << blobItem.Name;
+        result.push_back(oss.str());
       }
     }
   }
@@ -84,4 +35,36 @@ static string PrefixFromName(const string &sName) { return sName; }
 static string PrefixFromGlob(const string &sGlob) {
   return sGlob.substr(0, util::glob::FindGlobbingChar(sGlob));
 }
+
+static vector<string>
+FindBlobsByName(const Azure::Storage::Blobs::BlobContainerClient &containerClient,
+                const string &sName) {
+  return FindBlobs(
+      containerClient,
+      [sName](const Azure::Storage::Blobs::Models::BlobItem &item) {
+        return !item.IsDeleted && item.Name == sName;
+      },
+      PrefixFromName(sName));
+}
+
+static vector<string>
+FindBlobsByGlob(const Azure::Storage::Blobs::BlobContainerClient &containerClient,
+                const string &sGlob) {
+  return FindBlobs(
+      containerClient,
+      [sGlob](const Azure::Storage::Blobs::Models::BlobItem &item) {
+        return !item.IsDeleted &&
+               util::glob::GitignoreGlobMatch(item.Name, sGlob);
+      },
+      PrefixFromGlob(sGlob));
+}
+
+vector<string>
+ResolveBlobsSearchString(const Azure::Storage::Blobs::BlobContainerClient &containerClient,
+                         const string &sSearchString) {
+  return util::glob::FindGlobbingChar(sSearchString) != string::npos
+             ? FindBlobsByGlob(containerClient, sSearchString)
+             : FindBlobsByName(containerClient, sSearchString);
+}
+
 } // namespace khiops_driver_azure
