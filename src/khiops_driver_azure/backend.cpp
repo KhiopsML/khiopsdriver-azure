@@ -6,8 +6,10 @@
 #include "khiops_driver_azure/version.hpp"
 #include "khiops_driver_azure/servicerequest.hpp"
 #include <memory>
+#include <algorithm>
 #include <spdlog/spdlog.h>
 #include <azure/core/diagnostics/logger.hpp>
+#include <azure/storage/common/storage_exception.hpp>
 
 using namespace std;
 using namespace khiops_driver_azure;
@@ -56,7 +58,77 @@ int GetFragmentSizeAndVersion(size_t *size_result, void **version_result, const 
     return -1;
 }
 
-int ReadFragment(string *result, const string &url, size_t offset, size_t maxlength, char terminatorchar) {
+int ReadFragment(string *result, bool *stopped_on_termchar, const string &url, void *version, size_t offset, size_t maxlength, char termchar) {
+    ServiceRequest request;
+    string content_read = "";
+    unique_ptr<Azure::Core::IO::BodyStream> body_stream;
+    size_t buffer_size;
+    Azure::ETag previousETag = *static_cast<Azure::ETag *>(version);
+    size_t number_of_bytes_to_read = maxlength;
+    size_t number_of_bytes_read;
+    uint8_t *term_char_pos;
+    Azure::Core::Http::HttpRange range;
+    if (BuildServiceRequest(&request, url) == 0) {
+        if (GetSystemPreferredBufferSize(&buffer_size) == 0) {
+            vector<uint8_t> buffer(buffer_size);
+            uint8_t *buffer_start = buffer.data();
+            uint8_t *buffer_end = buffer_start + buffer_size;
+            while (number_of_bytes_to_read >= 0ULL) {
+                try {
+                    if (request.storage_type == BLOB) {
+                        Azure::Storage::Blobs::BlobAccessConditions access_conditions;
+                        Azure::Storage::Blobs::DownloadBlobOptions opts;
+                        access_conditions.IfMatch = previousETag;
+                        opts.AccessConditions = access_conditions;
+                        range.Offset = static_cast<int64_t>(offset + number_of_bytes_read);
+                        range.Length = static_cast<int64_t>(min(number_of_bytes_to_read, buffer_size));
+                        opts.Range = range;
+                        body_stream = std::move(GetBlobClient(request).Download(opts).Value.BodyStream);
+                    } else /* SHARE */ {
+                        Azure::Storage::Files::Shares::DownloadFileOptions opts;
+                        opts.Range = range;
+                        auto download_result = std::move(GetFileClient(request).Download(opts).Value);
+                        if (download_result.Details.ETag != previousETag) {
+                            GetLogger()->error("The file has been updated while reading it.");
+                            return -1;
+                        }
+                        body_stream = std::move(download_result.BodyStream);
+                    }
+                } catch (const Azure::Storage::StorageException &exc) {
+                    if (exc.StatusCode == Azure::Core::Http::HttpStatusCode::PreconditionFailed) {
+                        GetLogger()->error("The file has been updated while reading it.");
+                        return -1;
+                    }
+                    if (exc.StatusCode == Azure::Core::Http::HttpStatusCode::RangeNotSatisfiable) {
+                        GetLogger()->error("Cannot read after end of file.");
+                        return -1;
+                    }
+                    throw;
+                }
+                number_of_bytes_read = body_stream->ReadToCount(buffer_start, buffer_size);
+                term_char_pos = find(buffer_start, buffer_end, termchar);
+                if (term_char_pos < buffer_end) {  // Found terminator character.
+                    content_read.append(reinterpret_cast<const char *>(buffer_start), term_char_pos + 1 - buffer_start);
+                    *result = content_read;
+                    *stopped_on_termchar = true;
+                    return 0;
+                } else {  // Did not found terminator character.
+                    content_read.append(reinterpret_cast<const char *>(buffer_start), number_of_bytes_read);
+                    number_of_bytes_to_read -= number_of_bytes_read;
+                    if (number_of_bytes_to_read == 0ULL) {
+                        *result = content_read;
+                        *stopped_on_termchar = false;
+                        return 0;
+                    } else if (request.is_emulated_storage && number_of_bytes_read == 0ULL) {
+                        // Handle emulator special behavior that gracefully accepts reading beyond file size.
+                        GetLogger()->error("Cannot read after end of file.");
+                        return -1;
+                    }
+                }
+            }
+        }
+    }
+    return -1;
 }
 
 int GetDriverName(string *result) {
@@ -128,7 +200,7 @@ int FileExists(bool *result, const string &sFilePathName) {
     if (BuildServiceRequest(&request, sFilePathName)) {
         return -1;
     }
-    if (request.storageType == BLOB) {
+    if (request.storage_type == BLOB) {
         *result = !ListBlobs(request).empty();
     } else /* SHARE */ {
         *result = !ListFiles(request).empty();
@@ -141,7 +213,7 @@ int DirExists(bool *result, const string &sFilePathName) {
     if (BuildServiceRequest(&request, sFilePathName)) {
         return -1;
     }
-    if (request.storageType == BLOB) {
+    if (request.storage_type == BLOB) {
         *result = true;  // there is no such concept as a directory when dealing with blob services
     } else /* SHARE */ {
         *result = !ListDirs(request).empty();
@@ -216,7 +288,7 @@ int Remove(const string &filename) {
     if (BuildServiceRequest(&request, filename)) {
         return -1;
     }
-    if (request.storageType == BLOB) {
+    if (request.storage_type == BLOB) {
         auto blobs = ListBlobs(request);
         if (blobs.empty()) {
             GetLogger()->error("No blob matches URL {}.", filename);
@@ -254,7 +326,7 @@ int Mkdir(const string &pathname) {
     if (BuildServiceRequest(&request, pathname)) {
         return -1;
     }
-    if (request.storageType == BLOB) {
+    if (request.storage_type == BLOB) {
         GetLogger()->info("Making a directory for a blob storage does nothing.");
     } else // SHARE
     {
@@ -291,7 +363,7 @@ int Rmdir(const string &pathname) {
     if (BuildServiceRequest(&request, pathname)) {
         return -1;
     }
-    if (request.storageType == BLOB) {
+    if (request.storage_type == BLOB) {
         GetLogger()->info("Removing a directory with a blob storage does nothing.");
     } else // SHARE
     {
