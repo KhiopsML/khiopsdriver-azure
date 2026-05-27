@@ -450,34 +450,39 @@ int CopyFromLocal(const string &sourcefilename, const string &destfilename) {
                     if (end != streampos(-1)) {
                         ifs.seekg(0, ios::beg);
                         total_size = static_cast<size_t>(end);
-                        while (true) {
-                            ntocopy = min(buffer_size, total_size - ntotalcopied);
-                            GetLogger()->trace("Copying {} bytes from local file to remote...", ntocopy);
-                            ifs.read(buffer.get(), ntocopy);
-                            if (ifs) {
-                                nread = static_cast<size_t>(ifs.gcount());
-                                if (nread == ntocopy) {
-                                    if (FWrite(&nwritten, file_writer, buffer.get(), 1, ntocopy) == 0) {
-                                        if (nwritten == ntocopy) {
-                                            ntotalcopied += ntocopy;
-                                            if (ntotalcopied == total_size) {
-                                                status = 0;
+                        if (total_size == 0ULL) {
+                            GetLogger()->trace("Nothing to copy.");
+                            status = 0;
+                        } else {
+                            while (true) {
+                                ntocopy = min(buffer_size, total_size - ntotalcopied);
+                                GetLogger()->trace("Copying {} bytes from local file to remote...", ntocopy);
+                                ifs.read(buffer.get(), ntocopy);
+                                if (ifs) {
+                                    nread = static_cast<size_t>(ifs.gcount());
+                                    if (nread == ntocopy) {
+                                        if (FWrite(&nwritten, file_writer, buffer.get(), 1, ntocopy) == 0) {
+                                            if (nwritten == ntocopy) {
+                                                ntotalcopied += ntocopy;
+                                                if (ntotalcopied == total_size) {
+                                                    status = 0;
+                                                    break;
+                                                }
+                                            } else {
+                                                GetLogger()->error("Tried to copy {} bytes but wrote only {}.", ntocopy, nwritten);
                                                 break;
                                             }
                                         } else {
-                                            GetLogger()->error("Tried to copy {} bytes but wrote only {}.", ntocopy, nwritten);
                                             break;
                                         }
                                     } else {
+                                        GetLogger()->error("Tried to copy {} bytes but read only {}.", ntocopy, nread);
                                         break;
                                     }
                                 } else {
-                                    GetLogger()->error("Tried to copy {} bytes but read only {}.", ntocopy, nread);
+                                    GetLogger()->error("Failed to read from local source file.");
                                     break;
                                 }
-                            } else {
-                                GetLogger()->error("Failed to read from local source file.");
-                                break;
                             }
                         }
                     }
