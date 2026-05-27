@@ -16,7 +16,7 @@ using namespace khiops_driver_azure;
 
 namespace khiops_driver_common {
 
-FileReader::Fragment::~Fragment() {
+void FileReader::Fragment::FreeVersion() {
     if (this->version != nullptr) {
         delete static_cast<Azure::ETag *>(this->version);
     }
