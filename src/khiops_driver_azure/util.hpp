@@ -41,6 +41,7 @@ int GetBlobClient(Azure::Storage::Blobs::BlobClient *result, const ServiceReques
 
 std::string GetFileShareUrl(const ServiceRequest &request);
 Azure::Storage::Files::Shares::ShareClient GetShareClient(const ServiceRequest &request);
+Azure::Storage::Files::Shares::ShareDirectoryClient GetDirClient(const ServiceRequest &request, const string &url);
 Azure::Storage::Files::Shares::ShareDirectoryClient GetDirClient(const ServiceRequest &request);
 std::vector<std::string> ListDirs(const ServiceRequest &request);
 std::vector<std::string> ListFiles(const ServiceRequest &request);

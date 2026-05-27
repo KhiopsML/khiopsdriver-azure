@@ -234,6 +234,20 @@ GetShareClient(const ServiceRequest &request) {
 }
 
 Azure::Storage::Files::Shares::ShareDirectoryClient
+GetDirClient(const ServiceRequest &request, const string &url) {
+    Azure::Storage::Files::Shares::ShareClientOptions opts;
+    opts.ShareTokenIntent =
+            Azure::Storage::Files::Shares::Models::ShareTokenIntent::Backup;
+    if (request.is_using_connection_string) {
+        return Azure::Storage::Files::Shares::ShareDirectoryClient(
+                url, request.connection_string_credential, opts);
+    } else {
+        return Azure::Storage::Files::Shares::ShareDirectoryClient(
+                url, request.no_connection_string_credential, opts);
+    }
+}
+
+Azure::Storage::Files::Shares::ShareDirectoryClient
 GetDirClient(const ServiceRequest &request) {
     return GetShareClient(request).GetRootDirectoryClient();
 }

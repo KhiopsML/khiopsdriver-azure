@@ -359,15 +359,14 @@ int Rmdir(const string &pathname) {
         GetLogger()->info("Removing a directory with a blob storage does nothing.");
     } else // SHARE
     {
-        auto dirs = ListDirs(*request);
+        vector<string> dirs = ListDirs(*request);
         if (dirs.empty()) {
             GetLogger()->error("No directory matches URL {}.", pathname);
             return -1;
         }
-        for (const auto &dir : dirs) {
-            const string sDirUrl = dir.GetUrl();
-            if (!dir.Delete().Value.Deleted) {
-                GetLogger()->error("Failed to delete directory {}.", sDirUrl);
+        for (const auto &url : dirs) {
+            if (!GetDirClient(*request, url).Delete().Value.Deleted) {
+                GetLogger()->error("Failed to delete directory {}.", url);
                 return -1;
             }
         }
