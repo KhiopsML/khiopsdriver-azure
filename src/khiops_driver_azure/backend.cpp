@@ -7,6 +7,7 @@
 #include "khiops_driver_azure/servicerequest.hpp"
 #include <memory>
 #include <algorithm>
+#include <fstream>
 #include <spdlog/spdlog.h>
 #include <azure/core/diagnostics/logger.hpp>
 #include <azure/storage/common/storage_exception.hpp>
@@ -63,6 +64,11 @@ int ReadFragment(string *result, bool *stopped_on_termchar, const string &url, v
     if (result == nullptr || stopped_on_termchar == nullptr || version == nullptr) {
         GetLogger()->error("Null pointer passed to function {}.", __func__);
         return -1;
+    }
+    if (maxlength == 0ULL) {
+        *result = "";
+        *stopped_on_termchar = false;
+        return 0;
     }
     unique_ptr<ServiceRequest> request;
     string content_read = "";
@@ -375,40 +381,56 @@ int DiskFreeSpace(size_t *result, const string &filename) {
 }
 
 int CopyToLocal(const string &sourcefilename, const string &destfilename) {
+    int status = -1;
     unique_ptr<ServiceRequest> request;
-    if (BuildServiceRequest(&request, sourcefilename)) {
-        return -1;
-    }
-    FileStream *readerPtr;
-    if (OpenForReading(&readerPtr, sourcefilename)) {
-        return -1;
-    }
-    size_t system_preferred_buffer_size;
-    if (GetSystemPreferredBufferSize(&system_preferred_buffer_size) != 0) {
-        return -1;
-    }
-    unique_ptr<char[]> buffer = make_unique<char[]>(system_preferred_buffer_size);
-    ofstream ofs(destfilename, ios::binary);
-    size_t nRead;
-
-    for (;;) {
-        GetLogger()->trace("Copying at most {} bytes from remote to local file...", system_preferred_buffer_size);
-        switch (readerPtr->Read(&nRead, buffer.get(), 1, system_preferred_buffer_size)) {
-        case 0:
-            ofs.write(buffer.get(), (streamsize)nRead);
-            continue;
-        case -1:
-            return -1;
-        case -2: // Read at EOF
-            break;
+    if (BuildServiceRequest(&request, sourcefilename) == 0) {
+        FileReader file_reader;
+        if (PopulateFileReader(&file_reader, sourcefilename) == 0) {
+            if (file_reader.total_size == 0ULL) {
+                GetLogger()->trace("Nothing to copy.");
+                status = 0;
+            } else {
+                size_t buffer_size;
+                if (GetSystemPreferredBufferSize(&buffer_size) == 0) {
+                    unique_ptr<char[]> buffer = make_unique<char[]>(buffer_size);
+                    ofstream ofs(destfilename, ios::binary);
+                    if (ofs) {
+                        size_t ntotalcopied = 0ULL, nread, ntocopy;
+                        while (true) {
+                            ntocopy = min(buffer_size, file_reader.total_size - ntotalcopied);
+                            GetLogger()->trace("Copying {} bytes from remote to local file...", ntocopy);
+                            if (FRead(&nread, buffer.get(), file_reader, 1, ntocopy) == 0) {
+                                if (nread == ntocopy) {
+                                    ofs.write(buffer.get(), (streamsize)ntocopy);
+                                    if (ofs) {
+                                        ntotalcopied += ntocopy;
+                                        if (ntotalcopied == file_reader.total_size) {
+                                            status = 0;
+                                            break;
+                                        }
+                                    } else {
+                                        GetLogger()->error("Failed to write to local destination file.");
+                                        break;
+                                    }
+                                } else {
+                                    GetLogger()->error("Tried to copy {} bytes but read only {}.", ntocopy, nread);
+                                    break;
+                                }
+                            } else {
+                                break;
+                            }
+                        }
+                    } else {
+                        GetLogger()->error("Failed to open local destination file.");
+                    }
+                }
+            }
+            if (FCloseReader(file_reader) != 0) {
+                status = -1;
+            }
         }
-        break;
     }
-
-    if (Close(readerPtr->GetHandle())) {
-        return -1;
-    }
-    return 0;
+    return status;
 }
 
 int CopyFromLocal(const string &sourcefilename, const string &destfilename) {
