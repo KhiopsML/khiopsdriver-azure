@@ -434,36 +434,63 @@ int CopyToLocal(const string &sourcefilename, const string &destfilename) {
 }
 
 int CopyFromLocal(const string &sourcefilename, const string &destfilename) {
+    int status = -1;
     unique_ptr<ServiceRequest> request;
-    if (BuildServiceRequest(&request, destfilename)) {
-        return -1;
-    }
-    FileStream *writerPtr;
-    if (OpenForWriting(&writerPtr, destfilename)) {
-        return -1;
-    }
-    unique_ptr<char[]> buffer = make_unique<char[]>(system_preferred_buffer_size);
-    size_t nRead;
-    ifstream ifs(sourcefilename, ios::binary);
-
-    for (;;) {
-        GetLogger()->trace("Copying at most {} bytes from local file to remote...", nPreferredBufferSize);
-        ifs.read(buffer.get(), nPreferredBufferSize);
-        nRead = (size_t)ifs.gcount();
-        if (nRead == 0) {
-            break;
+    if (BuildServiceRequest(&request, destfilename) == 0) {
+        FileWriter file_writer;
+        if (OpenForWriting(&file_writer, destfilename) == 0) {
+            size_t buffer_size;
+            if (GetSystemPreferredBufferSize(&buffer_size) == 0) {
+                unique_ptr<char[]> buffer = make_unique<char[]>(buffer_size);
+                ifstream ifs(sourcefilename, ios::binary);
+                if (ifs) {
+                    size_t ntotalcopied = 0ULL, ntocopy, nread, nwritten, total_size;
+                    ifs.seekg(0, ios::end);
+                    streampos end = ifs.tellg();
+                    if (end != streampos(-1)) {
+                        ifs.seekg(0, ios::beg);
+                        total_size = static_cast<size_t>(end);
+                        while (true) {
+                            ntocopy = min(buffer_size, total_size - ntotalcopied);
+                            GetLogger()->trace("Copying {} bytes from local file to remote...", ntocopy);
+                            ifs.read(buffer.get(), ntocopy);
+                            if (ifs) {
+                                nread = static_cast<size_t>(ifs.gcount());
+                                if (nread == ntocopy) {
+                                    if (FWrite(&nwritten, file_writer, buffer.get(), 1, ntocopy) == 0) {
+                                        if (nwritten == ntocopy) {
+                                            ntotalcopied += ntocopy;
+                                            if (ntotalcopied == total_size) {
+                                                status = 0;
+                                                break;
+                                            }
+                                        } else {
+                                            GetLogger()->error("Tried to copy {} bytes but wrote only {}.", ntocopy, nwritten);
+                                            break;
+                                        }
+                                    } else {
+                                        break;
+                                    }
+                                } else {
+                                    GetLogger()->error("Tried to copy {} bytes but read only {}.", ntocopy, nread);
+                                    break;
+                                }
+                            } else {
+                                GetLogger()->error("Failed to read from local source file.");
+                                break;
+                            }
+                        }
+                    }
+                } else {
+                    GetLogger()->error("Failed to open local source file.");
+                }
+            }
+            if (FCloseWriter(file_writer) != 0) {
+                status = -1;
+            }
         }
-        int nWriteStatus;
-        size_t nWritten;
-        if ((nWriteStatus = writerPtr->Write(&nWritten, buffer.get(), 1, nRead))) {
-            return nWriteStatus;
-        }
     }
-
-    if (Close(writerPtr->GetHandle())) {
-        return -1;
-    }
-    return 0;
+    return status;
 }
 
 int Concat(const string &destfilename, const vector<string> &sourcefilenames) {
