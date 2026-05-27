@@ -103,41 +103,41 @@ bool IsEmulatedStorage() {
     return !sEmulatedStorageEnvVarVal.empty() && sEmulatedStorageEnvVarVal != "false";
 }
 
-int BuildServiceRequest(ServiceRequest *result, const string &url) {
-    ServiceRequest request;
+int BuildServiceRequest(unique_ptr<ServiceRequest> *result, const string &url) {
+    unique_ptr<ServiceRequest> request = make_unique<ServiceRequest>();
 
     // Perform initial URL parsing using Azure SDK.
     try {
-        request.azure_url = Azure::Core::Url(url);
+        request->azure_url = Azure::Core::Url(url);
     } catch (const exception &) {
         GetLogger()->error("Caught an exception while performing basic URL parsing: URL {} is invalid.", url);
         return -1;
     }
 
     // Determine if the requested object is a file or a directory.
-    request.is_dir = util::IsDirUrl(url);
+    request->is_dir = util::IsDirUrl(url);
 
     // Determine if storage service is emulated or not.
-    request.is_emulated_storage = IsEmulatedStorage();
+    request->is_emulated_storage = IsEmulatedStorage();
 
     // Get type of storage service.
-    if (StorageTypeOfUrl(&request.storage_type, request.azure_url, request.is_emulated_storage) == 0) {
-        if (ObjectPathOfUrl(&request.object_path, request.azure_url, request.is_emulated_storage, request.storage_type) == 0) {
+    if (StorageTypeOfUrl(&request->storage_type, request->azure_url, request->is_emulated_storage) == 0) {
+        if (ObjectPathOfUrl(&request->object_path, request->azure_url, request->is_emulated_storage, request->storage_type) == 0) {
             // Parse connection string.
             string connection_string_as_string = util::env::GetEnvVar("AZURE_STORAGE_CONNECTION_STRING");
-            request.is_using_connection_string = !connection_string_as_string.empty();
-            if (request.is_emulated_storage && !request.is_using_connection_string) {
+            request->is_using_connection_string = !connection_string_as_string.empty();
+            if (request->is_emulated_storage && !request->is_using_connection_string) {
                 GetLogger()->error("Undefined or empty environment variable: AZURE_STORAGE_CONNECTION_STRING.");
                 return -1;
             }
             connstr::ConnectionString connection_string;
-            if (connstr::ConnectionString::ParseConnectionString(&connection_string, connection_string_as_string, request.is_emulated_storage) == 0) {
-                if (connection_string.CheckAgainstUrl(request.azure_url, request.storage_type) == 0) {
+            if (connstr::ConnectionString::ParseConnectionString(&connection_string, connection_string_as_string, request->is_emulated_storage) == 0) {
+                if (connection_string.CheckAgainstUrl(request->azure_url, request->storage_type) == 0) {
                     // Credentials
-                    if (request.is_using_connection_string) {
-                        request.connection_string_credential = make_shared<Azure::Storage::StorageSharedKeyCredential>(connection_string.sAccountName, connection_string.sAccountKey);
+                    if (request->is_using_connection_string) {
+                        request->connection_string_credential = make_shared<Azure::Storage::StorageSharedKeyCredential>(connection_string.sAccountName, connection_string.sAccountKey);
                     } else {
-                        request.no_connection_string_credential = make_shared<Azure::Identity::ChainedTokenCredential>(
+                        request->no_connection_string_credential = make_shared<Azure::Identity::ChainedTokenCredential>(
                             Azure::Identity::ChainedTokenCredential::Sources {
                                 std::make_shared<Azure::Identity::EnvironmentCredential>(),  // for Client ID + Client Secret or Certificate environment variables
                                 std::make_shared<Azure::Identity::WorkloadIdentityCredential>(),
@@ -147,8 +147,8 @@ int BuildServiceRequest(ServiceRequest *result, const string &url) {
                         );
                     }
                     GetLogger()->debug("Just built the following service request:");
-                    LogServiceRequest(request);
-                    *result = request;
+                    LogServiceRequest(*request);
+                    *result = std::move(request);
                 }
             }
         }

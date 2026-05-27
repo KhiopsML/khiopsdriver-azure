@@ -29,7 +29,7 @@ int ObjectPathOfUrl(ObjectPath *result, const Azure::Core::Url &url, bool is_emu
 
 bool IsEmulatedStorage();
 
-int BuildServiceRequest(ServiceRequest *result, const std::string &url);
+int BuildServiceRequest(std::unique_ptr<ServiceRequest> *result, const std::string &url);
 
 std::string GetServiceUrl(const ServiceRequest &request);
 
