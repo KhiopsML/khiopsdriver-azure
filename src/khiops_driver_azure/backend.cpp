@@ -59,29 +59,33 @@ int GetFragmentSizeAndVersion(size_t *size_result, void **version_result, const 
 }
 
 int ReadFragment(string *result, bool *stopped_on_termchar, const string &url, void *version, size_t offset, size_t maxlength, char termchar) {
+    if (result == nullptr || stopped_on_termchar == nullptr || version == nullptr) {
+        GetLogger()->error("Null pointer passed to function {}.", __func__);
+        return -1;
+    }
     ServiceRequest request;
     string content_read = "";
     unique_ptr<Azure::Core::IO::BodyStream> body_stream;
     size_t buffer_size;
     Azure::ETag previousETag = *static_cast<Azure::ETag *>(version);
     size_t number_of_bytes_to_read = maxlength;
-    size_t number_of_bytes_read;
+    size_t number_of_bytes_read = 0ULL;
     uint8_t *term_char_pos;
     Azure::Core::Http::HttpRange range;
+    range.Offset = static_cast<int64_t>(offset);
     if (BuildServiceRequest(&request, url) == 0) {
         if (GetSystemPreferredBufferSize(&buffer_size) == 0) {
             vector<uint8_t> buffer(buffer_size);
             uint8_t *buffer_start = buffer.data();
-            uint8_t *buffer_end = buffer_start + buffer_size;
-            while (number_of_bytes_to_read >= 0ULL) {
+            while (number_of_bytes_to_read > 0ULL) {
+                range.Offset += number_of_bytes_read;
+                range.Length = static_cast<int64_t>(min(number_of_bytes_to_read, buffer_size));
                 try {
                     if (request.storage_type == BLOB) {
                         Azure::Storage::Blobs::BlobAccessConditions access_conditions;
                         Azure::Storage::Blobs::DownloadBlobOptions opts;
                         access_conditions.IfMatch = previousETag;
                         opts.AccessConditions = access_conditions;
-                        range.Offset = static_cast<int64_t>(offset + number_of_bytes_read);
-                        range.Length = static_cast<int64_t>(min(number_of_bytes_to_read, buffer_size));
                         opts.Range = range;
                         body_stream = std::move(GetBlobClient(request).Download(opts).Value.BodyStream);
                     } else /* SHARE */ {
@@ -105,24 +109,26 @@ int ReadFragment(string *result, bool *stopped_on_termchar, const string &url, v
                     }
                     throw;
                 }
-                number_of_bytes_read = body_stream->ReadToCount(buffer_start, buffer_size);
-                term_char_pos = find(buffer_start, buffer_end, termchar);
-                if (term_char_pos < buffer_end) {  // Found terminator character.
+                number_of_bytes_read = body_stream->ReadToCount(buffer_start, min(number_of_bytes_to_read, buffer_size));
+                if (number_of_bytes_read == 0ULL) {
+                    // Handle emulator special behavior that gracefully accepts reading beyond file size.
+                    // Also handle the error case for real cloud storage, even if it should never happen.
+                    GetLogger()->error("Cannot read after end of file.");
+                    return -1;
+                }
+                term_char_pos = find(buffer_start, buffer_start + number_of_bytes_read, termchar);
+                if (term_char_pos != buffer_start + number_of_bytes_read) {  // Found terminator character.
                     content_read.append(reinterpret_cast<const char *>(buffer_start), term_char_pos + 1 - buffer_start);
                     *result = content_read;
                     *stopped_on_termchar = true;
                     return 0;
-                } else {  // Did not found terminator character.
+                } else {  // Did not find terminator character.
                     content_read.append(reinterpret_cast<const char *>(buffer_start), number_of_bytes_read);
                     number_of_bytes_to_read -= number_of_bytes_read;
                     if (number_of_bytes_to_read == 0ULL) {
                         *result = content_read;
                         *stopped_on_termchar = false;
                         return 0;
-                    } else if (request.is_emulated_storage && number_of_bytes_read == 0ULL) {
-                        // Handle emulator special behavior that gracefully accepts reading beyond file size.
-                        GetLogger()->error("Cannot read after end of file.");
-                        return -1;
                     }
                 }
             }
