@@ -381,120 +381,69 @@ int DiskFreeSpace(size_t *result, const string &filename) {
 }
 
 int CopyToLocal(const string &sourcefilename, const string &destfilename) {
-    int status = -1;
+    int status;
     unique_ptr<ServiceRequest> request;
-    if (BuildServiceRequest(&request, sourcefilename) == 0) {
-        FileReader file_reader;
-        if (PopulateFileReader(&file_reader, sourcefilename) == 0) {
-            if (file_reader.total_size == 0ULL) {
-                GetLogger()->trace("Nothing to copy.");
-                status = 0;
-            } else {
-                size_t buffer_size;
-                if (GetSystemPreferredBufferSize(&buffer_size) == 0) {
-                    unique_ptr<char[]> buffer = make_unique<char[]>(buffer_size);
-                    ofstream ofs(destfilename, ios::binary);
-                    if (ofs) {
-                        size_t ntotalcopied = 0ULL, nread, ntocopy;
-                        while (true) {
-                            ntocopy = min(buffer_size, file_reader.total_size - ntotalcopied);
-                            GetLogger()->trace("Copying {} bytes from remote to local file...", ntocopy);
-                            if (FRead(&nread, buffer.get(), file_reader, 1, ntocopy) == 0) {
-                                if (nread == ntocopy) {
-                                    ofs.write(buffer.get(), (streamsize)ntocopy);
-                                    if (ofs) {
-                                        ntotalcopied += ntocopy;
-                                        if (ntotalcopied == file_reader.total_size) {
-                                            status = 0;
-                                            break;
-                                        }
-                                    } else {
-                                        GetLogger()->error("Failed to write to local destination file.");
-                                        break;
-                                    }
-                                } else {
-                                    GetLogger()->error("Tried to copy {} bytes but read only {}.", ntocopy, nread);
-                                    break;
-                                }
-                            } else {
-                                break;
-                            }
-                        }
-                    } else {
-                        GetLogger()->error("Failed to open local destination file.");
-                    }
-                }
-            }
-            if (FCloseReader(file_reader) != 0) {
-                status = -1;
-            }
-        }
+    FileReader file_reader;
+    size_t buffer_size;
+    unique_ptr<char[]> buffer;
+    ofstream ofs;
+    size_t ntotalcopied = 0ULL, nread, ntocopy;
+
+    if (BuildServiceRequest(&request, sourcefilename) != 0) return -1;
+    if (PopulateFileReader(&file_reader, sourcefilename) != 0) return -1;
+    if (file_reader.total_size == 0ULL) { GetLogger()->trace("Nothing to copy."); return 0; }
+    if (GetSystemPreferredBufferSize(&buffer_size) != 0) return -1;
+    buffer = make_unique<char[]>(buffer_size);
+    ofs = ofstream(destfilename, ios::binary);
+    if (!ofs) { GetLogger()->error("Failed to open local destination file."); return -1; }
+    status = 0;
+    while (ntotalcopied < file_reader.total_size) {
+        ntocopy = min(buffer_size, file_reader.total_size - ntotalcopied);
+        GetLogger()->trace("Copying {} bytes from remote to local file...", ntocopy);
+        if (FRead(&nread, buffer.get(), file_reader, 1, ntocopy) != 0) { status = -1; break; }
+        if (nread != ntocopy) { GetLogger()->error("Tried to copy {} bytes but read only {}.", ntocopy, nread); status = -1; break; }
+        ofs.write(buffer.get(), (streamsize)ntocopy);
+        if (!ofs) { GetLogger()->error("Failed to write to local destination file."); status = -1; break; }
+        ntotalcopied += ntocopy;
     }
+    if (FCloseReader(file_reader) != 0) return -1;
     return status;
 }
 
 int CopyFromLocal(const string &sourcefilename, const string &destfilename) {
-    int status = -1;
+    int status;
     unique_ptr<ServiceRequest> request;
-    if (BuildServiceRequest(&request, destfilename) == 0) {
-        FileWriter file_writer;
-        if (OpenForWriting(&file_writer, destfilename) == 0) {
-            size_t buffer_size;
-            if (GetSystemPreferredBufferSize(&buffer_size) == 0) {
-                unique_ptr<char[]> buffer = make_unique<char[]>(buffer_size);
-                ifstream ifs(sourcefilename, ios::binary);
-                if (ifs) {
-                    size_t ntotalcopied = 0ULL, ntocopy, nread, nwritten, total_size;
-                    ifs.seekg(0, ios::end);
-                    streampos end = ifs.tellg();
-                    if (end != streampos(-1)) {
-                        ifs.seekg(0, ios::beg);
-                        total_size = static_cast<size_t>(end);
-                        if (total_size == 0ULL) {
-                            GetLogger()->trace("Nothing to copy.");
-                            status = 0;
-                        } else {
-                            while (true) {
-                                ntocopy = min(buffer_size, total_size - ntotalcopied);
-                                GetLogger()->trace("Copying {} bytes from local file to remote...", ntocopy);
-                                ifs.read(buffer.get(), ntocopy);
-                                if (ifs) {
-                                    nread = static_cast<size_t>(ifs.gcount());
-                                    if (nread == ntocopy) {
-                                        if (FWrite(&nwritten, file_writer, buffer.get(), 1, ntocopy) == 0) {
-                                            if (nwritten == ntocopy) {
-                                                ntotalcopied += ntocopy;
-                                                if (ntotalcopied == total_size) {
-                                                    status = 0;
-                                                    break;
-                                                }
-                                            } else {
-                                                GetLogger()->error("Tried to copy {} bytes but wrote only {}.", ntocopy, nwritten);
-                                                break;
-                                            }
-                                        } else {
-                                            break;
-                                        }
-                                    } else {
-                                        GetLogger()->error("Tried to copy {} bytes but read only {}.", ntocopy, nread);
-                                        break;
-                                    }
-                                } else {
-                                    GetLogger()->error("Failed to read from local source file.");
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    GetLogger()->error("Failed to open local source file.");
-                }
-            }
-            if (FCloseWriter(file_writer) != 0) {
-                status = -1;
-            }
-        }
+    FileWriter file_writer;
+    unique_ptr<char[]> buffer;
+    size_t buffer_size;
+    ifstream ifs;
+    size_t ntotalcopied = 0ULL, ntocopy, nread, nwritten, total_size;
+
+    if (BuildServiceRequest(&request, destfilename) != 0) return -1;
+    if (OpenForWriting(&file_writer, destfilename) != 0) return -1;
+    if (GetSystemPreferredBufferSize(&buffer_size) != 0) return -1;
+    buffer = make_unique<char[]>(buffer_size);
+    ifs = ifstream(sourcefilename, ios::binary);
+    if (!ifs) { GetLogger()->error("Failed to open local source file."); return -1; }
+    ifs.seekg(0, ios::end);
+    streampos end = ifs.tellg();
+    if (end == streampos(-1)) { GetLogger()->error("Failed to get local source file size."); return -1; }
+    ifs.seekg(0, ios::beg);
+    total_size = static_cast<size_t>(end);
+    if (total_size == 0ULL) { GetLogger()->trace("Nothing to copy."); return 0; }
+    status = 0;
+    while (ntotalcopied < total_size) {
+        ntocopy = min(buffer_size, total_size - ntotalcopied);
+        GetLogger()->trace("Copying {} bytes from local file to remote...", ntocopy);
+        ifs.read(buffer.get(), ntocopy);
+        if (!ifs) { GetLogger()->error("Failed to read from local source file."); status = -1; break; }
+        nread = static_cast<size_t>(ifs.gcount());
+        if (nread != ntocopy) { GetLogger()->error("Tried to copy {} bytes but read only {}.", ntocopy, nread); status = -1; break; }
+        if (FWrite(&nwritten, file_writer, buffer.get(), 1, ntocopy) != 0) { status = -1; break; }
+        if (nwritten != ntocopy) { GetLogger()->error("Tried to copy {} bytes but wrote only {}.", ntocopy, nwritten); status = -1; break; }
+        ntotalcopied += ntocopy;
     }
+    if (FCloseWriter(file_writer) != 0) return -1;
     return status;
 }
 
