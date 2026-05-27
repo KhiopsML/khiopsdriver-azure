@@ -29,13 +29,8 @@ spdlog::logger *GetLogger() {
 int ListFragments(vector<string> *result, const string &url) {
     ServiceRequest request;
     if (BuildServiceRequest(&request, url) == 0) {
-        if (request.storage_type == BLOB) {
-            *result = ListBlobs(request);
-            return 0;
-        } else /* SHARE */ {
-            *result = ListFiles(request);
-            return 0;
-        }
+        *result = std::move(ListBlobsOrFiles(request));
+        return 0;
     }
     return -1;
 }
@@ -44,15 +39,21 @@ int GetFragmentSizeAndVersion(size_t *size_result, void **version_result, const 
     ServiceRequest request;
     if (BuildServiceRequest(&request, url) == 0) {
         if (request.storage_type == BLOB) {
-            auto blob_properties = std::move(GetBlobClient(request).GetProperties().Value);
-            *size_result = static_cast<size_t>(blob_properties.BlobSize);
-            *version_result = static_cast<void *>(new Azure::ETag(blob_properties.ETag.ToString()));
-            return 0;
+            Azure::Storage::Blobs::BlobClient client("");
+            if (GetBlobClient(&client, request) == 0) {
+                auto blob_properties = std::move(client.GetProperties().Value);
+                *size_result = static_cast<size_t>(blob_properties.BlobSize);
+                *version_result = static_cast<void *>(new Azure::ETag(blob_properties.ETag.ToString()));
+                return 0;
+            }
         } else /* SHARE */ {
-            auto file_properties = std::move(GetFileClient(request).GetProperties().Value);
-            *size_result = static_cast<size_t>(file_properties.FileSize);
-            *version_result = static_cast<void *>(new Azure::ETag(file_properties.ETag.ToString()));
-            return 0;
+            Azure::Storage::Files::Shares::ShareFileClient client("");
+            if (GetFileClient(&client, request) == 0) {
+                auto file_properties = std::move(client.GetProperties().Value);
+                *size_result = static_cast<size_t>(file_properties.FileSize);
+                *version_result = static_cast<void *>(new Azure::ETag(file_properties.ETag.ToString()));
+                return 0;
+            }
         }
     }
     return -1;
@@ -83,15 +84,23 @@ int ReadFragment(string *result, bool *stopped_on_termchar, const string &url, v
                 try {
                     if (request.storage_type == BLOB) {
                         Azure::Storage::Blobs::BlobAccessConditions access_conditions;
-                        Azure::Storage::Blobs::DownloadBlobOptions opts;
                         access_conditions.IfMatch = previousETag;
-                        opts.AccessConditions = access_conditions;
+                        Azure::Storage::Blobs::DownloadBlobOptions opts;
                         opts.Range = range;
-                        body_stream = std::move(GetBlobClient(request).Download(opts).Value.BodyStream);
+                        opts.AccessConditions = access_conditions;
+                        Azure::Storage::Blobs::BlobClient client("");
+                        if (GetBlobClient(&client, request) != 0) {
+                            return -1;
+                        }
+                        body_stream = std::move(client.Download(opts).Value.BodyStream);
                     } else /* SHARE */ {
                         Azure::Storage::Files::Shares::DownloadFileOptions opts;
                         opts.Range = range;
-                        auto download_result = std::move(GetFileClient(request).Download(opts).Value);
+                        Azure::Storage::Files::Shares::ShareFileClient client("");
+                        if (GetFileClient(&client, request) != 0) {
+                            return -1;
+                        }
+                        auto download_result = std::move(client.Download(opts).Value);
                         if (download_result.Details.ETag != previousETag) {
                             GetLogger()->error("The file has been updated while reading it.");
                             return -1;
@@ -203,59 +212,40 @@ int GetSystemPreferredBufferSize(size_t *result) {
 
 int FileExists(bool *result, const string &sFilePathName) {
     ServiceRequest request;
-    if (BuildServiceRequest(&request, sFilePathName)) {
-        return -1;
+    if (BuildServiceRequest(&request, sFilePathName) == 0) {
+        *result = !ListBlobsOrFiles(request).empty();
+        return 0;
     }
-    if (request.storage_type == BLOB) {
-        *result = !ListBlobs(request).empty();
-    } else /* SHARE */ {
-        *result = !ListFiles(request).empty();
-    }
-    return 0;
+    return -1;
 }
 
 int DirExists(bool *result, const string &sFilePathName) {
     ServiceRequest request;
-    if (BuildServiceRequest(&request, sFilePathName)) {
-        return -1;
+    if (BuildServiceRequest(&request, sFilePathName) == 0) {
+        if (request.storage_type == BLOB) {
+            *result = true;  // there is no such concept as a directory when dealing with blob services
+        } else /* SHARE */ {
+            *result = !ListDirs(request).empty();
+        }
+        return 0;
     }
-    if (request.storage_type == BLOB) {
-        *result = true;  // there is no such concept as a directory when dealing with blob services
-    } else /* SHARE */ {
-        *result = !ListDirs(request).empty();
-    }
-    return 0;
+    return -1;
 }
 
 int GetFileSize(size_t *result, const string &filename) {
     ServiceRequest request;
-    if (BuildServiceRequest(&request, filename) == 0) {
-        if (request.storage_type == BLOB) {
-            auto blobs = ListBlobs(request);
-            if (blobs.empty()) {
-                GetLogger()->error("No blob matches URL {}.", filename);
-                return -1;
-            }
-            FileReader file_reader;
-            PopulateFileReader(&file_reader, filename);
-            *result = file_reader.total_size;
-        } else /* SHARE */ {
-            auto files = ListFiles(request);
-            if (files.empty()) {
-                GetLogger()->error("No file matches URL {}.", filename);
-                return -1;
-            }
-            FileReader file_reader;
-            PopulateFileReader(&file_reader, filename);
-            *result = file_reader.total_size;
-        }
+    vector<string> objects;
+    if (BuildServiceRequest(&request, filename) == 0 && ListBlobsOrFilesCheckNotEmpty(&objects, request) == 0) {
+        FileReader file_reader;
+        PopulateFileReader(&file_reader, filename);
+        *result = file_reader.total_size;
+        return 0;
     }
     return -1;
 }
 
 int FOpen(FileStream &stream, const string &filename) {
     if (stream.mode == FileStream::Mode::READ) {
-        
     } else if (stream.mode == FileStream::Mode::WRITE) {
     } else if (stream.mode == FileStream::Mode::APPEND) {
     } else {
@@ -291,40 +281,36 @@ int FFlush(const FileStream &stream) {
 
 int Remove(const string &filename) {
     ServiceRequest request;
-    if (BuildServiceRequest(&request, filename)) {
-        return -1;
-    }
-    if (request.storage_type == BLOB) {
-        auto blobs = ListBlobs(request);
-        if (blobs.empty()) {
-            GetLogger()->error("No blob matches URL {}.", filename);
-            return -1;
-        }
-        Azure::Storage::Blobs::DeleteBlobOptions opts;
-        opts.DeleteSnapshots =
-                Azure::Storage::Blobs::Models::DeleteSnapshotsOption::IncludeSnapshots;
-        for (const auto &blob : blobs) {
-            const string sBlobUrl = blob.GetUrl();
-            if (!blob.Delete(opts).Value.Deleted) {
-                GetLogger()->error("Failed to delete blob {}.", sBlobUrl);
-                return -1;
+    vector<string> objects;
+    if (BuildServiceRequest(&request, filename) == 0 && ListBlobsOrFilesCheckNotEmpty(&objects, request) == 0) {
+        if (request.storage_type == BLOB) {
+            Azure::Storage::Blobs::DeleteBlobOptions opts;
+            opts.DeleteSnapshots =
+                    Azure::Storage::Blobs::Models::DeleteSnapshotsOption::IncludeSnapshots;
+            for (const auto &url : objects) {
+                Azure::Storage::Blobs::BlobClient client("");
+                if (GetBlobClient(&client, request, url) != 0) {
+                    return -1;
+                }
+                if (!client.Delete(opts).Value.Deleted) {
+                    GetLogger()->error("Failed to delete blob {}.", url);
+                    return -1;
+                }
             }
-        }
-    } else /* SHARE */ {
-        auto files = ListFiles(request);
-        if (files.empty()) {
-            GetLogger()->error("No file matches URL {}.", filename);
-            return -1;
-        }
-        for (const auto &file : files) {
-            const string sFileUrl = file.GetUrl();
-            if (!file.Delete().Value.Deleted) {
-                GetLogger()->error("Failed to delete file {}.", sFileUrl);
-                return -1;
+        } else /* SHARE */ {
+            for (const auto &url : objects) {
+                Azure::Storage::Files::Shares::ShareFileClient client("");
+                if (GetFileClient(&client, request, url) != 0) {
+                    return -1;
+                }
+                if (!client.Delete().Value.Deleted) {
+                    GetLogger()->error("Failed to delete file {}.", url);
+                    return -1;
+                }
             }
         }
     }
-    return 0;
+    return -1;
 }
 
 int Mkdir(const string &pathname) {
@@ -336,7 +322,7 @@ int Mkdir(const string &pathname) {
         GetLogger()->info("Making a directory for a blob storage does nothing.");
     } else // SHARE
     {
-        string sNewDir = request.share.path.back();
+        string sNewDir = request.object_path.file_path->back();
         Azure::Storage::Files::Shares::ShareDirectoryClient parentDir("");
         if (GetParentDir(&parentDir, request)) {
             return -1;

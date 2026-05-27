@@ -113,8 +113,8 @@ static string PrefixFromName(const string &sName);
 
 static string PrefixFromGlob(const string &sGlob);
 
-vector<ShareDirectoryClient>
-ResolveDirsPathRecursively(const ShareDirectoryClient &dirClient,
+static vector<ShareDirectoryClient>
+ResolveDirsPathRecursively_(const ShareDirectoryClient &dirClient,
                            queue<string> pathSegments) {
   if (pathSegments.empty()) {
     return {};
@@ -124,7 +124,7 @@ ResolveDirsPathRecursively(const ShareDirectoryClient &dirClient,
   pathSegments.pop();
 
   if (sUrlPathSegment == "**") {
-    return ResolveDoubleStar<ShareDirectoryClient, ResolveDirsPathRecursively>(
+    return ResolveDoubleStar<ShareDirectoryClient, ResolveDirsPathRecursively_>(
         dirClient, pathSegments);
   }
 
@@ -135,8 +135,16 @@ ResolveDirsPathRecursively(const ShareDirectoryClient &dirClient,
   return ResolveDirsRaw(dirClient, pathSegments, sUrlPathSegment);
 }
 
-vector<ShareFileClient>
-ResolveFilesPathRecursively(const ShareDirectoryClient &dirClient,
+vector<string> ResolveDirsPathRecursively(const ShareDirectoryClient &dirClient, queue<string> pathSegments) {
+  vector<string> result;
+  for (const ShareDirectoryClient &client : ResolveDirsPathRecursively_(dirClient, pathSegments)) {
+    result.push_back(client.GetUrl());
+  }
+  return result;
+}
+
+static vector<ShareFileClient>
+ResolveFilesPathRecursively_(const ShareDirectoryClient &dirClient,
                             queue<string> pathSegments) {
   if (pathSegments.empty()) {
     return {};
@@ -150,7 +158,7 @@ ResolveFilesPathRecursively(const ShareDirectoryClient &dirClient,
       return ResolveFilesDoubleStar(dirClient);
     }
 
-    return ResolveDoubleStar<ShareFileClient, ResolveFilesPathRecursively>(
+    return ResolveDoubleStar<ShareFileClient, ResolveFilesPathRecursively_>(
         dirClient, pathSegments);
   }
 
@@ -159,6 +167,14 @@ ResolveFilesPathRecursively(const ShareDirectoryClient &dirClient,
   }
 
   return ResolveFilesRaw(dirClient, pathSegments, sUrlPathSegment);
+}
+
+vector<string> ResolveFilesPathRecursively(const ShareDirectoryClient &dirClient, queue<string> pathSegments) {
+  vector<string> result;
+  for (const ShareFileClient &client : ResolveFilesPathRecursively_(dirClient, pathSegments)) {
+    result.push_back(client.GetUrl());
+  }
+  return result;
 }
 
 template <typename ClientT, vector<ClientT> (*ResolvePathRecursively)(
@@ -199,7 +215,7 @@ static vector<ShareDirectoryClient>
 ResolveDirsGlobbing(const ShareDirectoryClient &dirClient,
                     queue<string> pathSegments,
                     const string &sGlobbingPattern) {
-  return ResolveGlobbing<ShareDirectoryClient, ResolveDirsPathRecursively,
+  return ResolveGlobbing<ShareDirectoryClient, ResolveDirsPathRecursively_,
                          FindDirsByGlob>(dirClient, pathSegments,
                                          sGlobbingPattern);
 }
@@ -208,7 +224,7 @@ static vector<ShareFileClient>
 ResolveFilesGlobbing(const ShareDirectoryClient &dirClient,
                      queue<string> pathSegments,
                      const string &sGlobbingPattern) {
-  return ResolveGlobbing<ShareFileClient, ResolveFilesPathRecursively,
+  return ResolveGlobbing<ShareFileClient, ResolveFilesPathRecursively_,
                          FindFilesByGlob>(dirClient, pathSegments,
                                           sGlobbingPattern);
 }
@@ -237,14 +253,14 @@ static vector<ClientT> ResolveGlobbing(const ShareDirectoryClient &dirClient,
 static vector<ShareDirectoryClient>
 ResolveDirsRaw(const ShareDirectoryClient &dirClient,
                queue<string> pathSegments, const string &sName) {
-  return ResolveRaw<ShareDirectoryClient, ResolveDirsPathRecursively,
+  return ResolveRaw<ShareDirectoryClient, ResolveDirsPathRecursively_,
                     FindDirsByName>(dirClient, pathSegments, sName);
 }
 
 static vector<ShareFileClient>
 ResolveFilesRaw(const ShareDirectoryClient &dirClient,
                 queue<string> pathSegments, const string &sName) {
-  return ResolveRaw<ShareFileClient, ResolveFilesPathRecursively,
+  return ResolveRaw<ShareFileClient, ResolveFilesPathRecursively_,
                     FindFilesByName>(dirClient, pathSegments, sName);
 }
 

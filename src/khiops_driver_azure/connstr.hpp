@@ -2,10 +2,10 @@
 
 #pragma once
 
-#include "storagetype.hpp"
 #include <azure/core/url.hpp>
 #include <memory>
 #include <string>
+#include "khiops_driver_azure/util.hpp"
 
 namespace khiops_driver_azure {
 namespace connstr {

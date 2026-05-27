@@ -36,7 +36,8 @@ std::string GetServiceUrl(const ServiceRequest &request);
 std::string GetBlobContainerUrl(const ServiceRequest &request);
 Azure::Storage::Blobs::BlobContainerClient GetBlobContainerClient(const ServiceRequest &request);
 std::vector<std::string> ListBlobs(const ServiceRequest &request);
-Azure::Storage::Blobs::BlobClient GetBlobClient(const ServiceRequest &request);
+int GetBlobClient(Azure::Storage::Blobs::BlobClient *result, const ServiceRequest &request, const std::string &url);
+int GetBlobClient(Azure::Storage::Blobs::BlobClient *result, const ServiceRequest &request);
 
 std::string GetFileShareUrl(const ServiceRequest &request);
 Azure::Storage::Files::Shares::ShareClient GetShareClient(const ServiceRequest &request);
@@ -44,6 +45,10 @@ Azure::Storage::Files::Shares::ShareDirectoryClient GetDirClient(const ServiceRe
 std::vector<std::string> ListDirs(const ServiceRequest &request);
 std::vector<std::string> ListFiles(const ServiceRequest &request);
 int GetParentDir(Azure::Storage::Files::Shares::ShareDirectoryClient *result, const ServiceRequest &request);
-Azure::Storage::Files::Shares::ShareFileClient GetFileClient(const ServiceRequest &request);
+int GetFileClient(Azure::Storage::Files::Shares::ShareFileClient *result, const ServiceRequest &request, const std::string &url);
+int GetFileClient(Azure::Storage::Files::Shares::ShareFileClient *result, const ServiceRequest &request);
+
+std::vector<std::string> ListBlobsOrFiles(const ServiceRequest &request);
+int ListBlobsOrFilesCheckNotEmpty(std::vector<std::string> *result, const ServiceRequest &request);
 
 }
