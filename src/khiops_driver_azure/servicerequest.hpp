@@ -22,13 +22,13 @@ struct ServiceRequest {
 };
 
 inline void LogServiceRequest(const ServiceRequest &request) {
-    GetLogger()->debug("Service request details:");
-    GetLogger()->debug("  URL: {}", request.azure_url.GetAbsoluteUrl());
-    GetLogger()->debug("  object type: {}", request.is_dir ? "directory" : "file");
-    GetLogger()->debug("  is storage emulated? {}", request.is_emulated_storage ? "yes" : "no");
-    GetLogger()->debug("  storage type: {}", request.storage_type == BLOB ? "blob" : "file share");
-    GetLogger()->debug("  object path: {}", ObjectPathToString(request.object_path));
-    GetLogger()->debug("  is using connection string? {}", request.is_using_connection_string ? "yes" : "no");
+    khiops_driver_common::GetLogger()->debug("Service request details:");
+    khiops_driver_common::GetLogger()->debug("  URL: {}", request.azure_url.GetAbsoluteUrl());
+    khiops_driver_common::GetLogger()->debug("  object type: {}", request.is_dir ? "directory" : "file");
+    khiops_driver_common::GetLogger()->debug("  is storage emulated? {}", request.is_emulated_storage ? "yes" : "no");
+    khiops_driver_common::GetLogger()->debug("  storage type: {}", request.storage_type == BLOB ? "blob" : "file share");
+    khiops_driver_common::GetLogger()->debug("  object path: {}", ObjectPathToString(request.object_path));
+    khiops_driver_common::GetLogger()->debug("  is using connection string? {}", request.is_using_connection_string ? "yes" : "no");
 }
 
 } // namespace khiops_driver_azure
