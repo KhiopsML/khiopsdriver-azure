@@ -244,37 +244,32 @@ int GetFileSize(size_t *result, const string &filename) {
     return -1;
 }
 
-int FOpen(FileStream &stream, const string &filename) {
-    if (stream.mode == FileStream::Mode::READ) {
-    } else if (stream.mode == FileStream::Mode::WRITE) {
-    } else if (stream.mode == FileStream::Mode::APPEND) {
-    } else {
-        GetLogger()->error("Invalid file stream mode.");
-        return -1;
-    }
-}
-
-int FClose(const FileStream &stream) {
+int FCloseReader(const FileReader &stream) {
     GetLogger()->error("Not implemented!");
     return -1;
 }
 
-int FRead(size_t *result, void *ptr, size_t size, size_t count, FileStream &stream) {
+int FCloseWriter(const FileWriter &stream) {
     GetLogger()->error("Not implemented!");
     return -1;
 }
 
-int FSeek(FileStream &stream, long long int offset, int whence) {
+int FRead(size_t *result, void *ptr, const FileReader &file_reader, size_t size, size_t count) {
     GetLogger()->error("Not implemented!");
     return -1;
 }
 
-int FWrite(size_t *result, const void *ptr, size_t size, size_t count, const FileStream &stream) {
+int FSeek(const FileReader &file_reader, long long int offset, int whence) {
     GetLogger()->error("Not implemented!");
     return -1;
 }
 
-int FFlush(const FileStream &stream) {
+int FWrite(size_t *result, const FileWriter &file_writer, const void *ptr, size_t size, size_t count) {
+    GetLogger()->error("Not implemented!");
+    return -1;
+}
+
+int FFlush(const FileWriter &file_writer) {
     GetLogger()->error("Not implemented!");
     return -1;
 }
