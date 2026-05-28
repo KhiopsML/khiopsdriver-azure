@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <azure/core.hpp>
 #include <azure/storage/blobs/blob_client.hpp>
 #include <azure/storage/blobs/blob_container_client.hpp>
 #include <azure/storage/blobs/blob_service_client.hpp>
@@ -10,7 +11,9 @@
 #include <azure/storage/files/shares/share_directory_client.hpp>
 #include <azure/storage/files/shares/share_file_client.hpp>
 #include <azure/storage/files/shares/share_service_client.hpp>
-#include "khiops_driver_azure/servicerequest.hpp"
+#include <azure/storage/common/storage_credential.hpp>
+#include "khiops_driver_common/backend.hpp"
+
 
 namespace khiops_driver_azure {
 
@@ -27,6 +30,27 @@ struct ObjectPath {
 std::string ObjectPathToString(const ObjectPath &object_path);
 int ObjectPathOfUrl(ObjectPath *result, const Azure::Core::Url &url, bool is_emulated_storage, StorageType storage_type);
 
+struct ServiceRequest {
+    Azure::Core::Url azure_url;
+    bool is_dir;
+    bool is_emulated_storage;
+    StorageType storage_type;
+    ObjectPath object_path;
+    bool is_using_connection_string;
+    std::shared_ptr<Azure::Storage::StorageSharedKeyCredential> connection_string_credential;
+    std::shared_ptr<Azure::Core::Credentials::TokenCredential> no_connection_string_credential;
+};
+
+inline void LogServiceRequest(const ServiceRequest &request) {
+    khiops_driver_common::GetLogger()->debug("Service request details:");
+    khiops_driver_common::GetLogger()->debug("  URL: {}", request.azure_url.GetAbsoluteUrl());
+    khiops_driver_common::GetLogger()->debug("  object type: {}", request.is_dir ? "directory" : "file");
+    khiops_driver_common::GetLogger()->debug("  is storage emulated? {}", request.is_emulated_storage ? "yes" : "no");
+    khiops_driver_common::GetLogger()->debug("  storage type: {}", request.storage_type == BLOB ? "blob" : "file share");
+    khiops_driver_common::GetLogger()->debug("  object path: {}", ObjectPathToString(request.object_path));
+    khiops_driver_common::GetLogger()->debug("  is using connection string? {}", request.is_using_connection_string ? "yes" : "no");
+}
+
 bool IsEmulatedStorage();
 
 int BuildServiceRequest(std::unique_ptr<ServiceRequest> *result, const std::string &url);
@@ -41,7 +65,7 @@ int GetBlobClient(Azure::Storage::Blobs::BlobClient *result, const ServiceReques
 
 std::string GetFileShareUrl(const ServiceRequest &request);
 Azure::Storage::Files::Shares::ShareClient GetShareClient(const ServiceRequest &request);
-Azure::Storage::Files::Shares::ShareDirectoryClient GetDirClient(const ServiceRequest &request, const string &url);
+Azure::Storage::Files::Shares::ShareDirectoryClient GetDirClient(const ServiceRequest &request, const std::string &url);
 Azure::Storage::Files::Shares::ShareDirectoryClient GetDirClient(const ServiceRequest &request);
 std::vector<std::string> ListDirs(const ServiceRequest &request);
 std::vector<std::string> ListFiles(const ServiceRequest &request);

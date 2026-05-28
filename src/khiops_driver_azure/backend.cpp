@@ -4,7 +4,6 @@
 #include "khiops_driver_common/filestream.hpp"
 #include "khiops_driver_azure/util.hpp"
 #include "khiops_driver_azure/version.hpp"
-#include "khiops_driver_azure/servicerequest.hpp"
 #include <memory>
 #include <algorithm>
 #include <iterator>
@@ -46,7 +45,7 @@ void FreeFileWriterUserData(FileWriter *file_writer) {
 }
 
 int SetFileWriterUserDataWriteMode(FileWriter *file_writer) {
-    if (file_writer == nullptr) { GetLogger()->error("Passed null pointer to function {}.", __func__); return; }
+    if (file_writer == nullptr) { GetLogger()->error("Passed null pointer to function {}.", __func__); return -1; }
     FileWriterUserData *user_data = new FileWriterUserData();
     file_writer->user_data = static_cast<void *>(user_data);
     unique_ptr<ServiceRequest> request;
@@ -63,7 +62,7 @@ int SetFileWriterUserDataWriteMode(FileWriter *file_writer) {
 }
 
 int SetFileWriterUserDataAppendMode(FileWriter *file_writer) {
-    if (file_writer == nullptr) { GetLogger()->error("Passed null pointer to function {}.", __func__); return; }
+    if (file_writer == nullptr) { GetLogger()->error("Passed null pointer to function {}.", __func__); return -1; }
     FileWriterUserData *user_data = new FileWriterUserData();
     file_writer->user_data = static_cast<void *>(user_data);
     unique_ptr<ServiceRequest> request;

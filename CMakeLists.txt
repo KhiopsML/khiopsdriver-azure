@@ -86,29 +86,17 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_BUILD_TYPE STREQUAL "Release
 endif()
 
 set(KhiopsDriverAzureSources
+#    auth.hpp
   backend.cpp
   blobpathresolve.hpp
   blobpathresolve.cpp
   connstr.hpp
   connstr.cpp
-  servicerequest.hpp
   sharepathresolve.hpp
   sharepathresolve.cpp
   util.hpp
   util.cpp
   version.hpp
-#    azureplugin.hpp
-#    azureplugin.cpp
-#    driver.hpp
-#    driver.cpp
-#    auth.hpp
-#    returnval.hpp
-    ########## The files listed below should be removed in favor of components shared among the drivers.
-    objectclient.hpp
-    filestream.hpp
-    filestream.cpp
-    fragmentedfile.hpp
-    fragmentedfile.cpp
 )
 list(TRANSFORM KhiopsDriverAzureSources PREPEND src/khiops_driver_azure/)
 
