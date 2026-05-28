@@ -44,7 +44,7 @@ void FreeFileWriterUserData(FileWriter *file_writer) {
     }
 }
 
-int SetFileWriterUserDataWriteMode(FileWriter *file_writer) {
+int InitializeFileWriterWithWriteMode(FileWriter *file_writer) {
     if (file_writer == nullptr) { GetLogger()->error("Passed null pointer to function {}.", __func__); return -1; }
     FileWriterUserData *user_data = new FileWriterUserData();
     file_writer->user_data = static_cast<void *>(user_data);
@@ -62,7 +62,7 @@ int SetFileWriterUserDataWriteMode(FileWriter *file_writer) {
     return 0;
 }
 
-int SetFileWriterUserDataAppendMode(FileWriter *file_writer) {
+int InitializeFileWriteWithAppendMode(FileWriter *file_writer) {
     if (file_writer == nullptr) { GetLogger()->error("Passed null pointer to function {}.", __func__); return -1; }
     FileWriterUserData *user_data = new FileWriterUserData();
     file_writer->user_data = static_cast<void *>(user_data);
