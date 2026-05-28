@@ -310,43 +310,6 @@ int FRead(size_t *result, void *ptr, FileReader *file_reader, size_t size, size_
     return 0;
 }
 
-int FSeek(FileReader *file_reader, long long int offset, int whence) {
-    if (file_reader == nullptr) { GetLogger()->error("Passed null pointer to function {}.", __func__); return -1; }
-    if (whence < 0 || whence > 2) { GetLogger()->error("Invalid origin: {}.", whence); return -1; }
-
-    if (whence == ios::beg) {
-        if (0LL <= offset && offset <= file_reader->total_size) {
-            file_reader->current_position = static_cast<size_t>(offset);
-            return 0;
-        }
-    } else if (whence == ios::cur) {
-        if (offset < 0LL) {
-            size_t positive_offset = static_cast<size_t>(-(offset + 1LL)) + 1ULL;
-            if (positive_offset <= file_reader->current_position) {
-                file_reader->current_position -= positive_offset;
-                return 0;
-            }
-        } else {
-            if (static_cast<size_t>(offset) <= file_reader->total_size - file_reader->current_position) {
-                file_reader->current_position += static_cast<size_t>(offset);
-                return 0;
-            }
-        }
-    } else if (whence == ios::end) {
-        if (offset < 0LL) {
-            size_t positive_offset = static_cast<size_t>(-(offset + 1LL)) + 1ULL;
-            if (positive_offset <= file_reader->total_size) {
-                file_reader->current_position = file_reader->total_size - positive_offset;
-                return 0;
-            }
-        } else if (offset == 0LL) {
-            return 0;
-        }
-    }
-    GetLogger()->error("Seeking out of file's range.");
-    return -1;
-}
-
 int FWrite(size_t *result, const FileWriter &file_writer, const void *ptr, size_t size, size_t count) {
     GetLogger()->error("Not implemented!");
     return -1;
