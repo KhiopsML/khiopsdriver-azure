@@ -8,6 +8,8 @@
 #include <memory>
 #include <algorithm>
 #include <fstream>
+#include <limits>
+#include <cstring>
 #include <spdlog/spdlog.h>
 #include <azure/core/diagnostics/logger.hpp>
 #include <azure/storage/common/storage_exception.hpp>
@@ -60,7 +62,7 @@ int GetFragmentSizeAndVersion(size_t *size_result, void **version_result, const 
     return -1;
 }
 
-int ReadFragment(string *result, bool *stopped_on_termchar, const string &url, void *version, size_t offset, size_t maxlength, char termchar) {
+static int ReadFragment(string *result, bool *stopped_on_termchar, const string &url, void *version, size_t offset, size_t maxlength, const char *termchar) {
     if (result == nullptr || stopped_on_termchar == nullptr || version == nullptr) {
         GetLogger()->error("Null pointer passed to function {}.", __func__);
         return -1;
@@ -77,7 +79,7 @@ int ReadFragment(string *result, bool *stopped_on_termchar, const string &url, v
     Azure::ETag previousETag = *static_cast<Azure::ETag *>(version);
     size_t number_of_bytes_to_read = maxlength;
     size_t number_of_bytes_read = 0ULL;
-    uint8_t *term_char_pos;
+    uint8_t *termchar_pos;
     Azure::Core::Http::HttpRange range;
     range.Offset = static_cast<int64_t>(offset);
     if (BuildServiceRequest(&request, url) == 0) {
@@ -131,25 +133,34 @@ int ReadFragment(string *result, bool *stopped_on_termchar, const string &url, v
                     GetLogger()->error("Cannot read after end of file.");
                     return -1;
                 }
-                term_char_pos = find(buffer_start, buffer_start + number_of_bytes_read, termchar);
-                if (term_char_pos != buffer_start + number_of_bytes_read) {  // Found terminator character.
-                    content_read.append(reinterpret_cast<const char *>(buffer_start), term_char_pos + 1 - buffer_start);
-                    *result = content_read;
-                    *stopped_on_termchar = true;
-                    return 0;
-                } else {  // Did not find terminator character.
-                    content_read.append(reinterpret_cast<const char *>(buffer_start), number_of_bytes_read);
-                    number_of_bytes_to_read -= number_of_bytes_read;
-                    if (number_of_bytes_to_read == 0ULL) {
+                if (termchar != nullptr) {
+                    termchar_pos = find(buffer_start, buffer_start + number_of_bytes_read, static_cast<uint8_t>(*termchar));
+                    if (termchar_pos != buffer_start + number_of_bytes_read) {  // Found terminator character.
+                        content_read.append(reinterpret_cast<const char *>(buffer_start), termchar_pos + 1 - buffer_start);
                         *result = content_read;
-                        *stopped_on_termchar = false;
+                        *stopped_on_termchar = true;
                         return 0;
                     }
+                }
+                content_read.append(reinterpret_cast<const char *>(buffer_start), number_of_bytes_read);
+                number_of_bytes_to_read -= number_of_bytes_read;
+                if (number_of_bytes_to_read == 0ULL) {
+                    *result = content_read;
+                    *stopped_on_termchar = false;
+                    return 0;
                 }
             }
         }
     }
     return -1;
+}
+
+int ReadFragment(string *result, bool *stopped_on_termchar, const string &url, void *version, size_t offset, size_t maxlength) {
+    return ReadFragment(result, stopped_on_termchar, url, version, offset, maxlength, nullptr);
+}
+
+int ReadFragment(string *result, bool *stopped_on_termchar, const string &url, void *version, size_t offset, size_t maxlength, char termchar) {
+    return ReadFragment(result, stopped_on_termchar, url, version, offset, maxlength, &termchar);
 }
 
 int GetDriverName(string *result) {
@@ -260,9 +271,43 @@ int FCloseWriter(const FileWriter &stream) {
     else return -1;
 }
 
-int FRead(size_t *result, void *ptr, const FileReader &file_reader, size_t size, size_t count) {
-    GetLogger()->error("Not implemented!");
-    return -1;
+int FRead(size_t *result, void *ptr, FileReader *file_reader, size_t size, size_t count) {
+    if (result == nullptr || ptr == nullptr || file_reader == nullptr) { GetLogger()->error("Null pointer passed to function {}.", __func__); return -1; }
+    if (size != 0 && count > numeric_limits<size_t>::max() / size) { GetLogger()->error("Number of bytes to read asked overflows."); return -1; }
+
+    const size_t ntotaltoread = size * count;
+    size_t nlefttoread = ntotaltoread, ntotalread = 0ULL, ntoread, nread, offset_inside_first_fragment_to_read, fragment_remote_offset, fragment_index;
+    string globalread, read;
+    bool stopped_on_term_char, first_fragment_to_read = true;
+
+    if (ntotaltoread == 0) { *result = 0ULL; return 0; }
+    if (file_reader->current_position == file_reader->total_size) { GetLogger()->error("Reading after end of file."); return -1; }
+    if (FragmentIndexOfUserOffset(&fragment_index, *file_reader, file_reader->current_position) != 0) return -1;
+    while (nlefttoread != 0ULL && file_reader->current_position != file_reader->total_size) {
+        const FileReader::Fragment &fragment = file_reader->fragments[fragment_index];
+        if (first_fragment_to_read) {
+            offset_inside_first_fragment_to_read = file_reader->current_position - fragment.user_offset;
+            fragment_remote_offset = (fragment_index == 0ULL ? 0ULL : file_reader->header_length) + offset_inside_first_fragment_to_read;
+            ntoread = min(nlefttoread, fragment.content_size - offset_inside_first_fragment_to_read);
+        } else {
+            fragment_remote_offset = file_reader->header_length;
+            ntoread = min(nlefttoread, fragment.content_size);
+        }
+        if (ReadFragment(&read, &stopped_on_term_char, fragment.url, fragment.version, fragment_remote_offset, ntoread) != 0) {
+            return -1;
+        }
+        nread = read.size();
+        if (nread != ntoread) { GetLogger()->error("Failed to read."); return -1; }
+        ntotalread += nread;
+        globalread.append(read);
+        nlefttoread -= nread;
+        fragment_index++;
+        first_fragment_to_read = false;
+        file_reader->current_position += nread;
+    }
+    *result = ntotalread;
+    memcpy(ptr, globalread.data(), ntotalread);
+    return 0;
 }
 
 int FSeek(const FileReader &file_reader, long long int offset, int whence) {
