@@ -251,13 +251,13 @@ int GetFileSize(size_t *result, const string &filename) {
 }
 
 int FCloseReader(const FileReader &stream) {
-    GetLogger()->error("Not implemented!");
-    return -1;
+    // Nothing to do.
+    return 0;
 }
 
 int FCloseWriter(const FileWriter &stream) {
-    GetLogger()->error("Not implemented!");
-    return -1;
+    if (FFlush(stream) == 0) return 0;
+    else return -1;
 }
 
 int FRead(size_t *result, void *ptr, const FileReader &file_reader, size_t size, size_t count) {
