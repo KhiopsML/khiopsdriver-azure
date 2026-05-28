@@ -7,21 +7,79 @@
 #include "khiops_driver_azure/servicerequest.hpp"
 #include <memory>
 #include <algorithm>
+#include <iterator>
 #include <fstream>
+#include <iomanip>
 #include <limits>
 #include <cstring>
 #include <spdlog/spdlog.h>
 #include <azure/core/diagnostics/logger.hpp>
 #include <azure/storage/common/storage_exception.hpp>
+#include <azure/storage/blobs/block_blob_client.hpp>
 
 using namespace std;
 using namespace khiops_driver_azure;
 
 namespace khiops_driver_common {
 
-void FileReader::Fragment::FreeVersion() {
-    if (this->version != nullptr) {
-        delete static_cast<Azure::ETag *>(this->version);
+namespace { struct FileWriterUserData {
+    // Used only for blob storage
+    unique_ptr<vector<string>> block_ids = nullptr;
+    // Used only for blob storage
+    unique_ptr<Azure::Storage::Blobs::BlobClient> blob_client;
+    // Used only for file share storage
+    unique_ptr<Azure::Storage::Files::Shares::ShareFileClient> share_file_client;
+}; }
+
+void FreeFileReaderFragmentVersion(FileReader::Fragment *file_reader) {
+    if (file_reader == nullptr) { GetLogger()->error("Passed null pointer to function {}.", __func__); return; }
+    if (file_reader->version != nullptr) {
+        delete static_cast<Azure::ETag *>(file_reader->version);
+    }
+}
+
+void FreeFileWriterUserData(FileWriter *file_writer) {
+    if (file_writer == nullptr) { GetLogger()->error("Passed null pointer to function {}.", __func__); return; }
+    if (file_writer->user_data != nullptr) {
+        delete static_cast<FileWriterUserData *>(file_writer->user_data);
+    }
+}
+
+int SetFileWriterUserDataWriteMode(FileWriter *file_writer) {
+    if (file_writer == nullptr) { GetLogger()->error("Passed null pointer to function {}.", __func__); return; }
+    FileWriterUserData *user_data = new FileWriterUserData();
+    file_writer->user_data = static_cast<void *>(user_data);
+    unique_ptr<ServiceRequest> request;
+    if (BuildServiceRequest(&request, file_writer->url) != 0) return -1;
+    if (request->storage_type == BLOB) {
+        user_data->block_ids = make_unique<vector<string>>();
+        user_data->blob_client = make_unique<Azure::Storage::Blobs::BlobClient>("");
+        if (GetBlobClient(user_data->blob_client.get(), *request) != 0) return -1;
+    } else if (request->storage_type == SHARE) {
+        user_data->share_file_client = make_unique<Azure::Storage::Files::Shares::ShareFileClient>("");
+        if (GetFileClient(user_data->share_file_client.get(), *request) != 0) return -1;
+        user_data->share_file_client->Create(0LL);
+    }
+}
+
+int SetFileWriterUserDataAppendMode(FileWriter *file_writer) {
+    if (file_writer == nullptr) { GetLogger()->error("Passed null pointer to function {}.", __func__); return; }
+    FileWriterUserData *user_data = new FileWriterUserData();
+    file_writer->user_data = static_cast<void *>(user_data);
+    unique_ptr<ServiceRequest> request;
+    if (BuildServiceRequest(&request, file_writer->url) != 0) return -1;
+    if (request->storage_type == BLOB) {
+        user_data->block_ids = make_unique<vector<string>>();
+        user_data->blob_client = make_unique<Azure::Storage::Blobs::BlobClient>("");
+        if (GetBlobClient(user_data->blob_client.get(), *request) != 0) return -1;
+        try {
+            auto block_list_request_response = user_data->blob_client->AsBlockBlobClient().GetBlockList();
+            vector<Azure::Storage::Blobs::Models::BlobBlock> blocks = block_list_request_response.Value.CommittedBlocks;
+            transform(blocks.begin(), blocks.end(), back_inserter(*user_data->block_ids), [](const auto &block) { return block.Name; });
+        } catch (const Azure::Storage::StorageException &) {}
+    } else if (request->storage_type == SHARE) {
+        user_data->share_file_client = make_unique<Azure::Storage::Files::Shares::ShareFileClient>("");
+        if (GetFileClient(user_data->share_file_client.get(), *request) != 0) return -1;
     }
 }
 
@@ -273,7 +331,7 @@ int FCloseWriter(const FileWriter &stream) {
 
 int FRead(size_t *result, void *ptr, FileReader *file_reader, size_t size, size_t count) {
     if (result == nullptr || ptr == nullptr || file_reader == nullptr) { GetLogger()->error("Null pointer passed to function {}.", __func__); return -1; }
-    if (size != 0 && count > numeric_limits<size_t>::max() / size) { GetLogger()->error("Number of bytes to read asked overflows."); return -1; }
+    if (size != 0 && count > numeric_limits<size_t>::max() / size) { GetLogger()->error("Asked number of bytes to read overflows."); return -1; }
 
     const size_t ntotaltoread = size * count;
     size_t nlefttoread = ntotaltoread, ntotalread = 0ULL, ntoread, nread, offset_inside_first_fragment_to_read, fragment_remote_offset, fragment_index;
@@ -310,14 +368,48 @@ int FRead(size_t *result, void *ptr, FileReader *file_reader, size_t size, size_
     return 0;
 }
 
-int FWrite(size_t *result, const FileWriter &file_writer, const void *ptr, size_t size, size_t count) {
-    GetLogger()->error("Not implemented!");
-    return -1;
+int FWrite(size_t *result, FileWriter *file_writer, const void *ptr, size_t size, size_t count) {
+    if (result == nullptr || file_writer == nullptr || ptr == nullptr) { GetLogger()->error("Null pointer passed to function {}.", __func__); return -1; }
+    if (size != 0 && count > numeric_limits<size_t>::max() / size) { GetLogger()->error("Asked number of bytes to write overflows."); return -1; }
+
+    size_t ntotaltowrite = size * count;
+    unique_ptr<ServiceRequest> request;
+    if (BuildServiceRequest(&request, file_writer->url) != 0) return -1;
+    FileWriterUserData *user_data = static_cast<FileWriterUserData *>(file_writer->user_data);
+    if (request->storage_type == BLOB) {
+        Azure::Storage::Blobs::BlockBlobClient bbclient = user_data->blob_client->AsBlockBlobClient();
+        ostringstream oss;
+        oss << setfill('0') << setw(64) << user_data->block_ids->size();
+        string block_id_in_base10 = oss.str();
+        vector<uint8_t> block_id_in_base_10_as_vec(block_id_in_base10.begin(), block_id_in_base10.end());
+        string block_id_in_base64 = Azure::Core::Convert::Base64Encode(block_id_in_base_10_as_vec);
+        Azure::Core::IO::MemoryBodyStream body_stream(static_cast<const uint8_t *>(ptr), ntotaltowrite);
+        bbclient.StageBlock(block_id_in_base64, body_stream);
+        user_data->block_ids->push_back(block_id_in_base64);
+    } else if (request->storage_type == SHARE) {
+        Azure::Storage::Files::Shares::Models::FileHttpHeaders http_headers;
+        Azure::Storage::Files::Shares::Models::FileSmbProperties smb_properties;
+        Azure::Storage::Files::Shares::SetFilePropertiesOptions opts;
+        Azure::Core::IO::MemoryBodyStream body_stream(static_cast<const uint8_t *>(ptr), ntotaltowrite);
+        opts.Size = file_writer->current_position + ntotaltowrite;
+        user_data->share_file_client->SetProperties(http_headers, smb_properties, opts);
+        user_data->share_file_client->UploadRange(static_cast<int64_t>(file_writer->current_position), body_stream);
+        file_writer->current_position += ntotaltowrite;
+    }
+    *result = ntotaltowrite;
+    return 0;
 }
 
 int FFlush(const FileWriter &file_writer) {
-    GetLogger()->error("Not implemented!");
-    return -1;
+    unique_ptr<ServiceRequest> request;
+    if (BuildServiceRequest(&request, file_writer.url) != 0) return -1;
+    FileWriterUserData *user_data = static_cast<FileWriterUserData *>(file_writer.user_data);
+    if (request->storage_type == BLOB) {
+        user_data->blob_client->AsBlockBlobClient().CommitBlockList(*user_data->block_ids);
+    } else if (request->storage_type == SHARE) {
+        user_data->share_file_client->ForceCloseAllHandles();
+    }
+    return 0;
 }
 
 int Remove(const string &filename) {
@@ -418,73 +510,6 @@ int Rmdir(const string &pathname) {
 int DiskFreeSpace(size_t *result, const string &filename) {
     *result = 5ULL * 1024ULL * 1024ULL * 1024ULL * 1024ULL;
     return 0;
-}
-
-int CopyToLocal(const string &sourcefilename, const string &destfilename) {
-    int status;
-    unique_ptr<ServiceRequest> request;
-    FileReader file_reader;
-    size_t buffer_size;
-    unique_ptr<char[]> buffer;
-    ofstream ofs;
-    size_t ntotalcopied = 0ULL, nread, ntocopy;
-
-    if (BuildServiceRequest(&request, sourcefilename) != 0) return -1;
-    if (PopulateFileReader(&file_reader, sourcefilename) != 0) return -1;
-    if (file_reader.total_size == 0ULL) { GetLogger()->trace("Nothing to copy."); return 0; }
-    if (GetSystemPreferredBufferSize(&buffer_size) != 0) return -1;
-    buffer = make_unique<char[]>(buffer_size);
-    ofs = ofstream(destfilename, ios::binary);
-    if (!ofs) { GetLogger()->error("Failed to open local destination file."); return -1; }
-    status = 0;
-    while (ntotalcopied < file_reader.total_size) {
-        ntocopy = min(buffer_size, file_reader.total_size - ntotalcopied);
-        GetLogger()->trace("Copying {} bytes from remote to local file...", ntocopy);
-        if (FRead(&nread, buffer.get(), file_reader, 1, ntocopy) != 0) { status = -1; break; }
-        if (nread != ntocopy) { GetLogger()->error("Tried to copy {} bytes but read only {}.", ntocopy, nread); status = -1; break; }
-        ofs.write(buffer.get(), (streamsize)ntocopy);
-        if (!ofs) { GetLogger()->error("Failed to write to local destination file."); status = -1; break; }
-        ntotalcopied += ntocopy;
-    }
-    if (FCloseReader(file_reader) != 0) return -1;
-    return status;
-}
-
-int CopyFromLocal(const string &sourcefilename, const string &destfilename) {
-    int status;
-    unique_ptr<ServiceRequest> request;
-    FileWriter file_writer;
-    unique_ptr<char[]> buffer;
-    size_t buffer_size;
-    ifstream ifs;
-    size_t ntotalcopied = 0ULL, ntocopy, nread, nwritten, total_size;
-
-    if (BuildServiceRequest(&request, destfilename) != 0) return -1;
-    if (OpenForWriting(&file_writer, destfilename) != 0) return -1;
-    if (GetSystemPreferredBufferSize(&buffer_size) != 0) return -1;
-    buffer = make_unique<char[]>(buffer_size);
-    ifs = ifstream(sourcefilename, ios::binary);
-    if (!ifs) { GetLogger()->error("Failed to open local source file."); return -1; }
-    ifs.seekg(0, ios::end);
-    streampos end = ifs.tellg();
-    if (end == streampos(-1)) { GetLogger()->error("Failed to get local source file size."); return -1; }
-    ifs.seekg(0, ios::beg);
-    total_size = static_cast<size_t>(end);
-    if (total_size == 0ULL) { GetLogger()->trace("Nothing to copy."); return 0; }
-    status = 0;
-    while (ntotalcopied < total_size) {
-        ntocopy = min(buffer_size, total_size - ntotalcopied);
-        GetLogger()->trace("Copying {} bytes from local file to remote...", ntocopy);
-        ifs.read(buffer.get(), ntocopy);
-        if (!ifs) { GetLogger()->error("Failed to read from local source file."); status = -1; break; }
-        nread = static_cast<size_t>(ifs.gcount());
-        if (nread != ntocopy) { GetLogger()->error("Tried to copy {} bytes but read only {}.", ntocopy, nread); status = -1; break; }
-        if (FWrite(&nwritten, file_writer, buffer.get(), 1, ntocopy) != 0) { status = -1; break; }
-        if (nwritten != ntocopy) { GetLogger()->error("Tried to copy {} bytes but wrote only {}.", ntocopy, nwritten); status = -1; break; }
-        ntotalcopied += ntocopy;
-    }
-    if (FCloseWriter(file_writer) != 0) return -1;
-    return status;
 }
 
 int Concat(const string &destfilename, const vector<string> &sourcefilenames) {
