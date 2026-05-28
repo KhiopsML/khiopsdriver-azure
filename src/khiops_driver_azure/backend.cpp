@@ -59,6 +59,7 @@ int SetFileWriterUserDataWriteMode(FileWriter *file_writer) {
         if (GetFileClient(user_data->share_file_client.get(), *request) != 0) return -1;
         user_data->share_file_client->Create(0LL);
     }
+    return 0;
 }
 
 int SetFileWriterUserDataAppendMode(FileWriter *file_writer) {
@@ -80,6 +81,7 @@ int SetFileWriterUserDataAppendMode(FileWriter *file_writer) {
         user_data->share_file_client = make_unique<Azure::Storage::Files::Shares::ShareFileClient>("");
         if (GetFileClient(user_data->share_file_client.get(), *request) != 0) return -1;
     }
+    return 0;
 }
 
 spdlog::logger *GetLogger() {
@@ -318,7 +320,7 @@ int GetFileSize(size_t *result, const string &filename) {
     return -1;
 }
 
-int FCloseReader(const FileReader &stream) {
+int FCloseReader(const FileReader &) {
     // Nothing to do.
     return 0;
 }
@@ -506,7 +508,7 @@ int Rmdir(const string &pathname) {
     return 0;
 }
 
-int DiskFreeSpace(size_t *result, const string &filename) {
+int DiskFreeSpace(size_t *result, const string &) {
     *result = 5ULL * 1024ULL * 1024ULL * 1024ULL * 1024ULL;
     return 0;
 }
