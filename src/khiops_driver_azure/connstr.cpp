@@ -40,7 +40,7 @@ int ConnectionString::ParseConnectionString(ConnectionString *result,
   if (!regex_match(sConnectionString, match,
                    regex("(?:[^=]+=[^;]+;)*[^=]+=[^;]+;?"))) {
     GetLogger()->error(
-        "Connection string '{}' does not match expected pattern.",
+        "Connection string does not match expected pattern.",
         sConnectionString);
     return -1;
   }
@@ -55,14 +55,14 @@ int ConnectionString::ParseConnectionString(ConnectionString *result,
 
   auto accountNameIt = kvPairs.find("AccountName"); // Mandatory
   if (accountNameIt == kvPairs.end()) {
-    GetLogger()->error("Connection string '{}' misses 'AccountName' field.",
+    GetLogger()->error("Connection string misses 'AccountName' field.",
                        sConnectionString);
     return -1;
   }
 
   auto accountKeyIt = kvPairs.find("AccountKey"); // Mandatory
   if (accountKeyIt == kvPairs.end()) {
-    GetLogger()->error("Connection string '{}' misses 'AccountKey' field.",
+    GetLogger()->error("Connection string misses 'AccountKey' field.",
                        sConnectionString);
     return -1;
   }
@@ -77,7 +77,7 @@ int ConnectionString::ParseConnectionString(ConnectionString *result,
     connectionString.blobEndpointPtr =
         make_unique<Azure::Core::Url>(blobEndpointIt->second);
   } else if (bIsEmulatedStorage) {
-    GetLogger()->error("Connection string '{}' misses 'BlobEndpoint' field.",
+    GetLogger()->error("Connection string misses 'BlobEndpoint' field.",
                        sConnectionString);
     return -1;
   }
