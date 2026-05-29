@@ -30,6 +30,10 @@ namespace { struct FileWriterUserData {
     unique_ptr<Azure::Storage::Files::Shares::ShareFileClient> share_file_client;
 }; }
 
+spdlog::logger *GetLogger() {
+    return GetLogger("azdriver", "AZURE_DRIVER_LOGFILE", "AZURE_DRIVER_LOGLEVEL");
+}
+
 void FreeFileReaderFragmentVersion(FileReader::Fragment *file_reader) {
     if (file_reader == nullptr) { GetLogger()->error("Passed null pointer to function {}.", __func__); return; }
     if (file_reader->version != nullptr) {
@@ -82,10 +86,6 @@ int InitializeFileWriteWithAppendMode(FileWriter *file_writer) {
         if (GetFileClient(user_data->share_file_client.get(), *request) != 0) return -1;
     }
     return 0;
-}
-
-spdlog::logger *GetLogger() {
-    return GetLogger("azdriver", "AZURE_DRIVER_LOGFILE", "AZURE_DRIVER_LOGLEVEL");
 }
 
 int ListFragments(vector<string> *result, const string &url) {
