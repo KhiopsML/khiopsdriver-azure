@@ -146,7 +146,6 @@ int BuildServiceRequest(unique_ptr<ServiceRequest> *result, const string &url) {
                             }
                         );
                     }
-                    GetLogger()->debug("Just built the following service request:");
                     LogServiceRequest(*request);
                     *result = std::move(request);
                 }
