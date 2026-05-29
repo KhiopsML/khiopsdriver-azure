@@ -121,39 +121,39 @@ int BuildServiceRequest(unique_ptr<ServiceRequest> *result, const string &url) {
     request->is_emulated_storage = IsEmulatedStorage();
 
     // Get type of storage service.
-    if (StorageTypeOfUrl(&request->storage_type, request->azure_url, request->is_emulated_storage) == 0) {
-        if (ObjectPathOfUrl(&request->object_path, request->azure_url, request->is_emulated_storage, request->storage_type) == 0) {
-            // Parse connection string.
-            string connection_string_as_string = util::env::GetEnvVar("AZURE_STORAGE_CONNECTION_STRING");
-            request->is_using_connection_string = !connection_string_as_string.empty();
-            if (request->is_emulated_storage && !request->is_using_connection_string) {
-                GetLogger()->error("Undefined or empty environment variable: AZURE_STORAGE_CONNECTION_STRING.");
-                return -1;
+    if (StorageTypeOfUrl(&request->storage_type, request->azure_url, request->is_emulated_storage) != 0) return -1;
+    
+    // Split path of remote object.
+    if (ObjectPathOfUrl(&request->object_path, request->azure_url, request->is_emulated_storage, request->storage_type) != 0) return -1;
+    
+    // Parse connection string.
+    string connection_string_as_string = util::env::GetEnvVar("AZURE_STORAGE_CONNECTION_STRING");
+    request->is_using_connection_string = !connection_string_as_string.empty();
+    if (request->is_emulated_storage && !request->is_using_connection_string) {
+        GetLogger()->error("Undefined or empty environment variable: AZURE_STORAGE_CONNECTION_STRING.");
+        return -1;
+    }
+    connstr::ConnectionString connection_string;
+    if (connstr::ConnectionString::ParseConnectionString(&connection_string, connection_string_as_string, request->is_emulated_storage) != 0) return -1;
+    if (connection_string.CheckAgainstUrl(request->azure_url, request->storage_type) != 0) return -1;
+    
+    // Credentials
+    if (request->is_using_connection_string) {
+        request->connection_string_credential = make_shared<Azure::Storage::StorageSharedKeyCredential>(connection_string.sAccountName, connection_string.sAccountKey);
+    } else {
+        request->no_connection_string_credential = make_shared<Azure::Identity::ChainedTokenCredential>(
+            Azure::Identity::ChainedTokenCredential::Sources {
+                std::make_shared<Azure::Identity::EnvironmentCredential>(),  // for Client ID + Client Secret or Certificate environment variables
+                std::make_shared<Azure::Identity::WorkloadIdentityCredential>(),
+                std::make_shared<Azure::Identity::ManagedIdentityCredential>(),
+                std::make_shared<Azure::Identity::AzureCliCredential>()
             }
-            connstr::ConnectionString connection_string;
-            if (connstr::ConnectionString::ParseConnectionString(&connection_string, connection_string_as_string, request->is_emulated_storage) == 0) {
-                if (connection_string.CheckAgainstUrl(request->azure_url, request->storage_type) == 0) {
-                    // Credentials
-                    if (request->is_using_connection_string) {
-                        request->connection_string_credential = make_shared<Azure::Storage::StorageSharedKeyCredential>(connection_string.sAccountName, connection_string.sAccountKey);
-                    } else {
-                        request->no_connection_string_credential = make_shared<Azure::Identity::ChainedTokenCredential>(
-                            Azure::Identity::ChainedTokenCredential::Sources {
-                                std::make_shared<Azure::Identity::EnvironmentCredential>(),  // for Client ID + Client Secret or Certificate environment variables
-                                std::make_shared<Azure::Identity::WorkloadIdentityCredential>(),
-                                std::make_shared<Azure::Identity::ManagedIdentityCredential>(),
-                                std::make_shared<Azure::Identity::AzureCliCredential>()
-                            }
-                        );
-                    }
-                    LogServiceRequest(*request);
-                    *result = std::move(request);
-                }
-            }
-        }
+        );
     }
 
-    return -1;
+    LogServiceRequest(*request);
+    *result = std::move(request);
+    return 0;
 }
 
 void LogServiceRequest(const ServiceRequest &request) {
@@ -167,18 +167,13 @@ void LogServiceRequest(const ServiceRequest &request) {
 }
 
 string GetServiceUrl(const ServiceRequest &request) {
+    const string scheme = request.azure_url.GetScheme();
+    const string host = request.azure_url.GetHost();
+    const uint16_t port = request.azure_url.GetPort();
     ostringstream oss;
-    if (request.is_emulated_storage) {  // Emulated BLOB storage
-        oss << request.azure_url.GetScheme() << "://" << request.azure_url.GetHost()
-            << ":" << request.azure_url.GetPort() << "/"
-            << *request.object_path.emulated_account_name;
-    } else if (request.storage_type == BLOB) {  // Real Azure cloud BLOB storage
-        oss << request.azure_url.GetScheme() << "://" << request.azure_url.GetHost()
-            << ":" << request.azure_url.GetPort();
-    } else {  // Real Azure cloud FILE storage
-        oss << request.azure_url.GetScheme() << "://" << request.azure_url.GetHost()
-            << ":" << request.azure_url.GetPort();
-    }
+    oss << scheme << "://" << host;
+    if (port > 0) oss << ":" << port;
+    if (request.is_emulated_storage) oss << "/" << *request.object_path.emulated_account_name;
     string result = oss.str();
     GetLogger()->debug("Service URL is: {}.", result);
     return result;
