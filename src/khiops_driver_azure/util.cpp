@@ -157,6 +157,16 @@ int BuildServiceRequest(unique_ptr<ServiceRequest> *result, const string &url) {
     return -1;
 }
 
+void LogServiceRequest(const ServiceRequest &request) {
+    khiops_driver_common::GetLogger()->debug("Service request details:");
+    khiops_driver_common::GetLogger()->debug("  URL: {}", request.azure_url.GetAbsoluteUrl());
+    khiops_driver_common::GetLogger()->debug("  object type: {}", request.is_dir ? "directory" : "file (in the sense of not being a directory)");
+    khiops_driver_common::GetLogger()->debug("  is storage emulated? {}", request.is_emulated_storage ? "yes" : "no");
+    khiops_driver_common::GetLogger()->debug("  storage type: {}", request.storage_type == BLOB ? "blob" : "file share");
+    khiops_driver_common::GetLogger()->debug("  object path: {}", ObjectPathToString(request.object_path));
+    khiops_driver_common::GetLogger()->debug("  is using connection string? {}", request.is_using_connection_string ? "yes" : "no");
+}
+
 string GetServiceUrl(const ServiceRequest &request) {
     ostringstream oss;
     if (request.is_emulated_storage) {  // Emulated BLOB storage
