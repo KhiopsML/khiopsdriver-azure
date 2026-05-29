@@ -34,24 +34,18 @@ spdlog::logger *GetLogger() {
     return GetLogger("azdriver", "AZURE_DRIVER_LOGFILE", "AZURE_DRIVER_LOGLEVEL");
 }
 
-void FreeFileReaderFragmentVersion(FileReader::Fragment *file_reader) {
-    if (file_reader == nullptr) { GetLogger()->error("Passed null pointer to function {}.", __func__); return; }
-    if (file_reader->version != nullptr) {
-        delete static_cast<Azure::ETag *>(file_reader->version);
-    }
+void FreeFileReaderFragmentVersion(void *version) {
+    delete static_cast<Azure::ETag *>(version);
 }
 
-void FreeFileWriterUserData(FileWriter *file_writer) {
-    if (file_writer == nullptr) { GetLogger()->error("Passed null pointer to function {}.", __func__); return; }
-    if (file_writer->user_data != nullptr) {
-        delete static_cast<FileWriterUserData *>(file_writer->user_data);
-    }
+void FreeFileWriterUserData(void *user_data) {
+    delete static_cast<FileWriterUserData *>(user_data);
 }
 
 int InitializeFileWriterWithWriteMode(FileWriter *file_writer) {
     if (file_writer == nullptr) { GetLogger()->error("Passed null pointer to function {}.", __func__); return -1; }
     FileWriterUserData *user_data = new FileWriterUserData();
-    file_writer->user_data = static_cast<void *>(user_data);
+    file_writer->user_data.reset(static_cast<void *>(user_data));
     unique_ptr<ServiceRequest> request;
     if (BuildServiceRequest(&request, file_writer->url) != 0) return -1;
     if (request->storage_type == BLOB) {
@@ -69,7 +63,7 @@ int InitializeFileWriterWithWriteMode(FileWriter *file_writer) {
 int InitializeFileWriteWithAppendMode(FileWriter *file_writer) {
     if (file_writer == nullptr) { GetLogger()->error("Passed null pointer to function {}.", __func__); return -1; }
     FileWriterUserData *user_data = new FileWriterUserData();
-    file_writer->user_data = static_cast<void *>(user_data);
+    file_writer->user_data.reset(static_cast<void *>(user_data));
     unique_ptr<ServiceRequest> request;
     if (BuildServiceRequest(&request, file_writer->url) != 0) return -1;
     if (request->storage_type == BLOB) {
@@ -340,7 +334,7 @@ int FRead(size_t *result, void *ptr, FileReader *file_reader, size_t size, size_
     bool stopped_on_term_char, first_fragment_to_read = true;
 
     if (ntotaltoread == 0) { *result = 0ULL; return 0; }
-    if (file_reader->current_position == file_reader->total_size) { GetLogger()->error("Reading after end of file."); return -1; }
+    if (file_reader->current_position == file_reader->total_size) { GetLogger()->error("Cannot read after end of file."); return -1; }
     if (FragmentIndexOfUserOffset(&fragment_index, *file_reader, file_reader->current_position) != 0) return -1;
     while (nlefttoread != 0ULL && file_reader->current_position != file_reader->total_size) {
         const FileReader::Fragment &fragment = file_reader->fragments[fragment_index];
@@ -352,7 +346,7 @@ int FRead(size_t *result, void *ptr, FileReader *file_reader, size_t size, size_
             fragment_remote_offset = file_reader->header_length;
             ntoread = min(nlefttoread, fragment.content_size);
         }
-        if (ReadFragment(&read, &stopped_on_term_char, fragment.url, fragment.version, fragment_remote_offset, ntoread) != 0) {
+        if (ReadFragment(&read, &stopped_on_term_char, fragment.url, fragment.version.get(), fragment_remote_offset, ntoread) != 0) {
             return -1;
         }
         nread = read.size();
@@ -376,7 +370,7 @@ int FWrite(size_t *result, FileWriter *file_writer, const void *ptr, size_t size
     size_t ntotaltowrite = size * count;
     unique_ptr<ServiceRequest> request;
     if (BuildServiceRequest(&request, file_writer->url) != 0) return -1;
-    FileWriterUserData *user_data = static_cast<FileWriterUserData *>(file_writer->user_data);
+    FileWriterUserData *user_data = static_cast<FileWriterUserData *>(file_writer->user_data.get());
     if (request->storage_type == BLOB) {
         Azure::Storage::Blobs::BlockBlobClient bbclient = user_data->blob_client->AsBlockBlobClient();
         ostringstream oss;
@@ -404,7 +398,7 @@ int FWrite(size_t *result, FileWriter *file_writer, const void *ptr, size_t size
 int FFlush(const FileWriter &file_writer) {
     unique_ptr<ServiceRequest> request;
     if (BuildServiceRequest(&request, file_writer.url) != 0) return -1;
-    FileWriterUserData *user_data = static_cast<FileWriterUserData *>(file_writer.user_data);
+    FileWriterUserData *user_data = static_cast<FileWriterUserData *>(file_writer.user_data.get());
     if (request->storage_type == BLOB) {
         user_data->blob_client->AsBlockBlobClient().CommitBlockList(*user_data->block_ids);
     } else if (request->storage_type == SHARE) {
