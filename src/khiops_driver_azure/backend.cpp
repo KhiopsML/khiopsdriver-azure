@@ -120,11 +120,11 @@ static int ReadFragment(string *result, bool *stopped_on_termchar, const string 
         GetLogger()->error("Null pointer passed to function {}.", __func__);
         return -1;
     }
-    if (maxlength == 0ULL) {
-        *result = "";
-        *stopped_on_termchar = false;
-        return 0;
-    }
+    // if (maxlength == 0ULL) {
+    //     *result = "";
+    //     *stopped_on_termchar = false;
+    //     return 0;
+    // }
     unique_ptr<ServiceRequest> request;
     string content_read = "";
     unique_ptr<Azure::Core::IO::BodyStream> body_stream;
@@ -324,44 +324,42 @@ int FCloseWriter(const FileWriter &stream) {
     else return -1;
 }
 
-int FRead(size_t *result, void *ptr, FileReader *file_reader, size_t size, size_t count) {
-    if (result == nullptr || ptr == nullptr || file_reader == nullptr) { GetLogger()->error("Null pointer passed to function {}.", __func__); return -1; }
-    if (size != 0 && count > numeric_limits<size_t>::max() / size) { GetLogger()->error("Asked number of bytes to read overflows."); return -1; }
+// int FRead(size_t *result, void *ptr, FileReader *file_reader, size_t size, size_t count) {
+//     size_t nlefttoread = ntotaltoread, ntotalread = 0ULL, ntoread, nread, offset_inside_first_fragment_to_read, fragment_remote_offset, fragment_index;
+//     string globalread, read;
+//     bool stopped_on_term_char, first_fragment_to_read = true;
 
-    const size_t ntotaltoread = size * count;
-    size_t nlefttoread = ntotaltoread, ntotalread = 0ULL, ntoread, nread, offset_inside_first_fragment_to_read, fragment_remote_offset, fragment_index;
-    string globalread, read;
-    bool stopped_on_term_char, first_fragment_to_read = true;
+//     GetLogger()->debug("FReading {} bytes from file of total size {} starting at position {}...", ntotaltoread, file_reader->total_size, file_reader->current_position);
 
-    if (ntotaltoread == 0) { *result = 0ULL; return 0; }
-    if (file_reader->current_position == file_reader->total_size) { GetLogger()->error("Cannot read after end of file."); return -1; }
-    if (FragmentIndexOfUserOffset(&fragment_index, *file_reader, file_reader->current_position) != 0) return -1;
-    while (nlefttoread != 0ULL && file_reader->current_position != file_reader->total_size) {
-        const FileReader::Fragment &fragment = file_reader->fragments[fragment_index];
-        if (first_fragment_to_read) {
-            offset_inside_first_fragment_to_read = file_reader->current_position - fragment.user_offset;
-            fragment_remote_offset = (fragment_index == 0ULL ? 0ULL : file_reader->header_length) + offset_inside_first_fragment_to_read;
-            ntoread = min(nlefttoread, fragment.content_size - offset_inside_first_fragment_to_read);
-        } else {
-            fragment_remote_offset = file_reader->header_length;
-            ntoread = min(nlefttoread, fragment.content_size);
-        }
-        if (ReadFragment(&read, &stopped_on_term_char, fragment.url, fragment.version.get(), fragment_remote_offset, ntoread) != 0) {
-            return -1;
-        }
-        nread = read.size();
-        if (nread != ntoread) { GetLogger()->error("Failed to read."); return -1; }
-        ntotalread += nread;
-        globalread.append(read);
-        nlefttoread -= nread;
-        fragment_index++;
-        first_fragment_to_read = false;
-        file_reader->current_position += nread;
-    }
-    *result = ntotalread;
-    memcpy(ptr, globalread.data(), ntotalread);
-    return 0;
-}
+//     // if (ntotaltoread == 0) { *result = 0ULL; return 0; }
+//     // if (file_reader->current_position == file_reader->total_size) { GetLogger()->error("Cannot read after end of file."); return -1; }
+//     if (FragmentIndexOfUserOffset(&fragment_index, *file_reader, file_reader->current_position) != 0) return -1;
+//     while (nlefttoread != 0ULL && file_reader->current_position != file_reader->total_size) {
+//         const FileReader::Fragment &fragment = file_reader->fragments[fragment_index];
+//         if (first_fragment_to_read) {
+//             offset_inside_first_fragment_to_read = file_reader->current_position - fragment.user_offset;
+//             fragment_remote_offset = (fragment_index == 0ULL ? 0ULL : file_reader->header_length) + offset_inside_first_fragment_to_read;
+//             ntoread = min(nlefttoread, fragment.content_size - offset_inside_first_fragment_to_read);
+//         } else {
+//             fragment_remote_offset = file_reader->header_length;
+//             ntoread = min(nlefttoread, fragment.content_size);
+//         }
+//         if (ReadFragment(&read, &stopped_on_term_char, fragment.url, fragment.version.get(), fragment_remote_offset, ntoread) != 0) {
+//             return -1;
+//         }
+//         nread = read.size();
+//         if (nread != ntoread) { GetLogger()->error("Failed to read."); return -1; }
+//         ntotalread += nread;
+//         globalread.append(read);
+//         nlefttoread -= nread;
+//         fragment_index++;
+//         first_fragment_to_read = false;
+//         file_reader->current_position += nread;
+//     }
+//     *result = ntotalread;
+//     memcpy(ptr, globalread.data(), ntotalread);
+//     return 0;
+// }
 
 int FWrite(size_t *result, FileWriter *file_writer, const void *ptr, size_t size, size_t count) {
     if (result == nullptr || file_writer == nullptr || ptr == nullptr) { GetLogger()->error("Null pointer passed to function {}.", __func__); return -1; }
