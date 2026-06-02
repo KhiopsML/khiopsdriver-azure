@@ -35,21 +35,6 @@ build-dir = "build/ninja-rel"
 ninja.make-fallback = false
 
 [[tool.scikit-build.overrides]]
-if.platform-system = "^linux"
-if.platform-machine = "x86_64"
-cmake.define.VCPKG_TARGET_TRIPLET="x64-linux"
-
-[[tool.scikit-build.overrides]]
-if.platform-system = "^darwin"
-if.platform-machine = "arm64"
-cmake.define.VCPKG_TARGET_TRIPLET="arm64-osx-static"
-
-[[tool.scikit-build.overrides]]
-if.platform-system = "^darwin"
-if.platform-machine = "x86_64"
-cmake.define.VCPKG_TARGET_TRIPLET="x64-osx-static"
-
-[[tool.scikit-build.overrides]]
 if.platform-system = "^win32"
 if.platform-machine = "AMD64"
 cmake.define.VCPKG_TARGET_TRIPLET="x64-windows-static"
