@@ -115,27 +115,23 @@ int GetFragmentSizeAndVersion(size_t *size_result, void **version_result, const 
     return -1;
 }
 
-static int ReadFragment(string *result, bool *stopped_on_termchar, const string &url, void *version, size_t offset, size_t maxlength, const char *termchar) {
-    if (result == nullptr || stopped_on_termchar == nullptr || version == nullptr) {
+static int ReadFragment(string *result, bool *stopped_on_termchar, const FileReader::Fragment &fragment, size_t offset, size_t maxlength, const char *termchar) {
+    if (result == nullptr || stopped_on_termchar == nullptr) {
         GetLogger()->error("Null pointer passed to function {}.", __func__);
         return -1;
     }
-    // if (maxlength == 0ULL) {
-    //     *result = "";
-    //     *stopped_on_termchar = false;
-    //     return 0;
-    // }
+    GetLogger()->debug("Reading a maximum of {} bytes from fragment of size {} at URL {} starting at offset {}...", maxlength, fragment.url, fragment.content_size, offset);
     unique_ptr<ServiceRequest> request;
     string content_read = "";
     unique_ptr<Azure::Core::IO::BodyStream> body_stream;
     size_t buffer_size;
-    Azure::ETag previousETag = *static_cast<Azure::ETag *>(version);
+    Azure::ETag previousETag = *static_cast<Azure::ETag *>(fragment.version.get());
     size_t number_of_bytes_to_read = maxlength;
     size_t number_of_bytes_read = 0ULL;
     uint8_t *termchar_pos;
     Azure::Core::Http::HttpRange range;
     range.Offset = static_cast<int64_t>(offset);
-    if (BuildServiceRequest(&request, url) == 0) {
+    if (BuildServiceRequest(&request, fragment.url) == 0) {
         if (GetSystemPreferredBufferSize(&buffer_size) == 0) {
             vector<uint8_t> buffer(buffer_size);
             uint8_t *buffer_start = buffer.data();
@@ -172,12 +168,12 @@ static int ReadFragment(string *result, bool *stopped_on_termchar, const string 
                     if (exc.StatusCode == Azure::Core::Http::HttpStatusCode::PreconditionFailed) {
                         GetLogger()->error("The file has been updated while reading it.");
                         return -1;
-                    }
-                    if (exc.StatusCode == Azure::Core::Http::HttpStatusCode::RangeNotSatisfiable) {
+                    } else if (exc.StatusCode == Azure::Core::Http::HttpStatusCode::RangeNotSatisfiable) {
                         GetLogger()->error("Cannot read after end of file.");
                         return -1;
+                    } else {
+                        throw;
                     }
-                    throw;
                 }
                 number_of_bytes_read = body_stream->ReadToCount(buffer_start, min(number_of_bytes_to_read, buffer_size));
                 if (number_of_bytes_read == 0ULL) {
@@ -208,12 +204,12 @@ static int ReadFragment(string *result, bool *stopped_on_termchar, const string 
     return -1;
 }
 
-int ReadFragment(string *result, bool *stopped_on_termchar, const string &url, void *version, size_t offset, size_t maxlength) {
-    return ReadFragment(result, stopped_on_termchar, url, version, offset, maxlength, nullptr);
+int ReadFragment(string *result, bool *stopped_on_termchar, const FileReader::Fragment &fragment, size_t offset, size_t maxlength) {
+    return ReadFragment(result, stopped_on_termchar, fragment, offset, maxlength, nullptr);
 }
 
-int ReadFragment(string *result, bool *stopped_on_termchar, const string &url, void *version, size_t offset, size_t maxlength, char termchar) {
-    return ReadFragment(result, stopped_on_termchar, url, version, offset, maxlength, &termchar);
+int ReadFragment(string *result, bool *stopped_on_termchar, const FileReader::Fragment &fragment, size_t offset, size_t maxlength, char termchar) {
+    return ReadFragment(result, stopped_on_termchar, fragment, offset, maxlength, &termchar);
 }
 
 int GetDriverName(string *result) {
