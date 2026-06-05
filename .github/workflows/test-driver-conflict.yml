@@ -127,6 +127,8 @@ jobs:
           KHIOPS_API_MODE: true
           KHIOPS_MPI_VERBOSE: true
           AZURE_STORAGE_CONNECTION_STRING: '${{ secrets.AZURE_CONNECTION_STRING }}'
+          AZURE_DRIVER_LOGLEVEL: warning
+          AZURE_DRIVER_LOGFILE: /dev/stderr
         run: |
           cd test/LearningTest/TestKhiops/Standard/Iris/
           $ENVBIN/khiops -b -i test.prm -e results/err.txt
