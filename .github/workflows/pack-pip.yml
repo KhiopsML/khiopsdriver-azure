@@ -159,6 +159,11 @@ jobs:
             exit 1
           }
 
+      - name: Test Khiops+driver on Iris dataset
+        uses: ./.github/actions/test-khiops-on-iris
+        with:
+          os-decription: ${{ matrix.os }}
+
   ##### ENABLE THE FOLLOWING WHEN READY TO PUBLISH TO THE OFFICIAL PYPI.ORG REPOSITORY
   # publish-pypi:
   #   name: Publish to PyPI.org
