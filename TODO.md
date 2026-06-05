@@ -13,3 +13,7 @@
    - (b) Implement test scenarii: learning, sort&deploy, for multiple buffer sizes (8 MiB, 16 MiB, 32 MiB, 64 MiB).
    - (c) Execute tests and write measurements into a report.
    - (d) *(optional)* Identify bottlenecks and reduce their impact on performance. Implement additional test scenarii.
+
+
+(others)
+   - Fix behaviour of driver_fread and driver_fwrite: parameters `size` should behave like in the original fread function of the stdlib, and return value should be fixed too.
