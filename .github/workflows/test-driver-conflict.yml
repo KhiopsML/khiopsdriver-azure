@@ -117,13 +117,6 @@ jobs:
             exit 1
           }
 
-      - name: Sanity check Azure Blob via Python SDK
-        env:
-          AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_CONNECTION_STRING }}
-        run: |
-          $ENVBIN/pip install azure-storage-blob
-          $ENVBIN/python -c "import os; from azure.storage.blob import BlobServiceClient; cs=os.environ['AZURE_STORAGE_CONNECTION_STRING']; bsc=BlobServiceClient.from_connection_string(cs); print([c['name'] for c in bsc.list_containers(results_per_page=3)])"
-
       - name: Test Khiops+driver on Iris dataset
         env:
           KHIOPS_PROC_NUMBER: 4
