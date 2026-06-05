@@ -112,7 +112,7 @@ jobs:
       # Fetch test-khiops-on-iris action
       - uses: actions/checkout@v6
         with:
-          sparse-checkout: ./.github/actions/test-khiops-on-iris
+          sparse-checkout: .github/actions/test-khiops-on-iris
           sparse-checkout-cone-mode: false
 
       - name: Test Khiops+driver on Iris dataset
