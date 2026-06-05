@@ -79,6 +79,14 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
+      # Fetch Iris test files
+      - uses: actions/checkout@v6
+        with:
+          sparse-checkout: |
+            test/LearningTest
+            test/LearningTestTool
+          sparse-checkout-cone-mode: false
+
       - uses: actions/setup-python@v6
         with:
           python-version: 3.9
@@ -159,12 +167,6 @@ jobs:
             exit 1
           }
 
-      # Fetch Iris test files
-      - uses: actions/checkout@v6
-        with:
-          sparse-checkout: test/LearningTest/TestKhiops/Standard/Iris
-          sparse-checkout-cone-mode: false
-
       - name: Test Khiops+driver on Iris dataset
         env:
           KHIOPS_PROC_NUMBER: 4
@@ -174,6 +176,9 @@ jobs:
           PRTE_MCA_rmaps_default_mapping_policy: :oversubscribe
           KHIOPS_API_MODE: true
           KHIOPS_MPI_VERBOSE: true
+          AZURE_STORAGE_CONNECTION_STRING: '${{ secrets.AZURE_CONNECTION_STRING }}'
+          AZURE_DRIVER_LOGLEVEL: warning
+          AZURE_DRIVER_LOGFILE: /dev/stderr
         run: |
           cd test/LearningTest/TestKhiops/Standard/Iris/
           $ENVBIN/khiops -b -i test.prm -e results/err.txt
