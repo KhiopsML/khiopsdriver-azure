@@ -126,6 +126,7 @@ jobs:
           PRTE_MCA_rmaps_default_mapping_policy: :oversubscribe
           KHIOPS_API_MODE: true
           KHIOPS_MPI_VERBOSE: true
+          AZURE_STORAGE_CONNECTION_STRING: '${{ secrets.AZURE_CONNECTION_STRING }}'
         run: |
           cd test/LearningTest/TestKhiops/Standard/Iris/
           $ENVBIN/khiops -b -i test.prm -e results/err.txt
