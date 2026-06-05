@@ -88,17 +88,9 @@ int ConnectionString::ParseConnectionString(ConnectionString *result,
         make_unique<Azure::Core::Url>(fileEndpointIt->second);
   }
 
-  GetLogger()->debug("Parsed connection string:");
-  GetLogger()->debug("  account name: {}", connectionString.sAccountName);
-  GetLogger()->debug("  account key: ***REDACTED***");
-  GetLogger()->debug("  blob endpoint: {}",
-                     connectionString.blobEndpointPtr
-                         ? connectionString.blobEndpointPtr->GetAbsoluteUrl()
-                         : "<none>");
-  GetLogger()->debug("  file endpoint: {}",
-                     connectionString.fileEndpointPtr
-                         ? connectionString.fileEndpointPtr->GetAbsoluteUrl()
-                         : "<none>");
+  GetLogger()->debug("Parsed connection string: account name = {}, account key = **REDACTED**, blob endpoint = {}, file endpoint = {}",
+    connectionString.sAccountName, connectionString.blobEndpointPtr ? connectionString.blobEndpointPtr->GetAbsoluteUrl() : "<none>",
+    connectionString.fileEndpointPtr ? connectionString.fileEndpointPtr->GetAbsoluteUrl() : "<none>");
   *result = std::move(connectionString);
   return 0;
 }

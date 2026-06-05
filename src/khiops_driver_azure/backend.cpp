@@ -436,7 +436,7 @@ int Remove(const string &filename) {
             }
         }
     }
-    return -1;
+    return 0;
 }
 
 int Mkdir(const string &pathname) {
