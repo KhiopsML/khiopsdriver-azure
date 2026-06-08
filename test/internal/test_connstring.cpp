@@ -56,15 +56,17 @@ const char *sConnStringMissingBlobEndpoint =
     "QueueEndpoint=http://127.0.0.1:10001/devstoreaccount1;"
     "TableEndpoint=http://127.0.0.1:10002/devstoreaccount1;";
 
+using namespace khiops_driver_azure;
+
 INSTANTIATE_TEST_SUITE_P(EmulatedAndNotEmulatedStorage, ConnectionStringTest,
                          testing::Values(false, true));
 
 TEST_P(ConnectionStringTest, ParseValidConnString) {
-  khiops_driver_azure::connstr::ConnectionString actual;
-  ASSERT_EQ(khiops_driver_azure::connstr::ConnectionString::ParseConnectionString(
+  ConnectionString actual;
+  ASSERT_EQ(ConnectionString::ParseConnectionString(
                 &actual, sValidConnString, bIsEmulatedStorage),
             0);
-  khiops_driver_azure::connstr::ConnectionString expected(
+  ConnectionString expected(
       "devstoreaccount1",
       "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/"
       "K1SZFPTOtr/KBHBeksoGMGw==");
@@ -74,12 +76,12 @@ TEST_P(ConnectionStringTest, ParseValidConnString) {
 }
 
 TEST_P(ConnectionStringTest, ParseValidConnStringWithoutTrailingSemicolon) {
-  khiops_driver_azure::connstr::ConnectionString actual;
-  ASSERT_EQ(khiops_driver_azure::connstr::ConnectionString::ParseConnectionString(
+  ConnectionString actual;
+  ASSERT_EQ(ConnectionString::ParseConnectionString(
                 &actual, sValidConnStringWithoutTrailingSemicolon,
                 bIsEmulatedStorage),
             0);
-  khiops_driver_azure::connstr::ConnectionString expected(
+  ConnectionString expected(
       "devstoreaccount1",
       "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/"
       "K1SZFPTOtr/KBHBeksoGMGw==");
@@ -95,11 +97,11 @@ const char *sValidAzuriteConnString =
     "devstoreaccount1;QueueEndpoint=http://localhost:10001/devstoreaccount1;";
 
 TEST_P(ConnectionStringTest, ParseAzuriteValidConnString) {
-  khiops_driver_azure::connstr::ConnectionString actual;
-  ASSERT_EQ(khiops_driver_azure::connstr::ConnectionString::ParseConnectionString(
+  ConnectionString actual;
+  ASSERT_EQ(ConnectionString::ParseConnectionString(
                 &actual, sValidAzuriteConnString, bIsEmulatedStorage),
             0);
-  khiops_driver_azure::connstr::ConnectionString expected(
+  ConnectionString expected(
       "devstoreaccount1",
       "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/"
       "K1SZFPTOtr/KBHBeksoGMGw==");
@@ -109,38 +111,38 @@ TEST_P(ConnectionStringTest, ParseAzuriteValidConnString) {
 }
 
 TEST_P(ConnectionStringTest, ParseIllFormedConnString) {
-  khiops_driver_azure::connstr::ConnectionString actual;
-  ASSERT_EQ(khiops_driver_azure::connstr::ConnectionString::ParseConnectionString(
+  ConnectionString actual;
+  ASSERT_EQ(ConnectionString::ParseConnectionString(
                 &actual, sIllFormedConnString, bIsEmulatedStorage),
             -1);
 }
 
 TEST_P(ConnectionStringTest, ParseConnStringMissingAccountName) {
-  khiops_driver_azure::connstr::ConnectionString actual;
-  ASSERT_EQ(khiops_driver_azure::connstr::ConnectionString::ParseConnectionString(
+  ConnectionString actual;
+  ASSERT_EQ(ConnectionString::ParseConnectionString(
                 &actual, sConnStringMissingAccountName, bIsEmulatedStorage),
             -1);
 }
 
 TEST_P(ConnectionStringTest, ParseConnStringMissingAccountKey) {
-  khiops_driver_azure::connstr::ConnectionString actual;
-  ASSERT_EQ(khiops_driver_azure::connstr::ConnectionString::ParseConnectionString(
+  ConnectionString actual;
+  ASSERT_EQ(ConnectionString::ParseConnectionString(
                 &actual, sConnStringMissingAccountKey, bIsEmulatedStorage),
             -1);
 }
 
 TEST(ConnectionStringTest, ParseConnStringMissingBlobEndpoint) {
-  khiops_driver_azure::connstr::ConnectionString actual;
-  khiops_driver_azure::connstr::ConnectionString expected(
+  ConnectionString actual;
+  ConnectionString expected(
       "devstoreaccount1",
       "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/"
       "K1SZFPTOtr/KBHBeksoGMGw==");
-  ASSERT_EQ(khiops_driver_azure::connstr::ConnectionString::ParseConnectionString(
+  ASSERT_EQ(ConnectionString::ParseConnectionString(
                 &actual, sConnStringMissingBlobEndpoint, false),
             0);
   ASSERT_EQ(actual, expected);
 
-  ASSERT_EQ(khiops_driver_azure::connstr::ConnectionString::ParseConnectionString(
+  ASSERT_EQ(ConnectionString::ParseConnectionString(
                 &actual, sConnStringMissingBlobEndpoint, true),
             -1);
 }

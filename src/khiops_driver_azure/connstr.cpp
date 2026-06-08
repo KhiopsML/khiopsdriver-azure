@@ -8,7 +8,6 @@ using namespace std;
 using namespace khiops_driver_common;
 
 namespace khiops_driver_azure {
-namespace connstr {
 
 ConnectionString::ConnectionString()
     : sAccountName(""), sAccountKey(""), blobEndpointPtr(nullptr),
@@ -100,14 +99,14 @@ int ConnectionString::CheckAgainstUrl(const Azure::Core::Url &url,
   // For real Azure cloud storage access, endpoints are optional, but if
   // present, check them
   if (blobEndpointPtr && storageType == BLOB &&
-      !util::str::StartsWith(url.GetAbsoluteUrl(),
+      !StartsWith(url.GetAbsoluteUrl(),
                        blobEndpointPtr->GetAbsoluteUrl())) {
     GetLogger()->error("URL {} does not start with expected blob endpoint {}.",
                        url.GetAbsoluteUrl(), blobEndpointPtr->GetAbsoluteUrl());
     return -1;
   }
   if (fileEndpointPtr && storageType == SHARE &&
-      !util::str::StartsWith(url.GetAbsoluteUrl(),
+      !StartsWith(url.GetAbsoluteUrl(),
                        fileEndpointPtr->GetAbsoluteUrl())) {
     GetLogger()->error("URL {} does not start with expected file endpoint {}.",
                        url.GetAbsoluteUrl(), fileEndpointPtr->GetAbsoluteUrl());
@@ -155,5 +154,4 @@ bool operator==(const ConnectionString &a, const ConnectionString &b) {
   return true;
 }
 
-} // namespace connstr
 } // namespace khiops_driver_azure

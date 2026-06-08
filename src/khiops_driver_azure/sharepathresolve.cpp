@@ -128,7 +128,7 @@ ResolveDirsPathRecursively_(const ShareDirectoryClient &dirClient,
         dirClient, pathSegments);
   }
 
-  if (util::glob::FindGlobbingChar(sUrlPathSegment) != string::npos) {
+  if (FindGlobbingChar(sUrlPathSegment) != string::npos) {
     return ResolveDirsGlobbing(dirClient, pathSegments, sUrlPathSegment);
   }
 
@@ -162,7 +162,7 @@ ResolveFilesPathRecursively_(const ShareDirectoryClient &dirClient,
         dirClient, pathSegments);
   }
 
-  if (util::glob::FindGlobbingChar(sUrlPathSegment) != string::npos) {
+  if (FindGlobbingChar(sUrlPathSegment) != string::npos) {
     return ResolveFilesGlobbing(dirClient, pathSegments, sUrlPathSegment);
   }
 
@@ -383,12 +383,12 @@ static bool ItemHasName(const ItemT &item, const string &sName) {
 
 template <typename ItemT>
 static bool ItemNameMatches(const ItemT &item, const string &sGlob) {
-  return util::glob::GitignoreGlobMatch(item.Name, sGlob);
+  return GitignoreGlobMatch(item.Name, sGlob);
 }
 
 static string PrefixFromName(const string &sName) { return sName; }
 
 static string PrefixFromGlob(const string &sGlob) {
-  return sGlob.substr(0, util::glob::FindGlobbingChar(sGlob));
+  return sGlob.substr(0, FindGlobbingChar(sGlob));
 }
 } // namespace khiops_driver_azure

@@ -8,7 +8,6 @@
 #include "khiops_driver_azure/util.hpp"
 
 namespace khiops_driver_azure {
-namespace connstr {
 
 struct ConnectionString {
   std::string sAccountName;
@@ -29,5 +28,4 @@ struct ConnectionString {
   friend bool operator==(const ConnectionString &a, const ConnectionString &b);
 };
 
-} // namespace connstr
 } // namespace khiops_driver_azure

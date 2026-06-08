@@ -19,9 +19,9 @@ int StorageTypeOfUrl(StorageType *result, const Azure::Core::Url &url, bool is_e
     if (is_emulated_storage) {
         // The emulator supports only blob storage services, not file share storage services.
         *result = BLOB;
-    } else if (util::str::EndsWith(host, ".blob.core.windows.net")) {
+    } else if (EndsWith(host, ".blob.core.windows.net")) {
         *result = BLOB;
-    } else if (util::str::EndsWith(host, ".file.core.windows.net")) {
+    } else if (EndsWith(host, ".file.core.windows.net")) {
         *result = SHARE;
     } else {
         GetLogger()->error("URL {} contains invalid domain.", url.GetAbsoluteUrl());
@@ -89,7 +89,7 @@ int ObjectPathOfUrl(ObjectPath *result, const Azure::Core::Url &url, bool is_emu
             //  share/path/to/a/dir/
             *result = ObjectPath();
             result->file_share = make_unique<string>(match[1].str());
-            result->file_path = make_unique<vector<string>>(util::str::Split(match[2].str(), '/', -1, true));
+            result->file_path = make_unique<vector<string>>(Split(match[2].str(), '/', -1, true));
             return 0;
         } else {
             GetLogger()->error("Invalid cloud file path: {}.", path);
@@ -99,7 +99,7 @@ int ObjectPathOfUrl(ObjectPath *result, const Azure::Core::Url &url, bool is_emu
 }
 
 bool IsEmulatedStorage() {
-    string sEmulatedStorageEnvVarVal = util::env::GetEnvVar("AZURE_EMULATED_STORAGE");
+    string sEmulatedStorageEnvVarVal = GetEnvVar("AZURE_EMULATED_STORAGE");
     return !sEmulatedStorageEnvVarVal.empty() && sEmulatedStorageEnvVarVal != "false";
 }
 
@@ -115,7 +115,7 @@ int BuildServiceRequest(unique_ptr<ServiceRequest> *result, const string &url) {
     }
 
     // Determine if the requested object is a file or a directory.
-    request->is_dir = util::IsDirUrl(url);
+    request->is_dir = IsDirUrl(url);
 
     // Determine if storage service is emulated or not.
     request->is_emulated_storage = IsEmulatedStorage();
@@ -127,14 +127,14 @@ int BuildServiceRequest(unique_ptr<ServiceRequest> *result, const string &url) {
     if (ObjectPathOfUrl(&request->object_path, request->azure_url, request->is_emulated_storage, request->storage_type) != 0) return -1;
     
     // Parse connection string.
-    string connection_string_as_string = util::env::GetEnvVar("AZURE_STORAGE_CONNECTION_STRING");
+    string connection_string_as_string = GetEnvVar("AZURE_STORAGE_CONNECTION_STRING");
     request->is_using_connection_string = !connection_string_as_string.empty();
     if (request->is_emulated_storage && !request->is_using_connection_string) {
         GetLogger()->error("Undefined or empty environment variable: AZURE_STORAGE_CONNECTION_STRING.");
         return -1;
     }
-    connstr::ConnectionString connection_string;
-    if (connstr::ConnectionString::ParseConnectionString(&connection_string, connection_string_as_string, request->is_emulated_storage) != 0) return -1;
+    ConnectionString connection_string;
+    if (ConnectionString::ParseConnectionString(&connection_string, connection_string_as_string, request->is_emulated_storage) != 0) return -1;
     if (connection_string.CheckAgainstUrl(request->azure_url, request->storage_type) != 0) return -1;
     
     // Credentials
@@ -200,7 +200,7 @@ vector<string> ListBlobs(const ServiceRequest &request) {
 }
 
 int GetBlobClient(Azure::Storage::Blobs::BlobClient *result, const ServiceRequest &request, const string &url) {
-    if (util::glob::CheckIsNotGlobbingPattern(url) == 0) {
+    if (CheckIsNotGlobbingPattern(url) == 0) {
         if (request.is_using_connection_string) {
             *result = std::move(Azure::Storage::Blobs::BlobClient(url, request.connection_string_credential));
         } else {
@@ -314,7 +314,7 @@ int GetParentDir(
 }
 
 int GetFileClient(Azure::Storage::Files::Shares::ShareFileClient *result, const ServiceRequest &request, const std::string &url) {
-    if (util::glob::CheckIsNotGlobbingPattern(url) == 0) {
+    if (CheckIsNotGlobbingPattern(url) == 0) {
         Azure::Storage::Files::Shares::ShareClientOptions opts;
         opts.ShareTokenIntent =
                 Azure::Storage::Files::Shares::Models::ShareTokenIntent::Backup;

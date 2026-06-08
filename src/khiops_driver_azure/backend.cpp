@@ -256,7 +256,7 @@ int GetSystemPreferredBufferSize(size_t *result) {
     const string ENVIRONMENT_VARIABLE_NAME = "AZURE_PREFERRED_BUFFER_SIZE";
     static unique_ptr<size_t> system_preferred_buffer_size_memo = nullptr;
     if (system_preferred_buffer_size_memo == nullptr) {
-        string environment_variable_preferred_buffer_size = util::env::GetEnvVar(ENVIRONMENT_VARIABLE_NAME);
+        string environment_variable_preferred_buffer_size = GetEnvVar(ENVIRONMENT_VARIABLE_NAME);
         if (!environment_variable_preferred_buffer_size.empty()) {
             try {
                 *result = stoull(environment_variable_preferred_buffer_size);

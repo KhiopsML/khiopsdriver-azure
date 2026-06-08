@@ -33,7 +33,7 @@ FindBlobs(const Azure::Storage::Blobs::BlobContainerClient &containerClient,
 static string PrefixFromName(const string &sName) { return sName; }
 
 static string PrefixFromGlob(const string &sGlob) {
-  return sGlob.substr(0, util::glob::FindGlobbingChar(sGlob));
+  return sGlob.substr(0, FindGlobbingChar(sGlob));
 }
 
 static vector<string>
@@ -54,7 +54,7 @@ FindBlobsByGlob(const Azure::Storage::Blobs::BlobContainerClient &containerClien
       containerClient,
       [sGlob](const Azure::Storage::Blobs::Models::BlobItem &item) {
         return !item.IsDeleted &&
-               util::glob::GitignoreGlobMatch(item.Name, sGlob);
+               GitignoreGlobMatch(item.Name, sGlob);
       },
       PrefixFromGlob(sGlob));
 }
@@ -62,7 +62,7 @@ FindBlobsByGlob(const Azure::Storage::Blobs::BlobContainerClient &containerClien
 vector<string>
 ResolveBlobsSearchString(const Azure::Storage::Blobs::BlobContainerClient &containerClient,
                          const string &sSearchString) {
-  return util::glob::FindGlobbingChar(sSearchString) != string::npos
+  return FindGlobbingChar(sSearchString) != string::npos
              ? FindBlobsByGlob(containerClient, sSearchString)
              : FindBlobsByName(containerClient, sSearchString);
 }
