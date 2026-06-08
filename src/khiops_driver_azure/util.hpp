@@ -21,7 +21,7 @@ A collection of utilities, specific to the usage of the Azure cloud storage serv
 
 namespace khiops_driver_azure {
 
-enum StorageType { BLOB, SHARE };
+enum StorageType { BLOB, FILE_SHARE };
 int StorageTypeOfUrl(StorageType *result, const Azure::Core::Url &url, bool is_emulated_storage);
 
 struct ObjectPath {

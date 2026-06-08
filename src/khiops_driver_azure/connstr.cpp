@@ -105,7 +105,7 @@ int ConnectionString::CheckAgainstUrl(const Azure::Core::Url &url,
                        url.GetAbsoluteUrl(), blobEndpointPtr->GetAbsoluteUrl());
     return -1;
   }
-  if (fileEndpointPtr && storageType == SHARE &&
+  if (fileEndpointPtr && storageType == FILE_SHARE &&
       !StartsWith(url.GetAbsoluteUrl(),
                        fileEndpointPtr->GetAbsoluteUrl())) {
     GetLogger()->error("URL {} does not start with expected file endpoint {}.",

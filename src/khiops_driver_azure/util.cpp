@@ -22,7 +22,7 @@ int StorageTypeOfUrl(StorageType *result, const Azure::Core::Url &url, bool is_e
     } else if (EndsWith(host, ".blob.core.windows.net")) {
         *result = BLOB;
     } else if (EndsWith(host, ".file.core.windows.net")) {
-        *result = SHARE;
+        *result = FILE_SHARE;
     } else {
         GetLogger()->error("URL {} contains invalid domain.", url.GetAbsoluteUrl());
         return -1;

@@ -54,7 +54,7 @@ int InitializeFileWriterWithWriteMode(FileWriter *file_writer) {
         user_data->block_ids = make_unique<vector<string>>();
         user_data->blob_client = make_unique<Azure::Storage::Blobs::BlobClient>("");
         if (GetBlobClient(user_data->blob_client.get(), *request) != 0) return -1;
-    } else if (request->storage_type == SHARE) {
+    } else if (request->storage_type == FILE_SHARE) {
         user_data->share_file_client = make_unique<Azure::Storage::Files::Shares::ShareFileClient>("");
         if (GetFileClient(user_data->share_file_client.get(), *request) != 0) return -1;
         user_data->share_file_client->Create(0LL);
@@ -77,7 +77,7 @@ int InitializeFileWriterWithAppendMode(FileWriter *file_writer) {
             vector<Azure::Storage::Blobs::Models::BlobBlock> blocks = block_list_request_response.Value.CommittedBlocks;
             transform(blocks.begin(), blocks.end(), back_inserter(*user_data->block_ids), [](const auto &block) { return block.Name; });
         } catch (const Azure::Storage::StorageException &) {}
-    } else if (request->storage_type == SHARE) {
+    } else if (request->storage_type == FILE_SHARE) {
         user_data->share_file_client = make_unique<Azure::Storage::Files::Shares::ShareFileClient>("");
         if (GetFileClient(user_data->share_file_client.get(), *request) != 0) return -1;
     }
@@ -381,7 +381,7 @@ int FWrite(size_t *result, FileWriter *file_writer, const void *ptr, size_t size
         Azure::Core::IO::MemoryBodyStream body_stream(static_cast<const uint8_t *>(ptr), ntotaltowrite);
         bbclient.StageBlock(block_id_in_base64, body_stream);
         user_data->block_ids->push_back(block_id_in_base64);
-    } else if (request->storage_type == SHARE) {
+    } else if (request->storage_type == FILE_SHARE) {
         Azure::Storage::Files::Shares::Models::FileHttpHeaders http_headers;
         Azure::Storage::Files::Shares::Models::FileSmbProperties smb_properties;
         Azure::Storage::Files::Shares::SetFilePropertiesOptions opts;
@@ -401,7 +401,7 @@ int FFlush(const FileWriter &file_writer) {
     FileWriterUserData *user_data = static_cast<FileWriterUserData *>(file_writer.user_data.get());
     if (request->storage_type == BLOB) {
         user_data->blob_client->AsBlockBlobClient().CommitBlockList(*user_data->block_ids);
-    } else if (request->storage_type == SHARE) {
+    } else if (request->storage_type == FILE_SHARE) {
         user_data->share_file_client->ForceCloseAllHandles();
     }
     return 0;
