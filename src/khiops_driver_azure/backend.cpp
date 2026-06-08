@@ -60,7 +60,7 @@ int InitializeFileWriterWithWriteMode(FileWriter *file_writer) {
     return 0;
 }
 
-int InitializeFileWriteWithAppendMode(FileWriter *file_writer) {
+int InitializeFileWriterWithAppendMode(FileWriter *file_writer) {
     if (file_writer == nullptr) { GetLogger()->error("Passed null pointer to function {}.", __func__); return -1; }
     FileWriterUserData *user_data = new FileWriterUserData();
     file_writer->user_data.reset(static_cast<void *>(user_data));
