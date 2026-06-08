@@ -1,4 +1,5 @@
 add_executable(internal_test test_connstring.cpp fixture_connstring.hpp)
+target_include_directories(internal_test PRIVATE ${CMAKE_SOURCE_DIR}/src ${CMAKE_SOURCE_DIR}/shared/src)
 target_compile_options(
   internal_test
   PRIVATE $<$<CXX_COMPILER_ID:MSVC>:/W4;/wd4101;/wd4710;/wd4711;/permissive->
