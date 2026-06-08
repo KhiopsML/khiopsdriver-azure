@@ -1,3 +1,7 @@
+/*
+A collection of utilities, specific to the usage of the Azure cloud storage services.
+*/
+
 #pragma once
 
 #include <string>
