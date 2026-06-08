@@ -1,4 +1,5 @@
 #include "khiops_driver_common/backend.hpp"
+#include "khiops_driver_azure/auth.hpp"
 #include "khiops_driver_common/logging.hpp"
 #include "khiops_driver_common/util.hpp"
 #include "khiops_driver_common/filestream.hpp"
@@ -10,6 +11,7 @@
 #include <fstream>
 #include <iomanip>
 #include <limits>
+#include <unordered_map>
 #include <cstring>
 #include <spdlog/spdlog.h>
 #include <azure/core/diagnostics/logger.hpp>
@@ -506,8 +508,88 @@ int DiskFreeSpace(size_t *result, const string &) {
 }
 
 int Concat(const string &destfilename, const vector<string> &sourcefilenames) {
-    GetLogger()->error("Not implemented!");
-    return -1;
+    vector<unique_ptr<ServiceRequest>> inputs(sourcefilenames.size());
+    for (size_t i = 0ULL; i < sourcefilenames.size(); i++) {
+        if (BuildServiceRequest(&inputs[i], sourcefilenames[i]) != 0) return -1;
+    }
+    unique_ptr<ServiceRequest> output;
+    if (BuildServiceRequest(&output, destfilename) != 0) return -1;
+    for (const unique_ptr<ServiceRequest> &input : inputs) {
+        if (input->storage_type != output->storage_type) {
+            GetLogger()->error("Input storage type (blob/file) does not match output storage type.");
+            return -1;
+        }
+    }
+    try {
+        if (output->storage_type == BLOB) {
+            Azure::Storage::Blobs::BlobClient dest_blob_client("");
+            if (GetBlobClient(&dest_blob_client, *output) != 0) return -1;
+            Azure::Storage::Blobs::BlockBlobClient dest_block_blob_client = dest_blob_client.AsBlockBlobClient();
+            vector<string> dest_block_ids;
+            for (const unique_ptr<ServiceRequest> &input : inputs) {
+                Auth source_auth;
+                if (BuildAuth(&source_auth, *input) != 0) return -1;
+                Azure::Storage::Blobs::StageBlockFromUriOptions opts;
+                if (source_auth.HasHeader()) opts.SourceAuthorization = source_auth.sAuthHeader;
+                ostringstream oss;
+                oss << setfill('0') << setw(64) << dest_block_ids.size();
+                string block_id_in_base10 = oss.str();
+                vector<uint8_t> block_id_in_base10_vec(block_id_in_base10.begin(), block_id_in_base10.end());
+                string block_id_in_base64 = Azure::Core::Convert::Base64Encode(block_id_in_base10_vec);
+                dest_block_ids.push_back(block_id_in_base64);
+                dest_block_blob_client.StageBlockFromUri(block_id_in_base64, source_auth.sUriAuth, opts);
+            }
+            dest_block_blob_client.CommitBlockList(dest_block_ids);
+        } else /* SHARE */ {
+            Azure::Core::Http::HttpRange range;
+            GetLogger()->trace("Concatenating / Output: {}", output->azure_url.GetAbsoluteUrl());
+            Azure::Storage::Files::Shares::ShareFileClient dest_share_file_client("");
+            if (GetFileClient(&dest_share_file_client, *output) != 0) return -1;
+            unordered_map<const ServiceRequest *, int64_t> source_sizes;
+            int64_t total_size = 0LL;
+            for (const unique_ptr<ServiceRequest> &input : inputs) {
+                GetLogger()->trace("Concatenating / Input: {}", input->azure_url.GetAbsoluteUrl());
+                Azure::Storage::Files::Shares::ShareFileClient source_share_file_client("");
+                if (GetFileClient(&source_share_file_client, *input) != 0) return -1;
+                int64_t source_size = source_share_file_client.GetProperties().Value.FileSize;
+                GetLogger()->trace("Concatenating / Size of input: {}", source_size);
+                source_sizes[input.get()] = source_size;
+                total_size += source_size;
+            }
+            dest_share_file_client.Create(total_size);
+            GetLogger()->trace("Concatenating / Created destination file of size: {}", total_size);
+            int64_t global_offset = 0LL;
+            for (const unique_ptr<ServiceRequest> &input : inputs) {
+                int64_t source_size = source_sizes[input.get()];
+                Auth source_auth;
+                if (BuildAuth(&source_auth, *input) != 0) return -1;
+                Azure::Storage::Files::Shares::UploadFileRangeFromUriOptions opts;
+                if (source_auth.HasHeader()) opts.SourceAuthorization = source_auth.sAuthHeader;
+                // See size limitation of source range: header x-ms-source-range at https://learn.microsoft.com/en-us/rest/api/storageservices/put-range-from-url.
+                constexpr int64_t MAX_SOURCE_SIZE = 4LL * 1024LL * 1024LL;
+                for (int64_t offset_in_source = 0LL; offset_in_source < source_size; offset_in_source += MAX_SOURCE_SIZE) {
+                    int64_t to_upload = min(source_size - offset_in_source, MAX_SOURCE_SIZE);
+                    range = Azure::Core::Http::HttpRange{offset_in_source, to_upload};
+                    dest_share_file_client.UploadRangeFromUri(global_offset + offset_in_source, source_auth.sUriAuth, range, opts);
+                }
+                global_offset += source_size;
+            }
+        }
+    } catch (const Azure::Core::RequestFailedException &exc) {
+        GetLogger()->error("Failed to upload range from URI. Details of Azure error:");
+        GetLogger()->error("  Exception message: {}", exc.what());
+        GetLogger()->error("  HTTP response headers:");
+        for (const auto &header : exc.RawResponse->GetHeaders()) {
+            GetLogger()->error("    Header name: '{}'   Header value: '{}'", header.first, header.second);
+        }
+        return -1;
+    }
+
+    for (const string &sourcefilename : sourcefilenames) {
+        if (Remove(sourcefilename) != 0) return -1;
+    }
+
+    return 0;
 }
 
 int ComposeMultifile(const string &sDestFilePathName, const vector<string> &sSourceFilePathNames) {

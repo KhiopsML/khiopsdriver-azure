@@ -10,8 +10,8 @@ merely URL strings. Thus we must be correctly authenticated for the sources.
 
 #pragma once
 
-#include "khiops_driver_common/logging.hpp"
-#include "servicerequest.hpp"
+#include "khiops_driver_common/backend.hpp"
+#include "khiops_driver_azure/util.hpp"
 #include <azure/core/credentials/credentials.hpp>
 #include <azure/core/datetime.hpp>
 #include <azure/storage/blobs/blob_sas_builder.hpp>
@@ -33,36 +33,36 @@ struct Auth {
 };
 
 static int BuildAuth(Auth *result, const ServiceRequest &request) {
-  khiops_driver_common::logging::getLogger()->debug("Building authentication object...");
-  khiops_driver_common::logging::getLogger()->debug("  Using connection string: {}",
-                              request.bUsingConnectionString ? "true"
+  khiops_driver_common::GetLogger()->debug("Building authentication object...");
+  khiops_driver_common::GetLogger()->debug("  Using connection string: {}",
+                              request.is_using_connection_string ? "true"
                                                              : "false");
-  khiops_driver_common::logging::getLogger()->debug("  Storage type: {}",
-                              request.storageType == BLOB ? "BLOB" : "FILE");
-  khiops_driver_common::logging::getLogger()->debug("  URL: {}", request.azureUrl.GetAbsoluteUrl());
-  if (request.bUsingConnectionString) {
+  khiops_driver_common::GetLogger()->debug("  Storage type: {}",
+                              request.storage_type == BLOB ? "BLOB" : "FILE");
+  khiops_driver_common::GetLogger()->debug("  URL: {}", request.azure_url.GetAbsoluteUrl());
+  if (request.is_using_connection_string) {
     std::string sToken;
-    if (request.storageType == BLOB) {
+    if (request.storage_type == BLOB) {
       Azure::Storage::Sas::BlobSasBuilder sasbuilder;
-      sasbuilder.BlobContainerName = request.blob.sContainer;
-      sasbuilder.BlobName = request.blob.sBlob;
+      sasbuilder.BlobContainerName = *request.object_path.blob_container;
+      sasbuilder.BlobName = *request.object_path.blob;
       sasbuilder.Resource = Azure::Storage::Sas::BlobSasResource::Blob;
       sasbuilder.StartsOn =
           Azure::DateTime::clock::now() - std::chrono::minutes(5);
       sasbuilder.ExpiresOn =
           Azure::DateTime::clock::now() + std::chrono::hours(2);
       sasbuilder.SetPermissions(Azure::Storage::Sas::BlobSasPermissions::Read);
-      khiops_driver_common::logging::getLogger()->debug("  BLOB SAS builder:");
-      khiops_driver_common::logging::getLogger()->debug("    BLOB container name: {}",
+      khiops_driver_common::GetLogger()->debug("  BLOB SAS builder:");
+      khiops_driver_common::GetLogger()->debug("    BLOB container name: {}",
                                   sasbuilder.BlobContainerName);
-      khiops_driver_common::logging::getLogger()->debug("    BLOB name: {}", sasbuilder.BlobName);
-      sToken = sasbuilder.GenerateSasToken(*request.connectionStringCredential);
+      khiops_driver_common::GetLogger()->debug("    BLOB name: {}", sasbuilder.BlobName);
+      sToken = sasbuilder.GenerateSasToken(*request.connection_string_credential);
     } else /* SHARE */ {
       Azure::Storage::Sas::ShareSasBuilder sasbuilder;
-      sasbuilder.ShareName = request.share.sShare;
-      std::vector<std::string> pathSegments = request.share.path;
+      sasbuilder.ShareName = *request.object_path.file_share;
+      std::vector<std::string> pathSegments = *request.object_path.file_path;
       if (pathSegments.empty()) {
-        khiops_driver_common::logging::getLogger()->error("Shared file path is empty.");
+        khiops_driver_common::GetLogger()->error("Shared file path is empty.");
         return -1;
       }
       std::ostringstream oss;
@@ -77,19 +77,19 @@ static int BuildAuth(Auth *result, const ServiceRequest &request) {
       sasbuilder.ExpiresOn =
           Azure::DateTime::clock::now() + std::chrono::hours(2);
       sasbuilder.SetPermissions(Azure::Storage::Sas::ShareSasPermissions::Read);
-      khiops_driver_common::logging::getLogger()->debug("  SHARE SAS builder:");
-      khiops_driver_common::logging::getLogger()->debug("    SHARE name: {}", sasbuilder.ShareName);
-      khiops_driver_common::logging::getLogger()->debug("    FILE path: {}", sasbuilder.FilePath);
-      sToken = sasbuilder.GenerateSasToken(*request.connectionStringCredential);
+      khiops_driver_common::GetLogger()->debug("  SHARE SAS builder:");
+      khiops_driver_common::GetLogger()->debug("    SHARE name: {}", sasbuilder.ShareName);
+      khiops_driver_common::GetLogger()->debug("    FILE path: {}", sasbuilder.FilePath);
+      sToken = sasbuilder.GenerateSasToken(*request.connection_string_credential);
     }
-    *result = {request.azureUrl.GetAbsoluteUrl() + "?" + sToken, ""};
+    *result = {request.azure_url.GetAbsoluteUrl() + "?" + sToken, ""};
   } else /* using chained key credential */ {
     Azure::Core::Credentials::TokenRequestContext trc;
     trc.Scopes = {"https://storage.azure.com/.default"};
-    auto token = request.noConnectionStringCredential->GetToken(
+    auto token = request.no_connection_string_credential->GetToken(
         trc, Azure::Core::Context());
 
-    *result = {request.azureUrl.GetAbsoluteUrl(),
+    *result = {request.azure_url.GetAbsoluteUrl(),
                std::string("Bearer ") + token.Token};
   }
   return 0;

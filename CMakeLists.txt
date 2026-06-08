@@ -86,7 +86,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_BUILD_TYPE STREQUAL "Release
 endif()
 
 set(KhiopsDriverAzureSources
-#    auth.hpp
+  auth.hpp
   backend.cpp
   blobpathresolve.hpp
   blobpathresolve.cpp
