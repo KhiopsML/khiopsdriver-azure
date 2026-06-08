@@ -103,182 +103,118 @@ bool IsEmulatedStorage() {
     return !sEmulatedStorageEnvVarVal.empty() && sEmulatedStorageEnvVarVal != "false";
 }
 
-int BuildServiceRequest(unique_ptr<ServiceRequest> *result, const string &url) {
-    unique_ptr<ServiceRequest> request = make_unique<ServiceRequest>();
-
-    // Perform initial URL parsing using Azure SDK.
-    try {
-        request->azure_url = Azure::Core::Url(url);
-    } catch (const exception &) {
-        GetLogger()->error("Caught an exception while performing basic URL parsing: URL {} is invalid.", url);
-        return -1;
-    }
-
-    // Determine if the requested object is a file or a directory.
-    request->is_dir = IsDirUrl(url);
-
-    // Determine if storage service is emulated or not.
-    request->is_emulated_storage = IsEmulatedStorage();
-
-    // Get type of storage service.
-    if (StorageTypeOfUrl(&request->storage_type, request->azure_url, request->is_emulated_storage) != 0) return -1;
-    
-    // Split path of remote object.
-    if (ObjectPathOfUrl(&request->object_path, request->azure_url, request->is_emulated_storage, request->storage_type) != 0) return -1;
-    
-    // Parse connection string.
-    string connection_string_as_string = GetEnvVar("AZURE_STORAGE_CONNECTION_STRING");
-    request->is_using_connection_string = !connection_string_as_string.empty();
-    if (request->is_emulated_storage && !request->is_using_connection_string) {
-        GetLogger()->error("Undefined or empty environment variable: AZURE_STORAGE_CONNECTION_STRING.");
-        return -1;
-    }
-    ConnectionString connection_string;
-    if (ConnectionString::ParseConnectionString(&connection_string, connection_string_as_string, request->is_emulated_storage) != 0) return -1;
-    if (connection_string.CheckAgainstUrl(request->azure_url, request->storage_type) != 0) return -1;
-    
-    // Credentials
-    if (request->is_using_connection_string) {
-        request->connection_string_credential = make_shared<Azure::Storage::StorageSharedKeyCredential>(connection_string.sAccountName, connection_string.sAccountKey);
-    } else {
-        request->no_connection_string_credential = make_shared<Azure::Identity::ChainedTokenCredential>(
-            Azure::Identity::ChainedTokenCredential::Sources {
-                std::make_shared<Azure::Identity::EnvironmentCredential>(),  // for Client ID + Client Secret or Certificate environment variables
-                std::make_shared<Azure::Identity::WorkloadIdentityCredential>(),
-                std::make_shared<Azure::Identity::ManagedIdentityCredential>(),
-                std::make_shared<Azure::Identity::AzureCliCredential>()
-            }
-        );
-    }
-
-    LogServiceRequest(*request);
-    *result = std::move(request);
-    return 0;
+const RemoteObjectRequestUserData *GetUserData(const RemoteObjectRequest &request) {
+    return static_cast<const RemoteObjectRequestUserData *>(request.user_data.get());
 }
 
-void LogServiceRequest(const ServiceRequest &request) {
-    khiops_driver_common::GetLogger()->debug("Service request details:");
-    khiops_driver_common::GetLogger()->debug("  URL: {}", request.azure_url.GetAbsoluteUrl());
-    khiops_driver_common::GetLogger()->debug("  object type: {}", request.is_dir ? "directory" : "non-directory");
-    khiops_driver_common::GetLogger()->debug("  is storage emulated? {}", request.is_emulated_storage ? "yes" : "no");
-    khiops_driver_common::GetLogger()->debug("  storage type: {}", request.storage_type == BLOB ? "blob" : "file share");
-    khiops_driver_common::GetLogger()->debug("  object path: {}", ObjectPathToString(request.object_path));
-    khiops_driver_common::GetLogger()->debug("  is using connection string? {}", request.is_using_connection_string ? "yes" : "no");
-}
-
-string GetServiceUrl(const ServiceRequest &request) {
-    const string scheme = request.azure_url.GetScheme();
-    const string host = request.azure_url.GetHost();
-    const uint16_t port = request.azure_url.GetPort();
+string GetBlobContainerUrl(const RemoteObjectRequest &request) {
+    const RemoteObjectRequestUserData* request_user_data = GetUserData(request);
     ostringstream oss;
-    oss << scheme << "://" << host;
-    if (port > 0) oss << ":" << port;
-    if (request.is_emulated_storage) oss << "/" << *request.object_path.emulated_account_name;
-    string result = oss.str();
-    GetLogger()->debug("Service URL is: {}.", result);
-    return result;
-}
-
-string GetBlobContainerUrl(const ServiceRequest &request) {
-    ostringstream oss;
-    oss << GetServiceUrl(request) << "/" << *request.object_path.blob_container;
+    oss << request_user_data->service_url << "/" << *request_user_data->object_path.blob_container;
     std::string result = oss.str();
     GetLogger()->debug("Blob container URL is: {}.", result);
     return result;
 }
 
-Azure::Storage::Blobs::BlobContainerClient GetBlobContainerClient(const ServiceRequest &request) {
-    if (request.is_using_connection_string) {
-        return Azure::Storage::Blobs::BlobContainerClient(GetBlobContainerUrl(request), request.connection_string_credential);
+Azure::Storage::Blobs::BlobContainerClient GetBlobContainerClient(const RemoteObjectRequest &request) {
+    const RemoteObjectRequestUserData* request_user_data = GetUserData(request);
+    if (request_user_data->is_using_connection_string) {
+        return Azure::Storage::Blobs::BlobContainerClient(GetBlobContainerUrl(request), request_user_data->connection_string_credential);
     } else {
-        return Azure::Storage::Blobs::BlobContainerClient(GetBlobContainerUrl(request), request.no_connection_string_credential);
+        return Azure::Storage::Blobs::BlobContainerClient(GetBlobContainerUrl(request), request_user_data->no_connection_string_credential);
     }
 }
 
-vector<string> ListBlobs(const ServiceRequest &request) {
-    return ResolveBlobsSearchString(GetBlobContainerClient(request), *request.object_path.blob);
+vector<string> ListBlobs(const RemoteObjectRequest &request) {
+    return ResolveBlobsSearchString(GetBlobContainerClient(request), *GetUserData(request)->object_path.blob);
 }
 
-int GetBlobClient(Azure::Storage::Blobs::BlobClient *result, const ServiceRequest &request, const string &url) {
+int GetBlobClient(Azure::Storage::Blobs::BlobClient *result, const RemoteObjectRequest &request, const string &url) {
     if (CheckIsNotGlobbingPattern(url) == 0) {
-        if (request.is_using_connection_string) {
-            *result = std::move(Azure::Storage::Blobs::BlobClient(url, request.connection_string_credential));
+        const RemoteObjectRequestUserData* request_user_data = GetUserData(request);
+        if (request_user_data->is_using_connection_string) {
+            *result = std::move(Azure::Storage::Blobs::BlobClient(url, request_user_data->connection_string_credential));
         } else {
-            *result = std::move(Azure::Storage::Blobs::BlobClient(url, request.no_connection_string_credential));
+            *result = std::move(Azure::Storage::Blobs::BlobClient(url, request_user_data->no_connection_string_credential));
         }
         return 0;
     }
     return -1;
 }
 
-int GetBlobClient(Azure::Storage::Blobs::BlobClient *result, const ServiceRequest &request) {
-    return GetBlobClient(result, request, request.azure_url.GetAbsoluteUrl());
+int GetBlobClient(Azure::Storage::Blobs::BlobClient *result, const RemoteObjectRequest &request) {
+    return GetBlobClient(result, request, request.url);
 }
 
-string GetFileShareUrl(const ServiceRequest &request) {
+string GetFileShareUrl(const RemoteObjectRequest &request) {
+    const RemoteObjectRequestUserData* request_user_data = GetUserData(request);
     ostringstream oss;
-    oss << GetServiceUrl(request) << "/" << *request.object_path.file_share;
+    oss << request_user_data->service_url << "/" << *request_user_data->object_path.file_share;
     string result = oss.str();
     GetLogger()->debug("File share URL is: {}.", result);
     return result;
 }
 
 Azure::Storage::Files::Shares::ShareClient
-GetShareClient(const ServiceRequest &request) {
+GetShareClient(const RemoteObjectRequest &request) {
+    const RemoteObjectRequestUserData* request_user_data = GetUserData(request);
     Azure::Storage::Files::Shares::ShareClientOptions opts;
     opts.ShareTokenIntent =
             Azure::Storage::Files::Shares::Models::ShareTokenIntent::Backup;
-    if (request.is_using_connection_string) {
+    if (request_user_data->is_using_connection_string) {
         return Azure::Storage::Files::Shares::ShareClient(
-                GetFileShareUrl(request), request.connection_string_credential, opts);
+                GetFileShareUrl(request), request_user_data->connection_string_credential, opts);
     } else {
         return Azure::Storage::Files::Shares::ShareClient(
-                GetFileShareUrl(request), request.no_connection_string_credential, opts);
+                GetFileShareUrl(request), request_user_data->no_connection_string_credential, opts);
     }
 }
 
 Azure::Storage::Files::Shares::ShareDirectoryClient
-GetDirClient(const ServiceRequest &request, const string &url) {
+GetDirClient(const RemoteObjectRequest &request, const string &url) {
+    const RemoteObjectRequestUserData* request_user_data = GetUserData(request);
     Azure::Storage::Files::Shares::ShareClientOptions opts;
     opts.ShareTokenIntent =
             Azure::Storage::Files::Shares::Models::ShareTokenIntent::Backup;
-    if (request.is_using_connection_string) {
+    if (request_user_data->is_using_connection_string) {
         return Azure::Storage::Files::Shares::ShareDirectoryClient(
-                url, request.connection_string_credential, opts);
+                url, request_user_data->connection_string_credential, opts);
     } else {
         return Azure::Storage::Files::Shares::ShareDirectoryClient(
-                url, request.no_connection_string_credential, opts);
+                url, request_user_data->no_connection_string_credential, opts);
     }
 }
 
 Azure::Storage::Files::Shares::ShareDirectoryClient
-GetDirClient(const ServiceRequest &request) {
+GetDirClient(const RemoteObjectRequest &request) {
     return GetShareClient(request).GetRootDirectoryClient();
 }
 
 vector<string>
-ListDirs(const ServiceRequest &request) {
+ListDirs(const RemoteObjectRequest &request) {
+    const RemoteObjectRequestUserData *user_data = GetUserData(request);
     return ResolveDirsPathRecursively(
             GetDirClient(request),
             queue<string, deque<string>>(
-                  deque<string>(request.object_path.file_path->begin(), request.object_path.file_path->end())));
+                  deque<string>(user_data->object_path.file_path->begin(), user_data->object_path.file_path->end())));
 }
 
 vector<string>
-ListFiles(const ServiceRequest &request) {
+ListFiles(const RemoteObjectRequest &request) {
+    const RemoteObjectRequestUserData *user_data = GetUserData(request);
     return ResolveFilesPathRecursively(
             GetDirClient(request),
             queue<string, deque<string>>(
-                  deque<string>(request.object_path.file_path->begin(), request.object_path.file_path->end())));
+                  deque<string>(user_data->object_path.file_path->begin(), user_data->object_path.file_path->end())));
 
 }
 
 int GetParentDir(
         Azure::Storage::Files::Shares::ShareDirectoryClient *result,
-        const ServiceRequest &request) {
+        const RemoteObjectRequest &request) {
     Azure::Storage::Files::Shares::ShareDirectoryClient dirClient =
             GetDirClient(request);
-    vector<string> path = *request.object_path.file_path;
+    vector<string> path = *GetUserData(request)->object_path.file_path;
     path.pop_back();
 
     for (string sPathFragment : path) {
@@ -301,7 +237,7 @@ int GetParentDir(
         if (!bAlreadyExisting) {
             GetLogger()->error("Ancestor directory {}/{} does not exist.",
                                  dirClient.GetUrl(), sPathFragment,
-                                 request.azure_url.GetAbsoluteUrl());
+                                 request.url);
             return -1;
         }
 
@@ -313,33 +249,34 @@ int GetParentDir(
     return 0;
 }
 
-int GetFileClient(Azure::Storage::Files::Shares::ShareFileClient *result, const ServiceRequest &request, const std::string &url) {
+int GetFileClient(Azure::Storage::Files::Shares::ShareFileClient *result, const RemoteObjectRequest &request, const std::string &url) {
     if (CheckIsNotGlobbingPattern(url) == 0) {
+        const RemoteObjectRequestUserData* request_user_data = GetUserData(request);
         Azure::Storage::Files::Shares::ShareClientOptions opts;
         opts.ShareTokenIntent =
                 Azure::Storage::Files::Shares::Models::ShareTokenIntent::Backup;
-        if (request.is_using_connection_string) {
-            *result = std::move(Azure::Storage::Files::Shares::ShareFileClient(url, request.connection_string_credential, opts));
+        if (request_user_data->is_using_connection_string) {
+            *result = std::move(Azure::Storage::Files::Shares::ShareFileClient(url, request_user_data->connection_string_credential, opts));
         } else {
-            *result = std::move(Azure::Storage::Files::Shares::ShareFileClient(url, request.no_connection_string_credential, opts));
+            *result = std::move(Azure::Storage::Files::Shares::ShareFileClient(url, request_user_data->no_connection_string_credential, opts));
         }
         return 0;
     }
     return -1;
 }
 
-int GetFileClient(Azure::Storage::Files::Shares::ShareFileClient *result, const ServiceRequest &request) {
-    return GetFileClient(result, request, request.azure_url.GetAbsoluteUrl());
+int GetFileClient(Azure::Storage::Files::Shares::ShareFileClient *result, const RemoteObjectRequest &request) {
+    return GetFileClient(result, request, request.url);
 }
 
-vector<string> ListBlobsOrFiles(const ServiceRequest &request) {
-    return request.storage_type == BLOB ? ListBlobs(request) : ListFiles(request);
+vector<string> ListBlobsOrFiles(const RemoteObjectRequest &request) {
+    return GetUserData(request)->storage_type == BLOB ? ListBlobs(request) : ListFiles(request);
 }
 
-int ListBlobsOrFilesCheckNotEmpty(vector<string> *result, const ServiceRequest &request) {
+int ListBlobsOrFilesCheckNotEmpty(vector<string> *result, const RemoteObjectRequest &request) {
     vector<string> objects = ListBlobsOrFiles(request);
     if (objects.empty()) {
-        GetLogger()->error("No object matches URL {}.", request.azure_url.GetAbsoluteUrl());
+        GetLogger()->error("No object matches URL {}.", request.url);
         return -1;
     } else {
         *result = std::move(objects);

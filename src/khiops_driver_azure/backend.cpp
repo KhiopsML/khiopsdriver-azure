@@ -5,6 +5,7 @@
 #include "khiops_driver_common/filestream.hpp"
 #include "khiops_driver_azure/util.hpp"
 #include "khiops_driver_azure/version.hpp"
+#include "khiops_driver_azure/connstr.hpp"
 #include <memory>
 #include <algorithm>
 #include <iterator>
@@ -17,20 +18,93 @@
 #include <azure/core/diagnostics/logger.hpp>
 #include <azure/storage/common/storage_exception.hpp>
 #include <azure/storage/blobs/block_blob_client.hpp>
+#include <azure/identity.hpp>
 
 using namespace std;
 using namespace khiops_driver_azure;
 
 namespace khiops_driver_common {
 
-namespace { struct FileWriterUserData {
-    // Used only for blob storage
-    unique_ptr<vector<string>> block_ids = nullptr;
-    // Used only for blob storage
-    unique_ptr<Azure::Storage::Blobs::BlobClient> blob_client;
-    // Used only for file share storage
-    unique_ptr<Azure::Storage::Files::Shares::ShareFileClient> share_file_client;
-}; }
+int CreateRemoteObjectRequestUserData(CustomVoidUniquePtr *result, const string &url) {
+    if (result == nullptr) { GetLogger()->error("Passed null pointer to function {}.", __func__); return -1; }
+
+    // Perform initial URL parsing using Azure SDK.
+    Azure::Core::Url azure_url;
+    try {
+        azure_url = Azure::Core::Url(url);
+    } catch (const exception &) {
+        GetLogger()->error("Caught an exception while performing basic URL parsing: URL {} is invalid.", url);
+        return -1;
+    }
+    
+    // Determine whether storage service is emulated or not.
+    bool is_emulated_storage = IsEmulatedStorage();
+
+    // Get type of storage service.
+    StorageType storage_type;
+    if (StorageTypeOfUrl(&storage_type, azure_url, is_emulated_storage) != 0) return -1;
+
+    // Split path of remote object.
+    ObjectPath object_path;
+    if (ObjectPathOfUrl(&object_path, azure_url, is_emulated_storage, storage_type) != 0) return -1;
+
+    // Get service URL.
+    ostringstream oss;
+    oss << azure_url.GetScheme() << "://" << azure_url.GetHost();
+    if (azure_url.GetPort() > 0) oss << ":" << azure_url.GetPort();
+    if (is_emulated_storage) oss << "/" << *object_path.emulated_account_name;
+    string service_url = oss.str();
+
+    // Parse connection string.
+    string connection_string_as_string = GetEnvVar("AZURE_STORAGE_CONNECTION_STRING");
+    bool is_using_connection_string = !connection_string_as_string.empty();
+    if (is_emulated_storage && !is_using_connection_string) {
+        GetLogger()->error("Undefined or empty environment variable: AZURE_STORAGE_CONNECTION_STRING.");
+        return -1;
+    }
+    ConnectionString connection_string;
+    if (ConnectionString::ParseConnectionString(&connection_string, connection_string_as_string, is_emulated_storage) != 0) return -1;
+    if (connection_string.CheckAgainstUrl(azure_url, storage_type) != 0) return -1;
+
+    // Credentials
+    shared_ptr<Azure::Storage::StorageSharedKeyCredential> connection_string_credential;
+    shared_ptr<Azure::Identity::ChainedTokenCredential> no_connection_string_credential;
+    if (is_using_connection_string) {
+        connection_string_credential = make_shared<Azure::Storage::StorageSharedKeyCredential>(connection_string.sAccountName, connection_string.sAccountKey);
+    } else {
+        no_connection_string_credential = make_shared<Azure::Identity::ChainedTokenCredential>(
+            Azure::Identity::ChainedTokenCredential::Sources {
+                std::make_shared<Azure::Identity::EnvironmentCredential>(),  // for Client ID + Client Secret or Certificate environment variables
+                std::make_shared<Azure::Identity::WorkloadIdentityCredential>(),
+                std::make_shared<Azure::Identity::ManagedIdentityCredential>(),
+                std::make_shared<Azure::Identity::AzureCliCredential>()
+            }
+        );
+    }
+
+    RemoteObjectRequestUserData *request_user_data = new RemoteObjectRequestUserData();
+    request_user_data->service_url = service_url;
+    request_user_data->is_emulated_storage = is_emulated_storage;
+    request_user_data->storage_type = storage_type;
+    request_user_data->object_path = std::move(object_path);
+    request_user_data->is_using_connection_string = is_using_connection_string;
+    request_user_data->connection_string_credential = connection_string_credential;
+    request_user_data->no_connection_string_credential = no_connection_string_credential;
+    
+    GetLogger()->debug("Remote object request user data:");
+    GetLogger()->debug("  service URL: {}", request_user_data->service_url);
+    GetLogger()->debug("  storage emulated: {}", request_user_data->is_emulated_storage ? "yes" : "no");
+    GetLogger()->debug("  storage type: {}", request_user_data->storage_type == BLOB ? "blob" : "file share");
+    GetLogger()->debug("  object path: {}", ObjectPathToString(request_user_data->object_path));
+    GetLogger()->debug("  using connection string: {}", request_user_data->is_using_connection_string ? "yes" : "no");
+
+    *result = CustomVoidUniquePtr(request_user_data, &FreeRemoteObjectRequestUserData);
+    return 0;
+}
+
+void FreeRemoteObjectRequestUserData(void *user_data) {
+    delete static_cast<RemoteObjectRequestUserData *>(user_data);
+}
 
 spdlog::logger *GetLogger() {
     return GetLogger("azdriver", "AZURE_DRIVER_LOGFILE", "AZURE_DRIVER_LOGLEVEL");
@@ -40,94 +114,83 @@ void FreeFileReaderFragmentVersion(void *version) {
     delete static_cast<Azure::ETag *>(version);
 }
 
+int CreateFileWriterUserDataInWriteMode(CustomVoidUniquePtr *result, const RemoteObjectRequest &request) {
+    if (result == nullptr) { GetLogger()->error("Passed null pointer to function {}.", __func__); return -1; }
+    FileWriterUserData *writer_user_data = new FileWriterUserData();
+    const RemoteObjectRequestUserData *request_user_data = GetUserData(request);
+    if (request_user_data->storage_type == BLOB) {
+        writer_user_data->block_ids = make_unique<vector<string>>();
+        writer_user_data->blob_client = make_unique<Azure::Storage::Blobs::BlobClient>("");
+        if (GetBlobClient(writer_user_data->blob_client.get(), request) != 0) return -1;
+    } else if (request_user_data->storage_type == FILE_SHARE) {
+        writer_user_data->share_file_client = make_unique<Azure::Storage::Files::Shares::ShareFileClient>("");
+        if (GetFileClient(writer_user_data->share_file_client.get(), request) != 0) return -1;
+        writer_user_data->share_file_client->Create(0LL);
+    }
+    *result = CustomVoidUniquePtr(writer_user_data, &FreeFileWriterUserData);
+    return 0;
+}
+
+int CreateFileWriterUserDataInAppendMode(CustomVoidUniquePtr *result, const RemoteObjectRequest &request) {
+    if (result == nullptr) { GetLogger()->error("Passed null pointer to function {}.", __func__); return -1; }
+    FileWriterUserData *writer_user_data = new FileWriterUserData();
+    const RemoteObjectRequestUserData *request_user_data = GetUserData(request);
+    if (request_user_data->storage_type == BLOB) {
+        writer_user_data->block_ids = make_unique<vector<string>>();
+        writer_user_data->blob_client = make_unique<Azure::Storage::Blobs::BlobClient>("");
+        if (GetBlobClient(writer_user_data->blob_client.get(), request) != 0) return -1;
+        try {
+            auto block_list_request_response = writer_user_data->blob_client->AsBlockBlobClient().GetBlockList();
+            vector<Azure::Storage::Blobs::Models::BlobBlock> blocks = block_list_request_response.Value.CommittedBlocks;
+            transform(blocks.begin(), blocks.end(), back_inserter(*writer_user_data->block_ids), [](const auto &block) { return block.Name; });
+        } catch (const Azure::Storage::StorageException &) {}
+    } else if (request_user_data->storage_type == FILE_SHARE) {
+        writer_user_data->share_file_client = make_unique<Azure::Storage::Files::Shares::ShareFileClient>("");
+        if (GetFileClient(writer_user_data->share_file_client.get(), request) != 0) return -1;
+    }
+    *result = CustomVoidUniquePtr(writer_user_data, &FreeFileWriterUserData);
+    return 0;
+}
+
 void FreeFileWriterUserData(void *user_data) {
     delete static_cast<FileWriterUserData *>(user_data);
 }
 
-int InitializeFileWriterWithWriteMode(FileWriter *file_writer) {
-    if (file_writer == nullptr) { GetLogger()->error("Passed null pointer to function {}.", __func__); return -1; }
-    FileWriterUserData *user_data = new FileWriterUserData();
-    file_writer->user_data.reset(static_cast<void *>(user_data));
-    unique_ptr<ServiceRequest> request;
-    if (BuildServiceRequest(&request, file_writer->url) != 0) return -1;
-    if (request->storage_type == BLOB) {
-        user_data->block_ids = make_unique<vector<string>>();
-        user_data->blob_client = make_unique<Azure::Storage::Blobs::BlobClient>("");
-        if (GetBlobClient(user_data->blob_client.get(), *request) != 0) return -1;
-    } else if (request->storage_type == FILE_SHARE) {
-        user_data->share_file_client = make_unique<Azure::Storage::Files::Shares::ShareFileClient>("");
-        if (GetFileClient(user_data->share_file_client.get(), *request) != 0) return -1;
-        user_data->share_file_client->Create(0LL);
-    }
+int ListFragments(vector<string> *result, const RemoteObjectRequest &request) {
+    *result = std::move(ListBlobsOrFiles(request));
     return 0;
 }
 
-int InitializeFileWriterWithAppendMode(FileWriter *file_writer) {
-    if (file_writer == nullptr) { GetLogger()->error("Passed null pointer to function {}.", __func__); return -1; }
-    FileWriterUserData *user_data = new FileWriterUserData();
-    file_writer->user_data.reset(static_cast<void *>(user_data));
-    unique_ptr<ServiceRequest> request;
-    if (BuildServiceRequest(&request, file_writer->url) != 0) return -1;
-    if (request->storage_type == BLOB) {
-        user_data->block_ids = make_unique<vector<string>>();
-        user_data->blob_client = make_unique<Azure::Storage::Blobs::BlobClient>("");
-        if (GetBlobClient(user_data->blob_client.get(), *request) != 0) return -1;
-        try {
-            auto block_list_request_response = user_data->blob_client->AsBlockBlobClient().GetBlockList();
-            vector<Azure::Storage::Blobs::Models::BlobBlock> blocks = block_list_request_response.Value.CommittedBlocks;
-            transform(blocks.begin(), blocks.end(), back_inserter(*user_data->block_ids), [](const auto &block) { return block.Name; });
-        } catch (const Azure::Storage::StorageException &) {}
-    } else if (request->storage_type == FILE_SHARE) {
-        user_data->share_file_client = make_unique<Azure::Storage::Files::Shares::ShareFileClient>("");
-        if (GetFileClient(user_data->share_file_client.get(), *request) != 0) return -1;
-    }
-    return 0;
-}
-
-int ListFragments(vector<string> *result, const string &url) {
-    unique_ptr<ServiceRequest> request;
-    if (BuildServiceRequest(&request, url) == 0) {
-        *result = std::move(ListBlobsOrFiles(*request));
-        return 0;
-    }
-    return -1;
-}
-
-int GetFragmentSizeAndVersion(size_t *size_result, void **version_result, const string &url) {
-    unique_ptr<ServiceRequest> request;
-    if (BuildServiceRequest(&request, url) == 0) {
-        if (request->storage_type == BLOB) {
-            Azure::Storage::Blobs::BlobClient client("");
-            if (GetBlobClient(&client, *request) == 0) {
-                auto blob_properties = std::move(client.GetProperties().Value);
-                *size_result = static_cast<size_t>(blob_properties.BlobSize);
-                *version_result = static_cast<void *>(new Azure::ETag(blob_properties.ETag.ToString()));
-                return 0;
-            }
-        } else /* SHARE */ {
-            Azure::Storage::Files::Shares::ShareFileClient client("");
-            if (GetFileClient(&client, *request) == 0) {
-                auto file_properties = std::move(client.GetProperties().Value);
-                *size_result = static_cast<size_t>(file_properties.FileSize);
-                *version_result = static_cast<void *>(new Azure::ETag(file_properties.ETag.ToString()));
-                return 0;
-            }
+int GetFragmentSizeAndVersion(size_t *size_result, void **version_result, const RemoteObjectRequest &request) {
+    if (GetUserData(request)->storage_type == BLOB) {
+        Azure::Storage::Blobs::BlobClient client("");
+        if (GetBlobClient(&client, request) == 0) {
+            auto blob_properties = std::move(client.GetProperties().Value);
+            *size_result = static_cast<size_t>(blob_properties.BlobSize);
+            *version_result = static_cast<void *>(new Azure::ETag(blob_properties.ETag.ToString()));
+            return 0;
+        }
+    } else /* SHARE */ {
+        Azure::Storage::Files::Shares::ShareFileClient client("");
+        if (GetFileClient(&client, request) == 0) {
+            auto file_properties = std::move(client.GetProperties().Value);
+            *size_result = static_cast<size_t>(file_properties.FileSize);
+            *version_result = static_cast<void *>(new Azure::ETag(file_properties.ETag.ToString()));
+            return 0;
         }
     }
-    return -1;
 }
 
-static int ReadFragment(string *result, bool *stopped_on_termchar, const string &url, void *version, size_t offset, size_t maxlength, const char *termchar) {
+static int ReadFragment(string *result, bool *stopped_on_termchar, const RemoteObjectRequest &request, void *version, size_t offset, size_t maxlength, const char *termchar) {
     if (result == nullptr || stopped_on_termchar == nullptr) {
         GetLogger()->error("Null pointer passed to function {}.", __func__);
         return -1;
     }
     if (termchar == nullptr) {
-        GetLogger()->debug("Reading a maximum of {} bytes from fragment at URL {} starting at offset {} (no terminator character specified)...", maxlength, url, offset);
+        GetLogger()->debug("Reading a maximum of {} bytes from fragment at URL {} starting at offset {} (no terminator character specified)...", maxlength, request.url, offset);
     } else {
-        GetLogger()->debug("Reading a maximum of {} bytes from fragment at URL {} starting at offset {} (can also end if terminator character '{}' is found)...", maxlength, url, offset, *termchar);
+        GetLogger()->debug("Reading a maximum of {} bytes from fragment at URL {} starting at offset {} (can also end if terminator character '{}' is found)...", maxlength, request.url, offset, *termchar);
     }
-    unique_ptr<ServiceRequest> request;
     string content_read = "";
     unique_ptr<Azure::Core::IO::BodyStream> body_stream;
     size_t buffer_size;
@@ -137,85 +200,83 @@ static int ReadFragment(string *result, bool *stopped_on_termchar, const string 
     uint8_t *termchar_pos;
     Azure::Core::Http::HttpRange range;
     range.Offset = static_cast<int64_t>(offset);
-    if (BuildServiceRequest(&request, url) == 0) {
-        if (GetSystemPreferredBufferSize(&buffer_size) == 0) {
-            vector<uint8_t> buffer(buffer_size);
-            uint8_t *buffer_start = buffer.data();
-            while (number_of_bytes_to_read > 0ULL) {
-                range.Offset += number_of_bytes_read;
-                range.Length = static_cast<int64_t>(min(number_of_bytes_to_read, buffer_size));
-                try {
-                    if (request->storage_type == BLOB) {
-                        Azure::Storage::Blobs::BlobAccessConditions access_conditions;
-                        access_conditions.IfMatch = previousETag;
-                        Azure::Storage::Blobs::DownloadBlobOptions opts;
-                        opts.Range = range;
-                        opts.AccessConditions = access_conditions;
-                        Azure::Storage::Blobs::BlobClient client("");
-                        if (GetBlobClient(&client, *request) != 0) {
-                            return -1;
-                        }
-                        body_stream = std::move(client.Download(opts).Value.BodyStream);
-                    } else /* SHARE */ {
-                        Azure::Storage::Files::Shares::DownloadFileOptions opts;
-                        opts.Range = range;
-                        Azure::Storage::Files::Shares::ShareFileClient client("");
-                        if (GetFileClient(&client, *request) != 0) {
-                            return -1;
-                        }
-                        auto download_result = std::move(client.Download(opts).Value);
-                        if (download_result.Details.ETag != previousETag) {
-                            GetLogger()->error("The file has been updated while reading it.");
-                            return -1;
-                        }
-                        body_stream = std::move(download_result.BodyStream);
+    if (GetSystemPreferredBufferSize(&buffer_size) == 0) {
+        vector<uint8_t> buffer(buffer_size);
+        uint8_t *buffer_start = buffer.data();
+        while (number_of_bytes_to_read > 0ULL) {
+            range.Offset += number_of_bytes_read;
+            range.Length = static_cast<int64_t>(min(number_of_bytes_to_read, buffer_size));
+            try {
+                if (GetUserData(request)->storage_type == BLOB) {
+                    Azure::Storage::Blobs::BlobAccessConditions access_conditions;
+                    access_conditions.IfMatch = previousETag;
+                    Azure::Storage::Blobs::DownloadBlobOptions opts;
+                    opts.Range = range;
+                    opts.AccessConditions = access_conditions;
+                    Azure::Storage::Blobs::BlobClient client("");
+                    if (GetBlobClient(&client, request) != 0) {
+                        return -1;
                     }
-                } catch (const Azure::Storage::StorageException &exc) {
-                    if (exc.StatusCode == Azure::Core::Http::HttpStatusCode::PreconditionFailed) {
+                    body_stream = std::move(client.Download(opts).Value.BodyStream);
+                } else /* SHARE */ {
+                    Azure::Storage::Files::Shares::DownloadFileOptions opts;
+                    opts.Range = range;
+                    Azure::Storage::Files::Shares::ShareFileClient client("");
+                    if (GetFileClient(&client, request) != 0) {
+                        return -1;
+                    }
+                    auto download_result = std::move(client.Download(opts).Value);
+                    if (download_result.Details.ETag != previousETag) {
                         GetLogger()->error("The file has been updated while reading it.");
                         return -1;
-                    } else if (exc.StatusCode == Azure::Core::Http::HttpStatusCode::RangeNotSatisfiable) {
-                        GetLogger()->error("Cannot read after end of file.");
-                        return -1;
-                    } else {
-                        throw;
                     }
+                    body_stream = std::move(download_result.BodyStream);
                 }
-                number_of_bytes_read = body_stream->ReadToCount(buffer_start, min(number_of_bytes_to_read, buffer_size));
-                if (number_of_bytes_read == 0ULL) {
-                    // Handle emulator special behavior that gracefully accepts reading beyond file size.
-                    // Also handle the error case for real cloud storage, even if it should never happen.
+            } catch (const Azure::Storage::StorageException &exc) {
+                if (exc.StatusCode == Azure::Core::Http::HttpStatusCode::PreconditionFailed) {
+                    GetLogger()->error("The file has been updated while reading it.");
+                    return -1;
+                } else if (exc.StatusCode == Azure::Core::Http::HttpStatusCode::RangeNotSatisfiable) {
                     GetLogger()->error("Cannot read after end of file.");
                     return -1;
+                } else {
+                    throw;
                 }
-                if (termchar != nullptr) {
-                    termchar_pos = find(buffer_start, buffer_start + number_of_bytes_read, static_cast<uint8_t>(*termchar));
-                    if (termchar_pos != buffer_start + number_of_bytes_read) {  // Found terminator character.
-                        content_read.append(reinterpret_cast<const char *>(buffer_start), termchar_pos + 1 - buffer_start);
-                        *result = content_read;
-                        *stopped_on_termchar = true;
-                        return 0;
-                    }
-                }
-                content_read.append(reinterpret_cast<const char *>(buffer_start), number_of_bytes_read);
-                number_of_bytes_to_read -= number_of_bytes_read;
-                if (number_of_bytes_to_read == 0ULL) {
+            }
+            number_of_bytes_read = body_stream->ReadToCount(buffer_start, min(number_of_bytes_to_read, buffer_size));
+            if (number_of_bytes_read == 0ULL) {
+                // Handle emulator special behavior that gracefully accepts reading beyond file size.
+                // Also handle the error case for real cloud storage, even if it should never happen.
+                GetLogger()->error("Cannot read after end of file.");
+                return -1;
+            }
+            if (termchar != nullptr) {
+                termchar_pos = find(buffer_start, buffer_start + number_of_bytes_read, static_cast<uint8_t>(*termchar));
+                if (termchar_pos != buffer_start + number_of_bytes_read) {  // Found terminator character.
+                    content_read.append(reinterpret_cast<const char *>(buffer_start), termchar_pos + 1 - buffer_start);
                     *result = content_read;
-                    *stopped_on_termchar = false;
+                    *stopped_on_termchar = true;
                     return 0;
                 }
+            }
+            content_read.append(reinterpret_cast<const char *>(buffer_start), number_of_bytes_read);
+            number_of_bytes_to_read -= number_of_bytes_read;
+            if (number_of_bytes_to_read == 0ULL) {
+                *result = content_read;
+                *stopped_on_termchar = false;
+                return 0;
             }
         }
     }
     return -1;
 }
 
-int ReadFragment(string *result, bool *stopped_on_termchar, const string &url, void *version, size_t offset, size_t maxlength) {
-    return ReadFragment(result, stopped_on_termchar, url, version, offset, maxlength, nullptr);
+int ReadFragment(string *result, bool *stopped_on_termchar, const RemoteObjectRequest &request, void *version, size_t offset, size_t maxlength) {
+    return ReadFragment(result, stopped_on_termchar, request, version, offset, maxlength, nullptr);
 }
 
-int ReadFragment(string *result, bool *stopped_on_termchar, const string &url, void *version, size_t offset, size_t maxlength, char termchar) {
-    return ReadFragment(result, stopped_on_termchar, url, version, offset, maxlength, &termchar);
+int ReadFragment(string *result, bool *stopped_on_termchar, const RemoteObjectRequest &request, void *version, size_t offset, size_t maxlength, char termchar) {
+    return ReadFragment(result, stopped_on_termchar, request, version, offset, maxlength, &termchar);
 }
 
 int GetDriverName(string *result) {
@@ -282,34 +343,25 @@ int GetSystemPreferredBufferSize(size_t *result) {
     return 0;
 }
 
-int FileExists(bool *result, const string &sFilePathName) {
-    unique_ptr<ServiceRequest> request;
-    if (BuildServiceRequest(&request, sFilePathName) == 0) {
-        *result = !ListBlobsOrFiles(*request).empty();
-        return 0;
-    }
-    return -1;
+int FileExists(bool *result, const RemoteObjectRequest &request) {
+    *result = !ListBlobsOrFiles(request).empty();
+    return 0;
 }
 
-int DirExists(bool *result, const string &sFilePathName) {
-    unique_ptr<ServiceRequest> request;
-    if (BuildServiceRequest(&request, sFilePathName) == 0) {
-        if (request->storage_type == BLOB) {
-            *result = true;  // there is no such concept as a directory when dealing with blob services
-        } else /* SHARE */ {
-            *result = !ListDirs(*request).empty();
-        }
-        return 0;
+int DirExists(bool *result, const RemoteObjectRequest &request) {
+    if (GetUserData(request)->storage_type == BLOB) {
+        *result = true;  // there is no such concept as a directory when dealing with blob services
+    } else /* SHARE */ {
+        *result = !ListDirs(request).empty();
     }
-    return -1;
+    return 0;
 }
 
-int GetFileSize(size_t *result, const string &filename) {
-    unique_ptr<ServiceRequest> request;
+int GetFileSize(size_t *result, const RemoteObjectRequest &request) {
     vector<string> objects;
-    if (BuildServiceRequest(&request, filename) == 0 && ListBlobsOrFilesCheckNotEmpty(&objects, *request) == 0) {
+    if (ListBlobsOrFilesCheckNotEmpty(&objects, request) == 0) {
         FileReader file_reader;
-        PopulateFileReader(&file_reader, filename);
+        PopulateFileReader(&file_reader, request);
         *result = file_reader.total_size;
         return 0;
     }
@@ -325,43 +377,6 @@ int FCloseWriter(const FileWriter &stream) {
     if (FFlush(stream) == 0) return 0;
     else return -1;
 }
-
-// int FRead(size_t *result, void *ptr, FileReader *file_reader, size_t size, size_t count) {
-//     size_t nlefttoread = ntotaltoread, ntotalread = 0ULL, ntoread, nread, offset_inside_first_fragment_to_read, fragment_remote_offset, fragment_index;
-//     string globalread, read;
-//     bool stopped_on_term_char, first_fragment_to_read = true;
-
-//     GetLogger()->debug("FReading {} bytes from file of total size {} starting at position {}...", ntotaltoread, file_reader->total_size, file_reader->current_position);
-
-//     // if (ntotaltoread == 0) { *result = 0ULL; return 0; }
-//     // if (file_reader->current_position == file_reader->total_size) { GetLogger()->error("Cannot read after end of file."); return -1; }
-//     if (FragmentIndexOfUserOffset(&fragment_index, *file_reader, file_reader->current_position) != 0) return -1;
-//     while (nlefttoread != 0ULL && file_reader->current_position != file_reader->total_size) {
-//         const FileReader::Fragment &fragment = file_reader->fragments[fragment_index];
-//         if (first_fragment_to_read) {
-//             offset_inside_first_fragment_to_read = file_reader->current_position - fragment.user_offset;
-//             fragment_remote_offset = (fragment_index == 0ULL ? 0ULL : file_reader->header_length) + offset_inside_first_fragment_to_read;
-//             ntoread = min(nlefttoread, fragment.content_size - offset_inside_first_fragment_to_read);
-//         } else {
-//             fragment_remote_offset = file_reader->header_length;
-//             ntoread = min(nlefttoread, fragment.content_size);
-//         }
-//         if (ReadFragment(&read, &stopped_on_term_char, fragment.url, fragment.version.get(), fragment_remote_offset, ntoread) != 0) {
-//             return -1;
-//         }
-//         nread = read.size();
-//         if (nread != ntoread) { GetLogger()->error("Failed to read."); return -1; }
-//         ntotalread += nread;
-//         globalread.append(read);
-//         nlefttoread -= nread;
-//         fragment_index++;
-//         first_fragment_to_read = false;
-//         file_reader->current_position += nread;
-//     }
-//     *result = ntotalread;
-//     memcpy(ptr, globalread.data(), ntotalread);
-//     return 0;
-// }
 
 int FWrite(size_t *result, FileWriter *file_writer, const void *ptr, size_t size, size_t count) {
     if (result == nullptr || file_writer == nullptr || ptr == nullptr) { GetLogger()->error("Null pointer passed to function {}.", __func__); return -1; }
@@ -396,8 +411,6 @@ int FWrite(size_t *result, FileWriter *file_writer, const void *ptr, size_t size
 }
 
 int FFlush(const FileWriter &file_writer) {
-    unique_ptr<ServiceRequest> request;
-    if (BuildServiceRequest(&request, file_writer.url) != 0) return -1;
     FileWriterUserData *user_data = static_cast<FileWriterUserData *>(file_writer.user_data.get());
     if (request->storage_type == BLOB) {
         user_data->blob_client->AsBlockBlobClient().CommitBlockList(*user_data->block_ids);
