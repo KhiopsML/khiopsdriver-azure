@@ -65,6 +65,7 @@ if(BUILD_TESTS)
 endif()
 
 # Find dependencies
+find_package(azure-core-cpp CONFIG REQUIRED)
 find_package(azure-identity-cpp CONFIG REQUIRED)
 find_package(azure-storage-blobs-cpp CONFIG REQUIRED)
 find_package(azure-storage-files-shares-cpp CONFIG REQUIRED)
@@ -147,10 +148,10 @@ if(WIN32)
                                                            ARCHIVE_OUTPUT_NAME "libkhiopsdriver_file_azure")
 endif()
 if(WIN32)
-  target_link_libraries(khiopsdriver_file_azure PRIVATE Azure::azure-identity Azure::azure-storage-blobs
+  target_link_libraries(khiopsdriver_file_azure PRIVATE Azure::azure-core Azure::azure-identity Azure::azure-storage-blobs
                                                         Azure::azure-storage-files-shares spdlog::spdlog bcrypt)
 else()
-  target_link_libraries(khiopsdriver_file_azure PRIVATE Azure::azure-identity Azure::azure-storage-blobs
+  target_link_libraries(khiopsdriver_file_azure PRIVATE Azure::azure-core Azure::azure-identity Azure::azure-storage-blobs
                                                         Azure::azure-storage-files-shares spdlog::spdlog)
 endif()
 target_compile_options(
