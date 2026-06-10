@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <azure/core.hpp>
 #include <azure/core/diagnostics/logger.hpp>
+#include <azure/core/http/curl_transport.hpp>
 #include <azure/identity.hpp>
 #include <azure/storage/blobs/blob_options.hpp>
 #include <azure/storage/blobs/block_blob_client.hpp>
@@ -28,6 +29,27 @@
 using namespace std;
 using namespace khiops_driver_common::util;
 using khiops_driver_common::logging::getLogger;
+
+static Azure::Core::Http::Policies::TransportOptions MakeTransportOptions() {
+  Azure::Core::Http::CurlTransportOptions curl_transport_options;
+  curl_transport_options.CAInfo = "/somewhere/this-is-a-certificate";
+  Azure::Core::Http::Policies::TransportOptions transport_options;
+  transport_options.Transport = make_shared<Azure::Core::Http::CurlTransport>(curl_transport_options);
+  return transport_options;
+}
+
+static Azure::Storage::Blobs::BlobClientOptions MakeBlobClientOptions() {
+  Azure::Storage::Blobs::BlobClientOptions blob_client_options;
+  blob_client_options.Transport = MakeTransportOptions();
+  return blob_client_options;
+}
+
+static Azure::Storage::Files::Shares::ShareClientOptions MakeShareClientOptions() {
+  Azure::Storage::Files::Shares::ShareClientOptions share_client_options;
+  share_client_options.Transport = MakeTransportOptions();
+  share_client_options.ShareTokenIntent = Azure::Storage::Files::Shares::Models::ShareTokenIntent::Backup;
+  return share_client_options;
+}
 
 namespace az {
 
@@ -776,11 +798,9 @@ string Driver::GetBlobContainerUrl(const ServiceRequest &request) const {
 Azure::Storage::Blobs::BlobServiceClient
 Driver::GetBlobServiceClient(const ServiceRequest &request) const {
   if (request.bUsingConnectionString) {
-    return Azure::Storage::Blobs::BlobServiceClient(
-        GetServiceUrl(request), request.connectionStringCredential);
+    return Azure::Storage::Blobs::BlobServiceClient(GetServiceUrl(request), request.connectionStringCredential, MakeBlobClientOptions());
   } else {
-    return Azure::Storage::Blobs::BlobServiceClient(
-        GetServiceUrl(request), request.noConnectionStringCredential);
+    return Azure::Storage::Blobs::BlobServiceClient(GetServiceUrl(request), request.noConnectionStringCredential, MakeBlobClientOptions());
   }
 }
 
@@ -788,10 +808,10 @@ Azure::Storage::Blobs::BlobContainerClient
 Driver::GetBlobContainerClient(const ServiceRequest &request) const {
   if (request.bUsingConnectionString) {
     return Azure::Storage::Blobs::BlobContainerClient(
-        GetBlobContainerUrl(request), request.connectionStringCredential);
+        GetBlobContainerUrl(request), request.connectionStringCredential, MakeBlobClientOptions());
   } else {
     return Azure::Storage::Blobs::BlobContainerClient(
-        GetBlobContainerUrl(request), request.noConnectionStringCredential);
+        GetBlobContainerUrl(request), request.noConnectionStringCredential, MakeBlobClientOptions());
   }
 }
 
@@ -799,11 +819,11 @@ Azure::Storage::Blobs::BlobClient
 Driver::GetBlobClient(const ServiceRequest &request) const {
   if (request.bUsingConnectionString) {
     return Azure::Storage::Blobs::BlobClient(
-        request.azureUrl.GetAbsoluteUrl(), request.connectionStringCredential);
+        request.azureUrl.GetAbsoluteUrl(), request.connectionStringCredential, MakeBlobClientOptions());
   } else {
     return Azure::Storage::Blobs::BlobClient(
         request.azureUrl.GetAbsoluteUrl(),
-        request.noConnectionStringCredential);
+        request.noConnectionStringCredential, MakeBlobClientOptions());
   }
 }
 
@@ -825,24 +845,21 @@ Azure::Storage::Files::Shares::ShareServiceClient
 Driver::GetFileShareServiceClient(const ServiceRequest &request) const {
   if (request.bUsingConnectionString) {
     return Azure::Storage::Files::Shares::ShareServiceClient(
-        GetServiceUrl(request), request.connectionStringCredential);
+        GetServiceUrl(request), request.connectionStringCredential, MakeShareClientOptions());
   } else {
     return Azure::Storage::Files::Shares::ShareServiceClient(
-        GetServiceUrl(request), request.noConnectionStringCredential);
+        GetServiceUrl(request), request.noConnectionStringCredential, MakeShareClientOptions());
   }
 }
 
 Azure::Storage::Files::Shares::ShareClient
 Driver::GetShareClient(const ServiceRequest &request) const {
-  Azure::Storage::Files::Shares::ShareClientOptions opts;
-  opts.ShareTokenIntent =
-      Azure::Storage::Files::Shares::Models::ShareTokenIntent::Backup;
   if (request.bUsingConnectionString) {
     return Azure::Storage::Files::Shares::ShareClient(
-        GetFileShareUrl(request), request.connectionStringCredential, opts);
+        GetFileShareUrl(request), request.connectionStringCredential, MakeShareClientOptions());
   } else {
     return Azure::Storage::Files::Shares::ShareClient(
-        GetFileShareUrl(request), request.noConnectionStringCredential, opts);
+        GetFileShareUrl(request), request.noConnectionStringCredential, MakeShareClientOptions());
   }
 }
 
@@ -853,17 +870,12 @@ Driver::GetDirClient(const ServiceRequest &request) const {
 
 Azure::Storage::Files::Shares::ShareFileClient
 Driver::GetFileClient(const ServiceRequest &request) const {
-  Azure::Storage::Files::Shares::ShareClientOptions opts;
-  opts.ShareTokenIntent =
-      Azure::Storage::Files::Shares::Models::ShareTokenIntent::Backup;
   if (request.bUsingConnectionString) {
     return Azure::Storage::Files::Shares::ShareFileClient(
-        request.azureUrl.GetAbsoluteUrl(), request.connectionStringCredential,
-        opts);
+        request.azureUrl.GetAbsoluteUrl(), request.connectionStringCredential, MakeShareClientOptions());
   } else {
     return Azure::Storage::Files::Shares::ShareFileClient(
-        request.azureUrl.GetAbsoluteUrl(), request.noConnectionStringCredential,
-        opts);
+        request.azureUrl.GetAbsoluteUrl(), request.noConnectionStringCredential, MakeShareClientOptions());
   }
 }
 
