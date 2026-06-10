@@ -32,7 +32,7 @@ using khiops_driver_common::logging::getLogger;
 
 static Azure::Core::Http::Policies::TransportOptions MakeTransportOptions() {
   Azure::Core::Http::CurlTransportOptions curl_transport_options;
-  curl_transport_options.CAInfo = "/somewhere/this-is-a-certificate";
+  FindCertificate(&curl_transport_options.CAInfo);
   Azure::Core::Http::Policies::TransportOptions transport_options;
   transport_options.Transport = make_shared<Azure::Core::Http::CurlTransport>(curl_transport_options);
   return transport_options;
