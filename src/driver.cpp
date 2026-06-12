@@ -30,6 +30,7 @@ using namespace std;
 using namespace khiops_driver_common::util;
 using khiops_driver_common::logging::getLogger;
 
+#if defined(__linux__)
 static Azure::Core::Http::Policies::TransportOptions MakeTransportOptions() {
   Azure::Core::Http::CurlTransportOptions curl_transport_options;
   FindCertificate(&curl_transport_options.CAInfo);
@@ -37,6 +38,7 @@ static Azure::Core::Http::Policies::TransportOptions MakeTransportOptions() {
   transport_options.Transport = make_shared<Azure::Core::Http::CurlTransport>(curl_transport_options);
   return transport_options;
 }
+#endif
 
 static Azure::Storage::Blobs::BlobClientOptions MakeBlobClientOptions() {
   Azure::Storage::Blobs::BlobClientOptions blob_client_options;
