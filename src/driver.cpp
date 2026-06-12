@@ -32,9 +32,7 @@ using khiops_driver_common::logging::getLogger;
 
 static Azure::Core::Http::Policies::TransportOptions MakeTransportOptions() {
   Azure::Core::Http::CurlTransportOptions curl_transport_options;
-  string certificate_path;
-  FindCertificate(&certificate_path);
-  if (!certificate_path.empty()) curl_transport_options.CAInfo = certificate_path;
+  FindCertificate(&curl_transport_options.CAInfo);
   Azure::Core::Http::Policies::TransportOptions transport_options;
   transport_options.Transport = make_shared<Azure::Core::Http::CurlTransport>(curl_transport_options);
   return transport_options;
@@ -42,13 +40,17 @@ static Azure::Core::Http::Policies::TransportOptions MakeTransportOptions() {
 
 static Azure::Storage::Blobs::BlobClientOptions MakeBlobClientOptions() {
   Azure::Storage::Blobs::BlobClientOptions blob_client_options;
+#if defined(__linux__)
   blob_client_options.Transport = MakeTransportOptions();
+#endif
   return blob_client_options;
 }
 
 static Azure::Storage::Files::Shares::ShareClientOptions MakeShareClientOptions() {
   Azure::Storage::Files::Shares::ShareClientOptions share_client_options;
+#if defined(__linux__)
   share_client_options.Transport = MakeTransportOptions();
+#endif
   share_client_options.ShareTokenIntent = Azure::Storage::Files::Shares::Models::ShareTokenIntent::Backup;
   return share_client_options;
 }
