@@ -2,7 +2,6 @@
 
 #pragma once
 
-#include <azure/core/url.hpp>
 #include <memory>
 #include <string>
 #include "khiops_driver_azure/util.hpp"
@@ -10,22 +9,20 @@
 namespace khiops_driver_azure {
 
 struct ConnectionString {
-  std::string sAccountName;
-  std::string sAccountKey;
-  std::unique_ptr<Azure::Core::Url> blobEndpointPtr; // Optional
-  std::unique_ptr<Azure::Core::Url> fileEndpointPtr; // Optional
-
-  ConnectionString();
-  ConnectionString(const std::string &sAccountName,
-                   const std::string &sAccountKey);
-  ConnectionString(ConnectionString &&other);
-  ConnectionString &operator=(ConnectionString &&other);
-  static int ParseConnectionString(ConnectionString *result,
-                                   const std::string &sConnectionString,
-                                   bool bIsEmulatedStorage);
-  int CheckAgainstUrl(const Azure::Core::Url &url,
-                      StorageType storageType) const;
-  friend bool operator==(const ConnectionString &a, const ConnectionString &b);
+    std::string account_name;
+    std::string account_key;
+    std::unique_ptr<std::string> blob_endpoint;  // optional
+    std::unique_ptr<std::string> file_endpoint;  // optional
 };
+
+inline bool operator==(const ConnectionString &a, const ConnectionString &b) {
+    return a.account_name == b.account_name
+        && a.account_key == b.account_key
+        && ((!a.blob_endpoint && !b.blob_endpoint) || (a.blob_endpoint && b.blob_endpoint && *a.blob_endpoint == *b.blob_endpoint))
+        && ((!a.file_endpoint && !b.file_endpoint) || (a.file_endpoint && b.file_endpoint && *a.file_endpoint == *b.file_endpoint));
+}
+
+int ParseConnectionString(ConnectionString *result, const std::string &str, bool is_emulated_storage);
+int CheckConnectionStringAgainstUrl(const ConnectionString &connection_string, const std::string &url, StorageType storage_type);
 
 } // namespace khiops_driver_azure

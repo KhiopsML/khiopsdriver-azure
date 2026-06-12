@@ -4,8 +4,6 @@
 #pragma once
 
 #include <azure/storage/files/shares/share_directory_client.hpp>
-#include <azure/storage/files/shares/share_file_client.hpp>
-#include <queue>
 #include <string>
 #include <vector>
 
@@ -13,10 +11,10 @@ namespace khiops_driver_azure {
 std::vector<std::string>
 ResolveDirsPathRecursively(
     const Azure::Storage::Files::Shares::ShareDirectoryClient &dirClient,
-    std::queue<std::string> pathSegments);
+    const std::vector<std::string> &file_path);
 
 std::vector<std::string>
 ResolveFilesPathRecursively(
     const Azure::Storage::Files::Shares::ShareDirectoryClient &dirClient,
-    std::queue<std::string> pathSegments);
+    const std::vector<std::string> &file_path);
 } // namespace khiops_driver_azure

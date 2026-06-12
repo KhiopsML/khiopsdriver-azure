@@ -8,6 +8,7 @@ A collection of utilities, specific to the usage of the Azure cloud storage serv
 #include <vector>
 #include <memory>
 #include <azure/core.hpp>
+#include <azure/core/http/curl_transport.hpp>
 #include <azure/storage/blobs/blob_client.hpp>
 #include <azure/storage/blobs/blob_container_client.hpp>
 #include <azure/storage/blobs/blob_service_client.hpp>
@@ -16,65 +17,44 @@ A collection of utilities, specific to the usage of the Azure cloud storage serv
 #include <azure/storage/files/shares/share_file_client.hpp>
 #include <azure/storage/files/shares/share_service_client.hpp>
 #include <azure/storage/common/storage_credential.hpp>
-#include "khiops_driver_common/remote_object_request.hpp"
-#include "khiops_driver_common/backend.hpp"
 
 
 namespace khiops_driver_azure {
 
+int AzureUrlFromString(Azure::Core::Url *result, const std::string &url);
+
 enum StorageType { BLOB, FILE_SHARE };
-int StorageTypeOfUrl(StorageType *result, const Azure::Core::Url &url, bool is_emulated_storage);
+int StorageTypeFromHost(StorageType *result, const std::string &host);
 
-struct ObjectPath {
-    std::unique_ptr<std::string> emulated_account_name;
-    std::unique_ptr<std::string> blob_container;
-    std::unique_ptr<std::string> blob;
-    std::unique_ptr<std::string> file_share;
-    std::unique_ptr<std::vector<std::string>> file_path;
-};
-std::string ObjectPathToString(const ObjectPath &object_path);
-int ObjectPathOfUrl(ObjectPath *result, const Azure::Core::Url &url, bool is_emulated_storage, StorageType storage_type);
+int EmulatedBlobPathFromString(std::string *account_name, std::string *blob_container, std::string *blob, const std::string &path);
+int BlobPathFromString(std::string *blob_container, std::string *blob, const std::string &path);
+int FileSharePathFromString(std::string *file_share, std::vector<std::string> *file_path, const std::string &path);
 
-struct RemoteObjectRequestUserData {
-    std::string service_url;
-    bool is_emulated_storage;
-    StorageType storage_type;
-    ObjectPath object_path;
-    bool is_using_connection_string;
-    std::shared_ptr<Azure::Storage::StorageSharedKeyCredential> connection_string_credential;
-    std::shared_ptr<Azure::Core::Credentials::TokenCredential> no_connection_string_credential;
-};
+int ResolveFragmentUrls(std::vector<std::string> *result, StorageType storage_type, const Azure::Core::Url &azure_url);
+int ResolveFragmentUrlsCheckNotEmpty(std::vector<std::string> *result, StorageType storage_type, const Azure::Core::Url &azure_url);
 
-const RemoteObjectRequestUserData *GetUserData(const RemoteObjectRequest &request);
+std::string BuildEmulatedServiceUrl(const std::string &scheme, const std::string &host, uint16_t port, const std::string &account_name);
+std::string BuildEmulatedServiceUrl(const Azure::Core::Url &azure_url, const std::string &account_name);
+std::string BuildServiceUrl(const std::string &scheme, const std::string &host, uint16_t port);
+std::string BuildServiceUrl(const Azure::Core::Url &azure_url);
 
-struct FileWriterUserData {
-    // Used only for blob storage
-    unique_ptr<vector<string>> block_ids = nullptr;
-    // Used only for blob storage
-    unique_ptr<Azure::Storage::Blobs::BlobClient> blob_client;
-    // Used only for file share storage
-    unique_ptr<Azure::Storage::Files::Shares::ShareFileClient> share_file_client;
-};
+std::string BuildBlobContainerUrl(const std::string &service_url, const std::string &container);
+Azure::Storage::Blobs::BlobContainerClient GetBlobContainerClient(const std::string &service_url, const std::string &container);
+std::vector<std::string> ListBlobs(const std::string &service_url, const std::string &container, const std::string &blob);
+int ListBlobsCheckNotEmpty(std::vector<std::string> *result, const std::string &service_url, const std::string &container, const std::string &blob);
+int GetBlobClient(Azure::Storage::Blobs::BlobClient *result, const std::string &url);
 
-bool IsEmulatedStorage();
+std::string GetFileShareUrl(const std::string &service_url, const std::string &file_share);
+Azure::Storage::Files::Shares::ShareClient GetShareClient(const std::string &service_url, const std::string &file_share);
+Azure::Storage::Files::Shares::ShareDirectoryClient GetRootDirClient(const std::string &service_url, const std::string &file_share);
+Azure::Storage::Files::Shares::ShareDirectoryClient GetDirClient(const std::string &url);
+std::vector<std::string> ListDirs(const std::string &service_url, const std::string &file_share, const std::vector<std::string> &file_path);
+std::vector<std::string> ListFiles(const std::string &service_url, const std::string &file_share, const std::vector<std::string> &file_path);
+int ListFilesCheckNotEmpty(std::vector<std::string> *result, const std::string &url, const std::string &file_share, const std::vector<std::string> &file_path);
+int GetParentDir(Azure::Storage::Files::Shares::ShareDirectoryClient *result, const std::string &service_url, const std::string &file_share, const std::vector<std::string> &file_path);
+int GetFileClient(Azure::Storage::Files::Shares::ShareFileClient *result, const std::string &url);
 
-std::string GetBlobContainerUrl(const RemoteObjectRequest &request);
-Azure::Storage::Blobs::BlobContainerClient GetBlobContainerClient(const RemoteObjectRequest &request);
-std::vector<std::string> ListBlobs(const RemoteObjectRequest &request);
-int GetBlobClient(Azure::Storage::Blobs::BlobClient *result, const RemoteObjectRequest &request, const std::string &url);
-int GetBlobClient(Azure::Storage::Blobs::BlobClient *result, const RemoteObjectRequest &request);
-
-std::string GetFileShareUrl(const RemoteObjectRequest &request);
-Azure::Storage::Files::Shares::ShareClient GetShareClient(const RemoteObjectRequest &request);
-Azure::Storage::Files::Shares::ShareDirectoryClient GetDirClient(const RemoteObjectRequest &request, const std::string &url);
-Azure::Storage::Files::Shares::ShareDirectoryClient GetDirClient(const RemoteObjectRequest &request);
-std::vector<std::string> ListDirs(const RemoteObjectRequest &request);
-std::vector<std::string> ListFiles(const RemoteObjectRequest &request);
-int GetParentDir(Azure::Storage::Files::Shares::ShareDirectoryClient *result, const RemoteObjectRequest &request);
-int GetFileClient(Azure::Storage::Files::Shares::ShareFileClient *result, const RemoteObjectRequest &request, const std::string &url);
-int GetFileClient(Azure::Storage::Files::Shares::ShareFileClient *result, const RemoteObjectRequest &request);
-
-std::vector<std::string> ListBlobsOrFiles(const RemoteObjectRequest &request);
-int ListBlobsOrFilesCheckNotEmpty(std::vector<std::string> *result, const RemoteObjectRequest &request);
+int ReadFragment(std::string *result, bool *stopped_on_termchar, StorageType storage_type, const std::string &fragment_url, const Azure::ETag &version, size_t offset, size_t maxlength);
+int ReadFragment(std::string *result, bool *stopped_on_termchar, StorageType storage_type, const std::string &fragment_url, const Azure::ETag &version, size_t offset, size_t maxlength, char termchar);
 
 }

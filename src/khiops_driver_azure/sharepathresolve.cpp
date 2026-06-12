@@ -2,6 +2,8 @@
 #include "khiops_driver_common/contrib.hpp"
 #include "khiops_driver_common/util.hpp"
 #include <functional>
+#include <queue>
+#include <azure/storage/files/shares/share_file_client.hpp>
 
 using namespace std;
 
@@ -135,7 +137,8 @@ ResolveDirsPathRecursively_(const ShareDirectoryClient &dirClient,
   return ResolveDirsRaw(dirClient, pathSegments, sUrlPathSegment);
 }
 
-vector<string> ResolveDirsPathRecursively(const ShareDirectoryClient &dirClient, queue<string> pathSegments) {
+vector<string> ResolveDirsPathRecursively(const ShareDirectoryClient &dirClient, const vector<string> &file_path) {
+  queue<string, deque<string>> pathSegments(deque<string>(file_path.begin(), file_path.end()));
   vector<string> result;
   for (const ShareDirectoryClient &client : ResolveDirsPathRecursively_(dirClient, pathSegments)) {
     result.push_back(client.GetUrl());
@@ -169,7 +172,8 @@ ResolveFilesPathRecursively_(const ShareDirectoryClient &dirClient,
   return ResolveFilesRaw(dirClient, pathSegments, sUrlPathSegment);
 }
 
-vector<string> ResolveFilesPathRecursively(const ShareDirectoryClient &dirClient, queue<string> pathSegments) {
+vector<string> ResolveFilesPathRecursively(const ShareDirectoryClient &dirClient, const vector<string> &file_path) {
+  queue<string, deque<string>> pathSegments(deque<string>(file_path.begin(), file_path.end()));
   vector<string> result;
   for (const ShareFileClient &client : ResolveFilesPathRecursively_(dirClient, pathSegments)) {
     result.push_back(client.GetUrl());

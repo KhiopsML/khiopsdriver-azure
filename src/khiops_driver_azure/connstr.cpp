@@ -1,6 +1,7 @@
 #include "connstr.hpp"
 #include "khiops_driver_common/util.hpp"
 #include "khiops_driver_common/logging.hpp"
+#include "khiops_driver_azure/globalstate.hpp"
 #include <regex>
 #include <unordered_map>
 
@@ -9,149 +10,75 @@ using namespace khiops_driver_common;
 
 namespace khiops_driver_azure {
 
-ConnectionString::ConnectionString()
-    : sAccountName(""), sAccountKey(""), blobEndpointPtr(nullptr),
-      fileEndpointPtr(nullptr) {}
+int ParseConnectionString(ConnectionString *result, const std::string &str, bool is_emulated_storage) {
+    ConnectionString connection_string;
 
-ConnectionString::ConnectionString(const string &sAccountName,
-                                   const string &sAccountKey)
-    : sAccountName(sAccountName), sAccountKey(sAccountKey),
-      blobEndpointPtr(nullptr), fileEndpointPtr(nullptr) {}
+    smatch match;
+    if (!regex_match(str, match, regex("(?:[^=]+=[^;]+;)*[^=]+=[^;]+;?"))) {
+        GetLogger()->error("Connection string does not match expected pattern.");
+        return -1;
+    }
+    regex kv_regex("([^=]+)=([^;]+);?");
+    sregex_iterator begin(str.begin(), str.end(), kv_regex);
+    sregex_iterator end;
+    unordered_map<string, string> kv_pairs;
+    for (sregex_iterator it = begin; it != end; it++) {
+        kv_pairs[(*it)[1]] = (*it)[2];
+    }
 
-ConnectionString::ConnectionString(ConnectionString &&other)
-    : sAccountName(std::move(other.sAccountName)),
-      sAccountKey(std::move(other.sAccountKey)),
-      blobEndpointPtr(std::move(other.blobEndpointPtr)),
-      fileEndpointPtr(std::move(other.fileEndpointPtr)) {}
+    auto account_name_it = kv_pairs.find("AccountName");  // mandatory
+    if (account_name_it == kv_pairs.end()) {
+        GetLogger()->error("Connection string misses 'AccountName' field.");
+        return -1;
+    }
+    connection_string.account_name = account_name_it->second;
 
-ConnectionString &ConnectionString::operator=(ConnectionString &&other) {
-  sAccountName = std::move(other.sAccountName);
-  sAccountKey = std::move(other.sAccountKey);
-  blobEndpointPtr = std::move(other.blobEndpointPtr);
-  fileEndpointPtr = std::move(other.fileEndpointPtr);
-  return *this;
+    auto account_key_it = kv_pairs.find("AccountKey");  // mandatory
+    if (account_key_it == kv_pairs.end()) {
+        GetLogger()->error("Connection string misses 'AccountKey' field.");
+        return -1;
+    }
+    connection_string.account_key = account_key_it->second;
+
+    auto blob_endpoint_it = kv_pairs.find("BlobEndpoint");  // optional for real Azure cloud storage, mandatory for emulated storage
+    if (blob_endpoint_it == kv_pairs.end()) {
+        if (is_emulated_storage) {
+            GetLogger()->error("Connection string misses 'BlobEndpoint' field.");
+            return -1;
+        }
+    } else /* blob endpoint found */ {
+        connection_string.blob_endpoint = make_unique<string>(blob_endpoint_it->second);
+    }
+
+    auto file_endpoint_it = kv_pairs.find("FileEndpoint"); // optional
+    if (file_endpoint_it != kv_pairs.end()) {
+        connection_string.file_endpoint = make_unique<string>(file_endpoint_it->second);
+    }
+
+    GetLogger()->debug("Parsed connection string: account name = {}, account key = **REDACTED**, blob endpoint = {}, file endpoint = {}",
+        connection_string.account_name,
+        connection_string.blob_endpoint ? *connection_string.blob_endpoint : "<none>",
+        connection_string.file_endpoint ? *connection_string.file_endpoint : "<none>");
+    
+    *result = std::move(connection_string);
+    return 0;
 }
 
-int ConnectionString::ParseConnectionString(ConnectionString *result,
-                                            const string &sConnectionString,
-                                            bool bIsEmulatedStorage) {
-  smatch match;
-  if (!regex_match(sConnectionString, match,
-                   regex("(?:[^=]+=[^;]+;)*[^=]+=[^;]+;?"))) {
-    GetLogger()->error(
-        "Connection string does not match expected pattern.",
-        sConnectionString);
-    return -1;
-  }
-  regex kvRegex("([^=]+)=([^;]+);?");
-  sregex_iterator begin(sConnectionString.begin(), sConnectionString.end(),
-                        kvRegex);
-  sregex_iterator end;
-  unordered_map<string, string> kvPairs;
-  for (sregex_iterator it = begin; it != end; it++) {
-    kvPairs[(*it)[1]] = (*it)[2];
-  }
-
-  auto accountNameIt = kvPairs.find("AccountName"); // Mandatory
-  if (accountNameIt == kvPairs.end()) {
-    GetLogger()->error("Connection string misses 'AccountName' field.",
-                       sConnectionString);
-    return -1;
-  }
-
-  auto accountKeyIt = kvPairs.find("AccountKey"); // Mandatory
-  if (accountKeyIt == kvPairs.end()) {
-    GetLogger()->error("Connection string misses 'AccountKey' field.",
-                       sConnectionString);
-    return -1;
-  }
-
-  ConnectionString connectionString(accountNameIt->second,
-                                    accountKeyIt->second);
-
-  auto blobEndpointIt =
-      kvPairs.find("BlobEndpoint"); // Optional for read Azure cloud storage,
-                                    // mandatory for emulated storage
-  if (blobEndpointIt != kvPairs.end()) {
-    connectionString.blobEndpointPtr =
-        make_unique<Azure::Core::Url>(blobEndpointIt->second);
-  } else if (bIsEmulatedStorage) {
-    GetLogger()->error("Connection string misses 'BlobEndpoint' field.",
-                       sConnectionString);
-    return -1;
-  }
-
-  auto fileEndpointIt = kvPairs.find("FileEndpoint"); // Optional
-  if (fileEndpointIt != kvPairs.end()) {
-    connectionString.fileEndpointPtr =
-        make_unique<Azure::Core::Url>(fileEndpointIt->second);
-  }
-
-  GetLogger()->debug("Parsed connection string: account name = {}, account key = **REDACTED**, blob endpoint = {}, file endpoint = {}",
-    connectionString.sAccountName, connectionString.blobEndpointPtr ? connectionString.blobEndpointPtr->GetAbsoluteUrl() : "<none>",
-    connectionString.fileEndpointPtr ? connectionString.fileEndpointPtr->GetAbsoluteUrl() : "<none>");
-  *result = std::move(connectionString);
-  return 0;
-}
-
-int ConnectionString::CheckAgainstUrl(const Azure::Core::Url &url,
-                                      StorageType storageType) const {
-  // For real Azure cloud storage access, endpoints are optional, but if
-  // present, check them
-  if (blobEndpointPtr && storageType == BLOB &&
-      !StartsWith(url.GetAbsoluteUrl(),
-                       blobEndpointPtr->GetAbsoluteUrl())) {
-    GetLogger()->error("URL {} does not start with expected blob endpoint {}.",
-                       url.GetAbsoluteUrl(), blobEndpointPtr->GetAbsoluteUrl());
-    return -1;
-  }
-  if (fileEndpointPtr && storageType == FILE_SHARE &&
-      !StartsWith(url.GetAbsoluteUrl(),
-                       fileEndpointPtr->GetAbsoluteUrl())) {
-    GetLogger()->error("URL {} does not start with expected file endpoint {}.",
-                       url.GetAbsoluteUrl(), fileEndpointPtr->GetAbsoluteUrl());
-    return -1;
-  }
-  return 0;
-}
-
-bool operator==(const ConnectionString &a, const ConnectionString &b) {
-  // Check basic properties
-  if (a.sAccountName != b.sAccountName || a.sAccountKey != b.sAccountKey) {
-    return false;
-  }
-
-  // Check blob enpoint
-  if (a.blobEndpointPtr ||
-      b.blobEndpointPtr) // If one blob endpoint is defined...
-  {
-    if (!a.blobEndpointPtr || !b.blobEndpointPtr) // ... both must be defined...
-    {
-      return false;
+int CheckConnectionStringAgainstUrl(const ConnectionString &connection_string, const string &url, StorageType storage_type) {
+    // For real Azure cloud storage access, endpoints are optional, but if present, check them.
+    if (storage_type == BLOB) {
+        if (connection_string.blob_endpoint && !StartsWith(url, *connection_string.blob_endpoint)) {
+            GetLogger()->error("URL {} does not start with expected blob endpoint {}.", url, *connection_string.blob_endpoint);
+            return -1;
+        }
     }
-    if (a.blobEndpointPtr->GetAbsoluteUrl() !=
-        b.blobEndpointPtr->GetAbsoluteUrl()) // ... and they must match.
-    {
-      return false;
+    else if (storage_type == FILE_SHARE) {
+        if (connection_string.file_endpoint && !StartsWith(url, *connection_string.file_endpoint)) {
+            GetLogger()->error("URL {} does not start with expected file endpoint {}.", url, *connection_string.file_endpoint);
+            return -1;
+        }
     }
-  }
-
-  // Check file endpoint
-  if (a.fileEndpointPtr ||
-      b.fileEndpointPtr) // If one file endpoint is defined...
-  {
-    if (!a.fileEndpointPtr || !b.fileEndpointPtr) // ... both must be defined...
-    {
-      return false;
-    }
-    if (a.fileEndpointPtr->GetAbsoluteUrl() !=
-        b.fileEndpointPtr->GetAbsoluteUrl()) // ... and they must match.
-    {
-      return false;
-    }
-  }
-
-  return true;
+    return 0;
 }
 
 } // namespace khiops_driver_azure
