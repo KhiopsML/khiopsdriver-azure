@@ -15,8 +15,8 @@ cmake_minimum_required(VERSION 3.21)
 set(CMAKE_CXX_STANDARD 14)
 
 # Get project version from the header file
-file(READ "src/azureplugin.hpp" H_FILE)
-string(REGEX MATCH "#define DRIVER_VERSION KHIOPS_STR\\(([^)]*)\\)" _ ${H_FILE})
+file(READ "src/khiops_driver_azure/version.hpp" H_FILE)
+string(REGEX MATCH "#define DRIVER_VERSION \"([^\"]+)\"" _ ${H_FILE})
 set(DRIVER_VERSION ${CMAKE_MATCH_1})
 string(REGEX REPLACE "-.*" "" VERSION ${DRIVER_VERSION})
 message(STATUS "Building Khiops driver version: ${DRIVER_VERSION} (CMake version : ${VERSION})")
@@ -113,34 +113,32 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_BUILD_TYPE STREQUAL "Release
   endif()
 endif()
 
-set(SourceList
-    azureplugin.hpp
-    azureplugin.cpp
-    driver.hpp
-    driver.cpp
-    servicerequest.hpp
-    servicerequest.cpp
-    auth.hpp
-    connstr.hpp
-    connstr.cpp
-    returnval.hpp
-    objectclient.hpp
-    storagetype.hpp
-    filestream.hpp
-    filestream.cpp
-    fragmentedfile.hpp
-    fragmentedfile.cpp
-    blobpathresolve.hpp
-    blobpathresolve.cpp
-    sharepathresolve.hpp
-    sharepathresolve.cpp)
-list(TRANSFORM SourceList PREPEND src/)
+set(KhiopsDriverAzureSources
+  auth.hpp
+  blobpathresolve.hpp
+  blobpathresolve.cpp
+  connstr.hpp
+  connstr.cpp
+  core.hpp
+  core.cpp
+  driver.cpp
+  filestream.hpp
+  filestream.cpp
+  globalstate.hpp
+  sharepathresolve.hpp
+  sharepathresolve.cpp
+  specific_impl.cpp
+  util.hpp
+  util.cpp
+  version.hpp
+)
+list(TRANSFORM KhiopsDriverAzureSources PREPEND src/khiops_driver_azure/)
 
-set(SharedSourceList util.hpp logging.hpp logging.cpp contrib.hpp)
-list(TRANSFORM SharedSourceList PREPEND shared/src/khiops_driver_common/)
+include("${CMAKE_CURRENT_SOURCE_DIR}/shared/import_khiops_driver_common.cmake")
+list(TRANSFORM KhiopsDriverCommonSources PREPEND shared/)
 
-add_library(khiopsdriver_file_azure SHARED ${SourceList} ${SharedSourceList})
-target_include_directories(khiopsdriver_file_azure PRIVATE shared/src)
+add_library(khiopsdriver_file_azure SHARED ${KhiopsDriverAzureSources} ${KhiopsDriverCommonSources})
+target_include_directories(khiopsdriver_file_azure PRIVATE src shared/src)
 target_link_options(khiopsdriver_file_azure PRIVATE $<$<CONFIG:RELEASE>:-s>) # stripping
 set_target_properties(khiopsdriver_file_azure PROPERTIES SOVERSION ${PROJECT_VERSION_MAJOR} VERSION ${PROJECT_VERSION})
 if(WIN32)
@@ -158,16 +156,12 @@ target_compile_options(
   khiopsdriver_file_azure
   PRIVATE $<$<CXX_COMPILER_ID:MSVC>:-Wall;/wd4582;/wd4583;/wd4625;/wd4626;/wd4710;/wd4711;/wd4820;/wd4868;/permissive->
   PRIVATE $<$<CXX_COMPILER_ID:AppleClang,Clang,GNU>:-Wall;-Wextra;-pedantic>)
-target_compile_definitions(khiopsdriver_file_azure PRIVATE
-  LOGGERNAME="azdriver"
-  LOGLEVEL_ENVVARNAME="AZURE_DRIVER_LOGLEVEL"
-  LOGFILE_ENVVARNAME="AZURE_DRIVER_LOGFILE")
 
 option(BUILD_TESTS "Build test programs" OFF)
 if(BUILD_TESTS)
-  add_library(khiopsdriver_file_azure_testing STATIC ${SourceList} ${SharedSourceList})
+  add_library(khiopsdriver_file_azure_testing STATIC ${KhiopsDriverAzureSources} ${KhiopsDriverCommonSources})
 
-  target_include_directories(khiopsdriver_file_azure_testing PRIVATE shared/src)
+  target_include_directories(khiopsdriver_file_azure_testing PRIVATE src shared/src)
   target_link_options(khiopsdriver_file_azure_testing PRIVATE $<$<CONFIG:RELEASE>:-s>) # stripping
   if(WIN32)
     target_link_libraries(
@@ -182,11 +176,6 @@ if(BUILD_TESTS)
     PRIVATE
       $<$<CXX_COMPILER_ID:MSVC>:-Wall;/wd4582;/wd4583;/wd4625;/wd4626;/wd4710;/wd4711;/wd4820;/wd4868;/permissive->
     PRIVATE $<$<CXX_COMPILER_ID:AppleClang,Clang,GNU>:-Wall;-Wextra;-pedantic>)
-
-  target_compile_definitions(khiopsdriver_file_azure_testing PRIVATE
-    LOGGERNAME="azdriver"
-    LOGLEVEL_ENVVARNAME="AZURE_DRIVER_LOGLEVEL"
-    LOGFILE_ENVVARNAME="AZURE_DRIVER_LOGFILE")
 
   add_subdirectory(test)
   set(storage_driver_target_name khiopsdriver_file_azure)

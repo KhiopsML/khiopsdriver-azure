@@ -6,9 +6,10 @@
 #include <azure/storage/blobs/blob_client.hpp>
 #include <azure/storage/blobs/blob_container_client.hpp>
 #include <vector>
+#include <string>
 
-namespace az {
-std::vector<Azure::Storage::Blobs::BlobClient> ResolveBlobsSearchString(
+namespace khiops_driver_azure {
+std::vector<std::string> ResolveBlobsSearchString(
     const Azure::Storage::Blobs::BlobContainerClient &containerClient,
     const std::string &sSearchString);
 }

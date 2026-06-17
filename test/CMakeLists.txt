@@ -14,7 +14,7 @@ include(GoogleTest)
 
 # ########## METADATA TEST
 
-add_executable(metadata_test test_drivermetadata.cpp ../src/azureplugin.hpp)
+add_executable(metadata_test test_drivermetadata.cpp ../shared/src/khiops_driver_common/driver.h)
 
 target_compile_options(
   metadata_test
@@ -37,7 +37,7 @@ gtest_discover_tests(metadata_test)
 
 # ########## PLUGIN TEST
 add_executable(plugin_test plugin_test.cpp path_helper.cpp)
-target_include_directories(plugin_test PRIVATE ${${PROJECT_NAME}_SOURCE_DIR}/src)
+target_include_directories(plugin_test PRIVATE ${${PROJECT_NAME}_SOURCE_DIR}/src ${${PROJECT_NAME}_SOURCE_DIR}/shared/src)
 target_compile_options(
   plugin_test
   PRIVATE $<$<CXX_COMPILER_ID:MSVC>:/W4;/wd4101;/wd4710;/wd4711;/permissive->
@@ -59,6 +59,6 @@ gtest_discover_tests(
   plugin_test
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   PROPERTIES ENVIRONMENT
-             "LSAN_OPTIONS=suppressions=${PROJECT_SOURCE_DIR}/lsan_suppressions.txt")
+            "LSAN_OPTIONS=suppressions=${PROJECT_SOURCE_DIR}/lsan_suppressions.txt")
 
 add_subdirectory("internal")

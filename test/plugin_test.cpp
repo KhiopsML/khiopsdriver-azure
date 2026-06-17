@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
-#include "azureplugin.hpp"
+#include "khiops_driver_common/driver.h"
+#include "khiops_driver_azure/version.hpp"
 #include "path_helper.hpp"
 #include <stdio.h>
 #include <stdlib.h>
