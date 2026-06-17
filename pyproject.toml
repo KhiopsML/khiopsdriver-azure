@@ -43,8 +43,8 @@ cmake.define.VCPKG_TARGET_TRIPLET="x64-windows-static"
 version.provider = "scikit_build_core.metadata.regex"
 version.input = "src/khiops_driver_azure/version.hpp"
 version.regex = '''(?x)
-    \# \s* define \s+ DRIVER_VERSION \s+ KHIOPS_STR
-    \(
+    \# \s* define \s+ DRIVER_VERSION \s+
+    "
     (?P<major> \d+)
     \.
     (?P<minor> \d+)
@@ -56,7 +56,7 @@ version.regex = '''(?x)
         \.
         (?P<prereln> \d+)
     )?
-    \)
+    "
 '''
 version.result = "{major}.{minor}.{patch}{prereltype}{prereln}"
 version.remove = "(None){,2}$"  # prereltype and prereln groups are None if not found
