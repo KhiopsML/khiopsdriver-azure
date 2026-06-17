@@ -1,4 +1,5 @@
 #include "../shared/src/khiops_driver_common/driver.h"
+#include "../src/khiops_driver_azure/version.hpp"
 #include <gtest/gtest.h>
 
 TEST(DriverMetadataTest, GetDriverName) {
@@ -6,7 +7,7 @@ TEST(DriverMetadataTest, GetDriverName) {
 }
 
 TEST(DriverMetadataTest, GetVersion) {
-  ASSERT_STREQ(driver_getVersion(), "0.0.8");
+  ASSERT_STREQ(driver_getVersion(), DRIVER_VERSION);
 }
 
 TEST(DriverMetadataTest, GetScheme) {
