@@ -182,12 +182,22 @@ if(BUILD_TESTS)
   add_subdirectory("shared/integrationtests")
 endif(BUILD_TESTS)
 
-install(
-  TARGETS khiopsdriver_file_azure
-  LIBRARY DESTINATION lib
-  ARCHIVE DESTINATION lib # lib on windows
-  RUNTIME DESTINATION bin # dll on windows
-)
+if (DEFINED SKBUILD)
+  # These paths are needed so that Khiops finds the driver.
+  install(
+    TARGETS khiopsdriver_file_azure
+    LIBRARY DESTINATION ${SKBUILD_DATA_DIR}/lib
+    ARCHIVE DESTINATION ${SKBUILD_DATA_DIR}/lib # lib on windows
+    RUNTIME DESTINATION ${SKBUILD_SCRIPTS_DIR} # dll on windows
+  )
+else()
+  install(
+    TARGETS khiopsdriver_file_azure
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib # lib on windows
+    RUNTIME DESTINATION bin # dll on windows
+  )
+endif()
 
 set(CPACK_PACKAGE_VENDOR Orange)
 set(CPACK_PACKAGE_HOMEPAGE_URL https://khiops.org)
