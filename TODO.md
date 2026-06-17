@@ -8,7 +8,7 @@
 2. Complete packaging of GCS, S3 and Azure drivers:
    - (a) Complete pip packaging.
    - (b) Update conda, DEB and RPM packages to the latest driver versions.
-3. Evaluate performance of GCS, S3 and Azure drivers, in the context of Khiops execution::
+3. Evaluate performance of GCS, S3 and Azure drivers, in the context of Khiops execution:
    - (a) Setup test environments (project, VM/notebook, Khiops and driver installation) for multiple CPU configurations using scripts or Terraform.
    - (b) Implement test scenarii: learning, sort&deploy, for multiple buffer sizes (8 MiB, 16 MiB, 32 MiB, 64 MiB).
    - (c) Execute tests and write measurements into a report.
