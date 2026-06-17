@@ -1,3 +1,3 @@
 #pragma once
 
-#define DRIVER_VERSION "0.0.16"
+#define DRIVER_VERSION "0.0.17"
