@@ -56,7 +56,7 @@ const char *driver_getScheme() {
 }
 
 int driver_isReadOnly() {
-    const int KO = kFailure;
+    const int KO = kFalse;
     CATCH_ALL(
         if (Check_driver_isReadOnly()) return KO;
         return kFalse;
@@ -68,6 +68,10 @@ int driver_connect() {
     const int KO = kOtherFailure;
     CATCH_ALL(
         if (Check_driver_connect()) return KO;
+        if (GetState()->is_driver_initialized) {
+            GetLogger()->debug("Already connected!");
+            return kOtherSuccess;
+        }
         if (Initialize()) return KO;
         return kOtherSuccess;
     );
@@ -77,13 +81,17 @@ int driver_disconnect() {
     const int KO = kOtherFailure;
     CATCH_ALL(
         if (Check_driver_disconnect()) return KO;
+        if (GetState()->is_driver_initialized) {
+            GetLogger()->debug("Already disconnected!");
+            return kOtherSuccess;
+        }
         if (Finalize()) return KO;
         return kOtherSuccess;
     );
 }
 
 int driver_isConnected() {
-    const int KO = kFailure;
+    const int KO = kFalse;
     CATCH_ALL(
         if (Check_driver_isConnected()) return KO;
         return GetState()->is_driver_initialized ? kTrue : kFalse;
@@ -101,7 +109,7 @@ long long int driver_getSystemPreferredBufferSize() {
 }
 
 int driver_exist(const char *filename) {
-    const int KO = kFailure;
+    const int KO = kFalse;
     CATCH_ALL(
         if (Check_driver_exist(filename)) return KO;
         Azure::Core::Url azure_url;
@@ -125,7 +133,7 @@ int driver_exist(const char *filename) {
 }
 
 int driver_fileExists(const char *sFilePathName) {
-    const int KO = kFailure;
+    const int KO = kFalse;
     CATCH_ALL(
         if (Check_driver_fileExists(sFilePathName)) return KO;
         Azure::Core::Url azure_url;
@@ -139,7 +147,7 @@ int driver_fileExists(const char *sFilePathName) {
 }
 
 int driver_dirExists(const char *sFilePathName) {
-    const int KO = kFailure;
+    const int KO = kFalse;
     CATCH_ALL(
         if (Check_driver_dirExists(sFilePathName)) return KO;
         Azure::Core::Url azure_url;
