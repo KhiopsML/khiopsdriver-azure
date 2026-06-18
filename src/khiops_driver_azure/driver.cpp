@@ -81,7 +81,7 @@ int driver_disconnect() {
     const int KO = kOtherFailure;
     CATCH_ALL(
         if (Check_driver_disconnect()) return KO;
-        if (GetState()->is_driver_initialized) {
+        if (!GetState()->is_driver_initialized) {
             GetLogger()->debug("Already disconnected!");
             return kOtherSuccess;
         }
