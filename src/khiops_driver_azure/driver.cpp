@@ -68,9 +68,10 @@ int driver_isReadOnly() {
     );
 }
 
+// Not using the CATCH_ALL macro here as MSVC does not understand the embedded #if defined(__linux__) inside macro arguments.
 int driver_connect() {
     const int KO = kOtherFailure;
-    CATCH_ALL(
+    try {
         if (Check_driver_connect()) return KO;
         if (::khiops_driver_common::GetState()->is_driver_initialized) {
             GetLogger()->debug("Already connected!");
@@ -116,7 +117,12 @@ int driver_connect() {
 
         ::khiops_driver_common::GetState()->is_driver_initialized = true;
         return kOtherSuccess;
-    );
+    } catch (const exception &exc) {
+        GetLogger()->error("An exception has been raised: {}", exc.what());
+    } catch (...) { \
+        GetLogger()->error("An unknown exception has been raised.");
+    }
+    return KO;
 }
 
 int driver_disconnect() {
