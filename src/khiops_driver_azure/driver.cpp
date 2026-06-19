@@ -68,12 +68,6 @@ int driver_isReadOnly() {
     );
 }
 
-#if defined(__linux__)
-static constexpr bool is_linux = true;
-#else
-static constexpr bool is_linux = false;
-#endif
-
 int driver_connect() {
     const int KO = kOtherFailure;
     CATCH_ALL(
@@ -116,7 +110,9 @@ int driver_connect() {
             );
         }
 
-        if (is_linux && FindCertificate(&::khiops_driver_azure::GetState()->certificate_path)) return KO;
+#if defined(__linux__)
+        if (FindCertificate(&::khiops_driver_azure::GetState()->certificate_path)) return KO;
+#endif
 
         ::khiops_driver_common::GetState()->is_driver_initialized = true;
         return kOtherSuccess;
