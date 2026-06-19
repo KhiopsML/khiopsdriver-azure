@@ -12,11 +12,13 @@
 #include "khiops_driver_azure/connstr.hpp"
 #include "khiops_driver_azure/core.hpp"
 #include "khiops_driver_azure/util.hpp"
+#include "khiops_driver_azure/auth.hpp"
 #include <fstream>
 #include <string>
+#include <iomanip>
 #include <azure/core/diagnostics/logger.hpp>
 #include <azure/identity.hpp>
-
+#include <azure/storage/blobs/block_blob_client.hpp>
 
 // Macro that must be used in all public functions to avoid raising exceptions
 // It is variadic just to avoid splitting the code on commas outside of parentheses (otherwise the preprocessor thinks there are multiple macro arguments).
@@ -583,8 +585,292 @@ int driver_composeMultifile(const char *sDestFilePathName, const char **sSourceF
     const int KO = kOtherFailure;
     CATCH_ALL(
         if (Check_driver_composeMultifile(sDestFilePathName, sSourceFilePathNames, nSourceFileCount)) return KO;
-        GetLogger()->error("Not implemented!");
-        return KO;
-        // return kOtherSuccess;
+
+        // ---- Local autonomous helpers --------------------------------------
+
+        auto is_relative_path = [](const char *p) -> bool {
+            if (p == NULL) return false;
+            const std::string s(p);
+            if (s.empty()) return false;
+            if (s.find("://") != std::string::npos) return false;
+            if (s[0] == '/') return false;
+            return true;
+        };
+
+        auto parse_globbing_pattern = [](const std::string &pattern, std::string *prefix, std::string *suffix) -> bool {
+            const std::size_t star_pos = pattern.find('*');
+            if (star_pos == std::string::npos) return false;
+            if (pattern.find('*', star_pos + 1) != std::string::npos) return false;
+
+            *prefix = pattern.substr(0, star_pos);
+            *suffix = pattern.substr(star_pos + 1);
+
+            if (prefix->empty()) return false;
+
+            {
+                const unsigned char c = static_cast<unsigned char>((*prefix)[prefix->size() - 1]);
+                if (std::isdigit(c)) return false;
+            }
+
+            if (!suffix->empty()) {
+                const unsigned char c = static_cast<unsigned char>((*suffix)[0]);
+                if (std::isdigit(c)) return false;
+            }
+
+            return true;
+        };
+
+        auto generate_sequence_number = [](size_t i) -> std::string {
+            std::ostringstream oss;
+            oss << std::setfill('0') << std::setw(12) << i;
+            return oss.str();
+        };
+
+        auto strip_container_prefix_if_present = [](const std::string &relative_path, const std::string &container) -> std::string {
+            const std::string prefix = container + "/";
+            if (relative_path.size() > prefix.size() &&
+                relative_path.compare(0, prefix.size(), prefix) == 0) {
+                return relative_path.substr(prefix.size());
+            }
+            return relative_path;
+        };
+
+        // --------------------------------------------------------------------
+
+        std::string prefix;
+        std::string suffix;
+        if (!parse_globbing_pattern(std::string(sDestFilePathName), &prefix, &suffix)) {
+            GetLogger()->error("Invalid globbing pattern.");
+            return KO;
+        }
+
+        Azure::Core::Url dest_azure_url;
+        if (AzureUrlFromString(&dest_azure_url, prefix)) {
+            GetLogger()->error("Invalid destination prefix URL.");
+            return KO;
+        }
+
+        StorageType dest_storage_type;
+        if (StorageTypeFromHost(&dest_storage_type, dest_azure_url.GetHost())) return KO;
+
+        // Parse destination base object/path
+        std::string dest_blob_container;
+        std::string dest_blob_base;
+        std::string dest_file_share;
+        std::vector<std::string> dest_file_path;
+        std::string dest_service_url;
+        std::string dest_base_path;
+
+        if (dest_storage_type == BLOB) {
+            if (::khiops_driver_azure::GetState()->is_emulated_storage) {
+                std::string account_name;
+                if (EmulatedBlobPathFromString(&account_name, &dest_blob_container, &dest_blob_base, dest_azure_url.GetPath())) return KO;
+                dest_service_url = BuildEmulatedServiceUrl(dest_azure_url, account_name);
+            } else {
+                if (BlobPathFromString(&dest_blob_container, &dest_blob_base, dest_azure_url.GetPath())) return KO;
+                dest_service_url = BuildServiceUrl(dest_azure_url);
+            }
+            dest_base_path = dest_blob_base;
+        } else {
+            if (FileSharePathFromString(&dest_file_share, &dest_file_path, dest_azure_url.GetPath())) return KO;
+            if (dest_file_path.empty()) {
+                GetLogger()->error("Invalid destination file-share path.");
+                return KO;
+            }
+
+            std::ostringstream oss;
+            oss << dest_file_path[0];
+            for (size_t i = 1ULL; i < dest_file_path.size(); ++i) {
+                oss << "/" << dest_file_path[i];
+            }
+            dest_base_path = oss.str();
+            dest_service_url = BuildServiceUrl(dest_azure_url);
+        }
+
+        // Validate sources are relative
+        for (size_t i = 0ULL; i < nSourceFileCount; ++i) {
+            if (!is_relative_path(sSourceFilePathNames[i])) {
+                GetLogger()->error("Source file path must be relative (no scheme allowed): {}",
+                                   sSourceFilePathNames[i] ? sSourceFilePathNames[i] : "<null>");
+                return KO;
+            }
+            GetLogger()->debug("Source #{}: {}", i, sSourceFilePathNames[i]);
+        }
+
+        bool failure_detected = false;
+
+        for (size_t i = 0ULL; i < nSourceFileCount; ++i) {
+            const std::string source_relative_raw = sSourceFilePathNames[i];
+            const std::string seq = generate_sequence_number(i);
+
+            std::ostringstream new_name_oss;
+            new_name_oss << dest_base_path << seq << suffix;
+            const std::string new_relative = new_name_oss.str();
+
+            if (dest_storage_type == BLOB) {
+                const std::string source_relative_blob =
+                    strip_container_prefix_if_present(source_relative_raw, dest_blob_container);
+
+                GetLogger()->debug("Renaming {} to {}", source_relative_blob, new_relative);
+
+                // Build full source and destination URLs
+                std::ostringstream src_url_oss;
+                src_url_oss << dest_service_url << "/" << dest_blob_container << "/" << source_relative_blob;
+                const std::string source_url = src_url_oss.str();
+
+                std::ostringstream dst_url_oss;
+                dst_url_oss << dest_service_url << "/" << dest_blob_container << "/" << new_relative;
+                const std::string dest_url = dst_url_oss.str();
+
+                Azure::Storage::Blobs::BlobClient src_client("");
+                Azure::Storage::Blobs::BlobClient dst_client("");
+
+                if (GetBlobClient(&src_client, source_url)) {
+                    GetLogger()->error("Failed to get source blob client for {}", source_url);
+                    failure_detected = true;
+                    continue;
+                }
+                if (GetBlobClient(&dst_client, dest_url)) {
+                    GetLogger()->error("Failed to get destination blob client for {}", dest_url);
+                    failure_detected = true;
+                    continue;
+                }
+
+                try {
+                    // Build authenticated source URI/header
+                    Auth source_auth;
+                    if (BuildBlobAuth(&source_auth, source_url, dest_blob_container, source_relative_blob)) {
+                        failure_detected = true;
+                        continue;
+                    }
+
+                    // Server-side "rename" using one staged block copied from source URI
+                    Azure::Storage::Blobs::BlockBlobClient dst_block_blob_client = dst_client.AsBlockBlobClient();
+
+                    std::vector<std::string> block_ids;
+                    {
+                        std::ostringstream oss;
+                        oss << std::setfill('0') << std::setw(64) << 0;
+                        const std::string block_id_in_base10 = oss.str();
+                        std::vector<uint8_t> block_id_bytes(block_id_in_base10.begin(), block_id_in_base10.end());
+                        const std::string block_id_in_base64 = Azure::Core::Convert::Base64Encode(block_id_bytes);
+                        block_ids.push_back(block_id_in_base64);
+
+                        Azure::Storage::Blobs::StageBlockFromUriOptions stage_opts;
+                        if (source_auth.HasHeader()) {
+                            stage_opts.SourceAuthorization = source_auth.sAuthHeader;
+                        }
+
+                        dst_block_blob_client.StageBlockFromUri(block_id_in_base64, source_auth.sUriAuth, stage_opts);
+                    }
+
+                    dst_block_blob_client.CommitBlockList(block_ids);
+
+                    if (!src_client.Delete().Value.Deleted) {
+                        GetLogger()->error("Failed to delete original blob {}", source_url);
+                        failure_detected = true;
+                    }
+                } catch (const Azure::Core::RequestFailedException &exc) {
+                    GetLogger()->error("Failed to rename '{}' to '{}': {}", source_relative_blob, new_relative, exc.what());
+                    failure_detected = true;
+                    continue;
+                }
+            } else {
+                // FILE SHARE case
+                const std::string source_relative = source_relative_raw;
+                GetLogger()->debug("Renaming {} to {}", source_relative, new_relative);
+
+                std::vector<std::string> source_parts = Split(source_relative, '/', -1, true);
+                if (source_parts.empty()) {
+                    GetLogger()->error("Invalid source relative path {}", source_relative);
+                    failure_detected = true;
+                    continue;
+                }
+
+                // Source URL
+                std::ostringstream src_url_oss;
+                src_url_oss << dest_service_url << "/" << dest_file_share;
+                for (size_t p = 0ULL; p < source_parts.size(); ++p) {
+                    src_url_oss << "/" << source_parts[p];
+                }
+                const std::string source_url = src_url_oss.str();
+
+                // Destination URL
+                std::vector<std::string> dest_parts = Split(new_relative, '/', -1, true);
+                if (dest_parts.empty()) {
+                    GetLogger()->error("Invalid destination relative path {}", new_relative);
+                    failure_detected = true;
+                    continue;
+                }
+
+                std::ostringstream dst_url_oss;
+                dst_url_oss << dest_service_url << "/" << dest_file_share;
+                for (size_t p = 0ULL; p < dest_parts.size(); ++p) {
+                    dst_url_oss << "/" << dest_parts[p];
+                }
+                const std::string dest_url = dst_url_oss.str();
+
+                // Ensure destination parent directory exists
+                if (dest_parts.size() > 1ULL) {
+                    std::vector<std::string> parent_path(dest_parts.begin(), dest_parts.end() - 1);
+                    Azure::Storage::Files::Shares::ShareDirectoryClient parent_dir("");
+                    if (GetParentDir(&parent_dir, dest_service_url, dest_file_share, parent_path)) {
+                        GetLogger()->error("Destination parent directory does not exist for {}", dest_url);
+                        failure_detected = true;
+                        continue;
+                    }
+                }
+
+                Azure::Storage::Files::Shares::ShareFileClient src_client("");
+                Azure::Storage::Files::Shares::ShareFileClient dst_client("");
+
+                if (GetFileClient(&src_client, source_url)) {
+                    GetLogger()->error("Failed to get source file client for {}", source_url);
+                    failure_detected = true;
+                    continue;
+                }
+                if (GetFileClient(&dst_client, dest_url)) {
+                    GetLogger()->error("Failed to get destination file client for {}", dest_url);
+                    failure_detected = true;
+                    continue;
+                }
+
+                try {
+                    const auto props = src_client.GetProperties().Value;
+                    const int64_t source_size = props.FileSize;
+
+                    dst_client.Create(source_size);
+
+                    // Auth for source URI
+                    Auth source_auth;
+                    if (BuildFileShareAuth(&source_auth, source_url, dest_file_share, source_parts)) {
+                        failure_detected = true;
+                        continue;
+                    }
+
+                    constexpr int64_t MAX_SOURCE_SIZE = 4LL * 1024LL * 1024LL;
+                    for (int64_t offset_in_source = 0LL; offset_in_source < source_size; offset_in_source += MAX_SOURCE_SIZE) {
+                        const int64_t to_copy = std::min<int64_t>(source_size - offset_in_source, MAX_SOURCE_SIZE);
+                        Azure::Core::Http::HttpRange range{offset_in_source, to_copy};
+                        Azure::Storage::Files::Shares::UploadFileRangeFromUriOptions opts;
+                        if (source_auth.HasHeader()) {
+                            opts.SourceAuthorization = source_auth.sAuthHeader;
+                        }
+                        dst_client.UploadRangeFromUri(offset_in_source, source_auth.sUriAuth, range, opts);
+                    }
+
+                    if (!src_client.Delete().Value.Deleted) {
+                        GetLogger()->error("Failed to delete original file {}", source_url);
+                        failure_detected = true;
+                    }
+                } catch (const Azure::Core::RequestFailedException &exc) {
+                    GetLogger()->error("Failed to rename '{}' to '{}': {}", source_relative, new_relative, exc.what());
+                    failure_detected = true;
+                    continue;
+                }
+            }
+        }
+
+        return failure_detected ? KO : kOtherSuccess;
     );
 }
