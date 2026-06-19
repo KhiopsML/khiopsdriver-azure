@@ -110,9 +110,9 @@ int driver_connect() {
             );
         }
 
-    #if defined(__linux__)
+#if defined(__linux__)
         if (FindCertificate(&::khiops_driver_azure::GetState()->certificate_path)) return KO;
-    #endif
+#endif
 
         ::khiops_driver_common::GetState()->is_driver_initialized = true;
         return kOtherSuccess;
