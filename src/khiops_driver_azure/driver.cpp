@@ -1,3 +1,5 @@
+// Compiling this file means we are currently compiling the driver, so export public functions.
+#define CLOUD_STORAGE_DRIVER_EXPORT
 #include "khiops_driver_common/driver.h"
 #include "khiops_driver_common/logging.hpp"
 #include "khiops_driver_common/userfunc_checks.hpp"
@@ -15,8 +17,6 @@
 #include <azure/core/diagnostics/logger.hpp>
 #include <azure/identity.hpp>
 
-// Compiling this file means we are currently compiling the driver, so export public functions.
-#define CLOUD_STORAGE_DRIVER_EXPORT
 
 // Macro that must be used in all public functions to avoid raising exceptions
 // It is variadic just to avoid splitting the code on commas outside of parentheses (otherwise the preprocessor thinks there are multiple macro arguments).
