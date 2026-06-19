@@ -4,11 +4,16 @@
 #include "khiops_driver_common/returnval.hpp"
 #include "khiops_driver_common/util.hpp"
 #include "khiops_driver_common/globalstate.hpp"
+#include "khiops_driver_azure/globalstate.hpp"
 #include "khiops_driver_azure/filestream.hpp"
 #include "khiops_driver_azure/version.hpp"
+#include "khiops_driver_azure/connstr.hpp"
 #include "khiops_driver_azure/core.hpp"
 #include "khiops_driver_azure/util.hpp"
 #include <fstream>
+#include <string>
+#include <azure/core/diagnostics/logger.hpp>
+#include <azure/identity.hpp>
 
 // Compiling this file means we are currently compiling the driver, so export public functions.
 #define CLOUD_STORAGE_DRIVER_EXPORT
@@ -63,16 +68,53 @@ int driver_isReadOnly() {
     );
 }
 
-
 int driver_connect() {
     const int KO = kOtherFailure;
     CATCH_ALL(
         if (Check_driver_connect()) return KO;
-        if (GetState()->is_driver_initialized) {
+        if (::khiops_driver_common::GetState()->is_driver_initialized) {
             GetLogger()->debug("Already connected!");
             return kOtherSuccess;
         }
-        if (Initialize()) return KO;
+
+        // Disable Azure SDK logging.
+        // Note: This will not prevent Azure CLI, called as a subprocess by the
+        // Azure SDK, to log errors such as "Please run 'az login' to authenticate".
+        Azure::Core::Diagnostics::Logger::SetListener([](Azure::Core::Diagnostics::Logger::Level, string const &) {});
+
+        ::khiops_driver_common::GetState()->open_file_streams.file_streams.clear();
+
+        string emulated_storage_env_var_val = GetEnvVar("AZURE_EMULATED_STORAGE");
+        ::khiops_driver_azure::GetState()->is_emulated_storage = !emulated_storage_env_var_val.empty() && emulated_storage_env_var_val != "false";
+
+        string connection_string_as_string = GetEnvVar("AZURE_STORAGE_CONNECTION_STRING");
+        ::khiops_driver_azure::GetState()->is_using_connection_string = !connection_string_as_string.empty();
+        
+        if (::khiops_driver_azure::GetState()->is_emulated_storage && !::khiops_driver_azure::GetState()->is_using_connection_string) {
+            GetLogger()->error("Undefined or empty environment variable: AZURE_STORAGE_CONNECTION_STRING.");
+            return KO;
+        }
+        
+        if (::khiops_driver_azure::GetState()->is_using_connection_string) {
+            ConnectionString connection_string;
+            if (ParseConnectionString(&connection_string, connection_string_as_string, ::khiops_driver_azure::GetState()->is_emulated_storage)) return KO;
+            ::khiops_driver_azure::GetState()->connection_string_credential = make_shared<Azure::Storage::StorageSharedKeyCredential>(connection_string.account_name, connection_string.account_key);
+        } else /* not using connection string */ {
+            ::khiops_driver_azure::GetState()->no_connection_string_credential = make_shared<Azure::Identity::ChainedTokenCredential>(
+                Azure::Identity::ChainedTokenCredential::Sources {
+                    std::make_shared<Azure::Identity::EnvironmentCredential>(),  // for Client ID + Client Secret or Certificate environment variables
+                    std::make_shared<Azure::Identity::WorkloadIdentityCredential>(),
+                    std::make_shared<Azure::Identity::ManagedIdentityCredential>(),
+                    std::make_shared<Azure::Identity::AzureCliCredential>()
+                }
+            );
+        }
+
+    #if defined(__linux__)
+        if (FindCertificate(&::khiops_driver_azure::GetState()->certificate_path)) return KO;
+    #endif
+
+        ::khiops_driver_common::GetState()->is_driver_initialized = true;
         return kOtherSuccess;
     );
 }
@@ -81,11 +123,19 @@ int driver_disconnect() {
     const int KO = kOtherFailure;
     CATCH_ALL(
         if (Check_driver_disconnect()) return KO;
-        if (!GetState()->is_driver_initialized) {
+        if (!::khiops_driver_common::GetState()->is_driver_initialized) {
             GetLogger()->debug("Already disconnected!");
             return kOtherSuccess;
         }
-        if (Finalize()) return KO;
+        unordered_map<void *, FileStreamMode> handles_to_close = ::khiops_driver_common::GetState()->open_file_streams.file_streams;
+        for (const auto &file_stream : handles_to_close) {
+            if (file_stream.second == FileStreamMode::READ) {
+                if (FClose(static_cast<FileReader *>(file_stream.first))) return KO;
+            } else {
+                if (FClose(static_cast<FileWriter *>(file_stream.first))) return KO;
+            }
+        }
+        ::khiops_driver_common::GetState()->is_driver_initialized = false;
         return kOtherSuccess;
     );
 }
@@ -94,7 +144,7 @@ int driver_isConnected() {
     const int KO = kFalse;
     CATCH_ALL(
         if (Check_driver_isConnected()) return KO;
-        return GetState()->is_driver_initialized ? kTrue : kFalse;
+        return ::khiops_driver_common::GetState()->is_driver_initialized ? kTrue : kFalse;
     );
 }
 
@@ -208,7 +258,7 @@ int driver_fclose(void *stream) {
     const int KO = kFailure;
     CATCH_ALL(
         if (Check_driver_fclose(stream)) return KO;
-        FileStreamMode mode = GetState()->open_file_streams.file_streams.at(stream);
+        FileStreamMode mode = ::khiops_driver_common::GetState()->open_file_streams.file_streams.at(stream);
         if (mode == FileStreamMode::READ) {
             if (FClose(static_cast<FileReader *>(stream))) return KO;
         } else /* WRITE or APPEND */ {

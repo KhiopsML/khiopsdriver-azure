@@ -1,14 +1,10 @@
 #include "khiops_driver_azure/core.hpp"
 #include <memory>
 #include <iomanip>
-#include <azure/core/diagnostics/logger.hpp>
-#include <azure/identity.hpp>
 #include <azure/storage/blobs/block_blob_client.hpp>
 #include <khiops_driver_common/logging.hpp>
 #include "khiops_driver_common/util.hpp"
 #include "khiops_driver_common/globalstate.hpp"
-#include "khiops_driver_azure/globalstate.hpp"
-#include "khiops_driver_azure/connstr.hpp"
 #include "khiops_driver_azure/filestream.hpp"
 #include "khiops_driver_azure/auth.hpp"
 
@@ -17,62 +13,6 @@ using namespace std;
 using namespace khiops_driver_common;
 
 namespace khiops_driver_azure {
-
-int Initialize() {
-    // Disable Azure SDK logging.
-    // Note: This will not prevent Azure CLI, called as a subprocess by the
-    // Azure SDK, to log errors such as "Please run 'az login' to authenticate".
-    Azure::Core::Diagnostics::Logger::SetListener([](Azure::Core::Diagnostics::Logger::Level, string const &) {});
-
-    ::khiops_driver_common::GetState()->open_file_streams.file_streams.clear();
-
-    string emulated_storage_env_var_val = GetEnvVar("AZURE_EMULATED_STORAGE");
-    ::khiops_driver_azure::GetState()->is_emulated_storage = !emulated_storage_env_var_val.empty() && emulated_storage_env_var_val != "false";
-
-    string connection_string_as_string = GetEnvVar("AZURE_STORAGE_CONNECTION_STRING");
-    ::khiops_driver_azure::GetState()->is_using_connection_string = !connection_string_as_string.empty();
-    
-    if (::khiops_driver_azure::GetState()->is_emulated_storage && !::khiops_driver_azure::GetState()->is_using_connection_string) {
-        GetLogger()->error("Undefined or empty environment variable: AZURE_STORAGE_CONNECTION_STRING.");
-        return -1;
-    }
-    
-    if (::khiops_driver_azure::GetState()->is_using_connection_string) {
-        ConnectionString connection_string;
-        if (ParseConnectionString(&connection_string, connection_string_as_string, ::khiops_driver_azure::GetState()->is_emulated_storage)) return -1;
-        ::khiops_driver_azure::GetState()->connection_string_credential = make_shared<Azure::Storage::StorageSharedKeyCredential>(connection_string.account_name, connection_string.account_key);
-    } else /* not using connection string */ {
-        ::khiops_driver_azure::GetState()->no_connection_string_credential = make_shared<Azure::Identity::ChainedTokenCredential>(
-            Azure::Identity::ChainedTokenCredential::Sources {
-                std::make_shared<Azure::Identity::EnvironmentCredential>(),  // for Client ID + Client Secret or Certificate environment variables
-                std::make_shared<Azure::Identity::WorkloadIdentityCredential>(),
-                std::make_shared<Azure::Identity::ManagedIdentityCredential>(),
-                std::make_shared<Azure::Identity::AzureCliCredential>()
-            }
-        );
-    }
-
-#if defined(__linux__)
-    if (FindCertificate(&::khiops_driver_azure::GetState()->certificate_path)) return -1;
-#endif
-
-    ::khiops_driver_common::GetState()->is_driver_initialized = true;
-
-    return 0;
-}
-
-int Finalize() {
-    unordered_map<void *, FileStreamMode> handles_to_close = ::khiops_driver_common::GetState()->open_file_streams.file_streams;
-    for (const auto &file_stream : handles_to_close) {
-        if (file_stream.second == FileStreamMode::READ) {
-            if (FClose(static_cast<FileReader *>(file_stream.first))) return -1;
-        } else {
-            if (FClose(static_cast<FileWriter *>(file_stream.first))) return -1;
-        }
-    }
-    ::khiops_driver_common::GetState()->is_driver_initialized = false;
-    return 0;
-}
 
 int GetSystemPreferredBufferSize(size_t *result) {
     constexpr size_t DEFAULT_PREFERRED_BUFFER_SIZE = 4ULL * 1024ULL * 1024ULL;

@@ -5,10 +5,6 @@
 
 namespace khiops_driver_azure {
 
-int Initialize();
-
-int Finalize();
-
 int GetSystemPreferredBufferSize(size_t *result);
 
 int Remove(const std::vector<std::string> &fragment_urls, StorageType storage_type);
