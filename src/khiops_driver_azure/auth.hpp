@@ -11,6 +11,7 @@ merely URL strings. Thus we must be correctly authenticated for the sources.
 #pragma once
 
 #include "khiops_driver_azure/util.hpp"
+#include "khiops_driver_azure/globalstate.hpp"
 #include <azure/core/credentials/credentials.hpp>
 #include <azure/core/datetime.hpp>
 #include <azure/storage/blobs/blob_sas_builder.hpp>
