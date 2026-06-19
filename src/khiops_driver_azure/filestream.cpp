@@ -237,6 +237,7 @@ int FSeek(FileReader *file_reader, long long int offset, int whence) {
                 file_reader->current_position = file_reader->total_size - positive_offset;
             }
         } else if (offset == 0LL) {
+            file_reader->current_position = file_reader->total_size;
         }
     }
     if (seek_out_of_range) {
