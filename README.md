@@ -40,6 +40,16 @@ This driver is distributed as multiple package formats:
 - conda package ([recipe repository](https://github.com/KhiopsML/recipe-khiopsdriver-azure))
 
 
+Logging
+-------
+
+You can log information, warnings, errors and debug traces to a file using the following environment variables (they must both be defined to log anything):
+- `AZURE_DRIVER_LOGLEVEL`: available values are `off`, `critical`, `error`, `warning`, `info`, `debug`, `trace` (they are actually the values of the _spdlog_ logging library)
+- `AZURE_DRIVER_LOGFILE`: path to the log file (which does not need to already exist).
+
+> Tip: you can define `AZURE_DRIVER_LOGFILE` to be `/dev/stderr` or `/dev/stdout` if you want to log to standard error or standard output, respectively.
+
+
 Technical information
 ---------------------
 
