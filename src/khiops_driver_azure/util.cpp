@@ -412,4 +412,27 @@ int ReadFragment(string *result, bool *stopped_on_termchar, StorageType storage_
     return ReadFragment(result, stopped_on_termchar, storage_type, fragment_url, version, offset, maxlength, &termchar);
 }
 
+bool parse_globbing_pattern(const std::string &pattern, std::string *prefix, std::string *suffix) {
+    const std::size_t star_pos = pattern.find('*');
+    if (star_pos == std::string::npos) return false;
+    if (pattern.find('*', star_pos + 1) != std::string::npos) return false;
+
+    *prefix = pattern.substr(0, star_pos);
+    *suffix = pattern.substr(star_pos + 1);
+
+    if (prefix->empty()) return false;
+
+    {
+        const unsigned char c = static_cast<unsigned char>((*prefix)[prefix->size() - 1]);
+        if (std::isdigit(c)) return false;
+    }
+
+    if (!suffix->empty()) {
+        const unsigned char c = static_cast<unsigned char>((*suffix)[0]);
+        if (std::isdigit(c)) return false;
+    }
+
+    return true;
+};
+
 }
