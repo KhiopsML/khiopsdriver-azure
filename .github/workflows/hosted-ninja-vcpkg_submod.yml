@@ -20,6 +20,7 @@ on:
     branches: 
     - v11
     - main
+  workflow_dispatch:
 
 jobs:
   job:
