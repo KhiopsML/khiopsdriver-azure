@@ -28,7 +28,7 @@ jobs:
           sh cmake-3.26.5-linux-x86_64.sh --prefix=/usr/local/ --exclude-subdir
 
       - name: Checkout sources
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           submodules: recursive
           fetch-depth: 0
@@ -60,7 +60,7 @@ jobs:
           done
 
       - name: Upload the packages as artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           # We add a `rpm-` prefix so we can later recover all artifacts with the pattern `rpm-*`
           # Note: The more natural pattern `*-rpm` or `*` does not work
@@ -87,7 +87,7 @@ jobs:
     container: ${{ matrix.os }}:${{ matrix.os-version }}
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set Azure Config Directory
         run: |
@@ -111,7 +111,7 @@ jobs:
           yum install -y ./khiops-core*
 
       - name: Download artifacts (driver package)
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: rpm-${{ env.ID }}-${{ env.VERSION }}
           path: artifacts
@@ -160,7 +160,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download package artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           # See the upload-artifact step in the build job for the explanation of this pattern
           pattern: rpm-*
