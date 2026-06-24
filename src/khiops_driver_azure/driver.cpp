@@ -166,30 +166,6 @@ long long int driver_getSystemPreferredBufferSize() {
     );
 }
 
-int driver_exist(const char *filename) {
-    const int KO = kFalse;
-    CATCH_ALL(
-        if (Check_driver_exist(filename)) return KO;
-        Azure::Core::Url azure_url;
-        if (AzureUrlFromString(&azure_url, filename)) return KO;
-        StorageType storage_type;
-        if (StorageTypeFromHost(&storage_type, azure_url.GetHost())) return KO;
-        if (IsDirUrl(filename)) {
-            if (storage_type == BLOB) {
-                return kTrue;  // There is no such concept as a directory when dealing with blob services.
-            } else /* FILE_SHARE */ {
-                string file_share; vector<string> file_path;
-                if (FileSharePathFromString(&file_share, &file_path, azure_url.GetPath())) return KO;
-                return ListDirs(BuildServiceUrl(azure_url), file_share, file_path).empty() ? kFalse : kTrue;
-            }
-        } else /* not a directory */ {
-            vector<string> fragment_urls;
-            if (ResolveFragmentUrls(&fragment_urls, storage_type, azure_url)) return KO;
-            return fragment_urls.empty() ? kFalse : kTrue;
-        }
-    );
-}
-
 int driver_fileExists(const char *sFilePathName) {
     const int KO = kFalse;
     CATCH_ALL(
