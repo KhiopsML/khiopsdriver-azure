@@ -51,18 +51,36 @@ int Remove(const vector<string> &fragment_urls, StorageType storage_type) {
         for (const auto &url : fragment_urls) {
             Azure::Storage::Blobs::BlobClient client("");
             if (GetBlobClient(&client, url) != 0) return -1;
-            if (!client.Delete(opts).Value.Deleted) {
-                GetLogger()->error("Failed to delete blob {}.", url);
-                return -1;
+            try {
+                if (!client.Delete(opts).Value.Deleted) {
+                    GetLogger()->error("Failed to delete blob {}.", url);
+                    return -1;
+                }
+            } catch (const Azure::Core::RequestFailedException &exc) {
+                if (exc.StatusCode == Azure::Core::Http::HttpStatusCode::NotFound) {
+                    continue;
+                } else {
+                    GetLogger()->error("Failed to delete blob {}.", url);
+                    return -1;
+                }
             }
         }
     } else /* SHARE */ {
         for (const auto &url : fragment_urls) {
             Azure::Storage::Files::Shares::ShareFileClient client("");
             if (GetFileClient(&client, url) != 0) return -1;
-            if (!client.Delete().Value.Deleted) {
-                GetLogger()->error("Failed to delete file {}.", url);
-                return -1;
+            try {
+                if (!client.Delete().Value.Deleted) {
+                    GetLogger()->error("Failed to delete file {}.", url);
+                    return -1;
+                }
+            } catch (const Azure::Core::RequestFailedException &exc) {
+                if (exc.StatusCode == Azure::Core::Http::HttpStatusCode::NotFound) {
+                    continue;
+                } else {
+                    GetLogger()->error("Failed to delete file {}.", url);
+                    return -1;
+                }
             }
         }
     }
