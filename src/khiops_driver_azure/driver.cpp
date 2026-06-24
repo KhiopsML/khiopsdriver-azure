@@ -740,7 +740,8 @@ int driver_composeMultifile(const char *sDestFilePathName, const char **sSourceF
                 }
             } else {
                 // FILE SHARE case
-                const std::string source_relative = source_relative_raw;
+                const std::string source_relative = strip_container_prefix_if_present(source_relative_raw, dest_file_share);
+
                 GetLogger()->debug("Renaming {} to {}", source_relative, new_relative);
 
                 std::vector<std::string> source_parts = Split(source_relative, '/', -1, true);
