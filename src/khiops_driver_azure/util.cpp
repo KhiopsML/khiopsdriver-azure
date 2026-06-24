@@ -413,26 +413,42 @@ int ReadFragment(string *result, bool *stopped_on_termchar, StorageType storage_
 }
 
 bool parse_globbing_pattern(const std::string &pattern, std::string *prefix, std::string *suffix) {
+    // 1) Output pointers must be non-null
+    if (prefix == nullptr || suffix == nullptr) return false;
+
+    // 2) Explicitly forbid "/" and "/*"
+    if (pattern == "/" || pattern == "/*") return false;
+
+    // 3) Forbid specific characters anywhere in the pattern
+    //    Forbidden: '?', '!', '[', '^'
+    if (pattern.find_first_of("?![^") != std::string::npos) return false;
+
+    // 4) Exactly one '*'
     const std::size_t star_pos = pattern.find('*');
     if (star_pos == std::string::npos) return false;
     if (pattern.find('*', star_pos + 1) != std::string::npos) return false;
 
+    // 5) Split
     *prefix = pattern.substr(0, star_pos);
     *suffix = pattern.substr(star_pos + 1);
 
+    // 6) Prefix must be non-empty
     if (prefix->empty()) return false;
 
+    // 7) Prefix must not end with a digit
     {
         const unsigned char c = static_cast<unsigned char>((*prefix)[prefix->size() - 1]);
         if (std::isdigit(c)) return false;
     }
 
+    // 8) If suffix is non-empty, it must not start with a digit
     if (!suffix->empty()) {
         const unsigned char c = static_cast<unsigned char>((*suffix)[0]);
         if (std::isdigit(c)) return false;
     }
 
     return true;
-};
+}
+
 
 }
