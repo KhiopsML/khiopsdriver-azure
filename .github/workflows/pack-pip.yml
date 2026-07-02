@@ -3,7 +3,7 @@
 # - Build the binary distributions (Python wheels)
 # - Publish the sdist+wheels to test.pypi.org
 # - Install package from test.pypi.org and run it for testing purposes
-# - (DISABLED FOR NOW) Publish the package to pypi.org
+# - Publish the package to pypi.org
 
 name: pip Packaging
 on: workflow_dispatch
@@ -216,20 +216,20 @@ jobs:
           fi
 
   ##### ENABLE THE FOLLOWING WHEN READY TO PUBLISH TO THE OFFICIAL PYPI.ORG REPOSITORY
-  # publish-pypi:
-  #   name: Publish to PyPI.org
-  #   needs: [test-pkg-from-testpypi]
-  #   runs-on: ubuntu-latest
-  #   environment:
-  #     name: pypi
-  #     url: https://pypi.org/p/khiops-driver-azure
-  #   permissions:
-  #     id-token: write
-  #   steps:
-  #     - uses: actions/download-artifact@v8
-  #       with:
-  #         pattern: cibw-*
-  #         path: dist
-  #         merge-multiple: true
+  publish-pypi:
+    name: Publish to PyPI.org
+    needs: [test-pkg-from-testpypi]
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/khiops-driver-azure
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: cibw-*
+          path: dist
+          merge-multiple: true
 
-  #     - uses: pypa/gh-action-pypi-publish@release/v1
+      - uses: pypa/gh-action-pypi-publish@release/v1
