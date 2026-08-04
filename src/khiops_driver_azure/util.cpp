@@ -317,29 +317,86 @@ int GetFileClient(Azure::Storage::Files::Shares::ShareFileClient *result, const 
     return 0;
 }
 
+int ReadFragmentToBuffer(size_t *result, StorageType storage_type, const string &fragment_url, const Azure::ETag &version, size_t offset, size_t maxlength, void *buffer) {
+    if (CheckNotNull(result, STRINGIFY(result), __func__)) return -1;
+    if (CheckNotNull(buffer, STRINGIFY(buffer), __func__)) return -1;
+
+    if (maxlength == 0ULL) {
+        *result = 0ULL;
+        return 0;
+    }
+
+    Azure::Core::Http::HttpRange range;
+    range.Offset = static_cast<int64_t>(offset);
+    range.Length = static_cast<int64_t>(maxlength);
+
+    unique_ptr<Azure::Core::IO::BodyStream> body_stream;
+    try {
+        if (storage_type == BLOB) {
+            Azure::Storage::Blobs::BlobAccessConditions access_conditions;
+            access_conditions.IfMatch = version;
+            Azure::Storage::Blobs::DownloadBlobOptions opts;
+            opts.Range = range;
+            opts.AccessConditions = access_conditions;
+            Azure::Storage::Blobs::BlobClient client("");
+            if (GetBlobClient(&client, fragment_url) != 0) return -1;
+            body_stream = std::move(client.Download(opts).Value.BodyStream);
+        } else /* SHARE */ {
+            Azure::Storage::Files::Shares::DownloadFileOptions opts;
+            opts.Range = range;
+            Azure::Storage::Files::Shares::ShareFileClient client("");
+            if (GetFileClient(&client, fragment_url) != 0) return -1;
+            auto download_result = std::move(client.Download(opts).Value);
+            if (download_result.Details.ETag != version) {
+                GetLogger()->error("The file has been updated while reading it.");
+                return -1;
+            }
+            body_stream = std::move(download_result.BodyStream);
+        }
+    } catch (const Azure::Storage::StorageException &exc) {
+        if (exc.StatusCode == Azure::Core::Http::HttpStatusCode::PreconditionFailed) {
+            GetLogger()->error("The file has been updated while reading it.");
+            return -1;
+        } else if (exc.StatusCode == Azure::Core::Http::HttpStatusCode::RangeNotSatisfiable) {
+            GetLogger()->error("Cannot read after end of file.");
+            return -1;
+        } else {
+            throw;
+        }
+    }
+
+    const size_t number_of_bytes_read = body_stream->ReadToCount(static_cast<uint8_t *>(buffer), maxlength);
+    if (number_of_bytes_read == 0ULL) {
+        GetLogger()->error("Cannot read after end of file.");
+        return -1;
+    }
+
+    *result = number_of_bytes_read;
+    return 0;
+}
+
 static int ReadFragment(string *result, bool *stopped_on_termchar, StorageType storage_type, const string &fragment_url, const Azure::ETag &version, size_t offset, size_t maxlength, const char *termchar) {
+    constexpr size_t HEADER_READ_BUFFER_SIZE = 8ULL * 1024ULL * 1024ULL;
     if (CheckNotNull(result, STRINGIFY(result), __func__)) return -1;
     if (CheckNotNull(stopped_on_termchar, STRINGIFY(stopped_on_termchar), __func__)) return -1;
     if (termchar == nullptr) {
-        GetLogger()->debug("Reading a maximum of {} bytes from fragment at URL {} starting at offset {} (no terminator character specified)...", maxlength, fragment_url, offset);
-    } else {
-        GetLogger()->debug("Reading a maximum of {} bytes from fragment at URL {} starting at offset {} (can also end if terminator character '{}' is found)...", maxlength, fragment_url, offset, *termchar);
+        GetLogger()->error("ReadFragment without terminator is not supported for runtime reads. Use ReadFragmentToBuffer.");
+        return -1;
     }
+    GetLogger()->debug("Reading a maximum of {} bytes from fragment at URL {} starting at offset {} (can also end if terminator character '{}' is found)...", maxlength, fragment_url, offset, *termchar);
     string content_read = "";
     unique_ptr<Azure::Core::IO::BodyStream> body_stream;
-    size_t buffer_size;
     Azure::ETag previousETag = version;
     size_t number_of_bytes_to_read = maxlength;
     size_t number_of_bytes_read = 0ULL;
     uint8_t *termchar_pos;
     Azure::Core::Http::HttpRange range;
     range.Offset = static_cast<int64_t>(offset);
-    if (GetSystemPreferredBufferSize(&buffer_size)) return -1;
-    vector<uint8_t> buffer(buffer_size);
+    vector<uint8_t> buffer(HEADER_READ_BUFFER_SIZE);
     uint8_t *buffer_start = buffer.data();
     while (number_of_bytes_to_read > 0ULL) {
         range.Offset += number_of_bytes_read;
-        range.Length = static_cast<int64_t>(min(number_of_bytes_to_read, buffer_size));
+        range.Length = static_cast<int64_t>(min(number_of_bytes_to_read, HEADER_READ_BUFFER_SIZE));
         try {
             if (storage_type == BLOB) {
                 Azure::Storage::Blobs::BlobAccessConditions access_conditions;
@@ -377,7 +434,7 @@ static int ReadFragment(string *result, bool *stopped_on_termchar, StorageType s
                 throw;
             }
         }
-        number_of_bytes_read = body_stream->ReadToCount(buffer_start, min(number_of_bytes_to_read, buffer_size));
+        number_of_bytes_read = body_stream->ReadToCount(buffer_start, min(number_of_bytes_to_read, HEADER_READ_BUFFER_SIZE));
         if (number_of_bytes_read == 0ULL) {
             // Handle emulator special behavior that gracefully accepts reading beyond file size.
             // Also handle the error case for real cloud storage, even if it should never happen.

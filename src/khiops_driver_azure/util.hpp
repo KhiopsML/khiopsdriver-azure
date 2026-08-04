@@ -56,6 +56,7 @@ int GetFileClient(Azure::Storage::Files::Shares::ShareFileClient *result, const 
 
 int ReadFragment(std::string *result, bool *stopped_on_termchar, StorageType storage_type, const std::string &fragment_url, const Azure::ETag &version, size_t offset, size_t maxlength);
 int ReadFragment(std::string *result, bool *stopped_on_termchar, StorageType storage_type, const std::string &fragment_url, const Azure::ETag &version, size_t offset, size_t maxlength, char termchar);
+int ReadFragmentToBuffer(size_t *result, StorageType storage_type, const std::string &fragment_url, const Azure::ETag &version, size_t offset, size_t maxlength, void *buffer);
 
 bool parse_globbing_pattern(const std::string &pattern, std::string *prefix, std::string *suffix);
 

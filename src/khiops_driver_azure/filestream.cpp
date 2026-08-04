@@ -152,8 +152,7 @@ int FRead(size_t *result, void *ptr, FileReader *file_reader, size_t size, size_
     size_t nlefttoread = ntotaltoread, ntotalread = 0ULL, ntoread, nread;
     size_t offset_inside_first_fragment_to_read, fragment_remote_offset;
     size_t absolute_fragment_index, relative_fragment_index;
-    string globalread, read;
-    bool stopped_on_term_char;
+    uint8_t *output_buffer = static_cast<uint8_t *>(ptr);
     
     GetLogger()->debug("Reading starting position: {}  |  Total number of bytes to read: {}  |  Total file size: {}.", file_reader->current_position, ntotaltoread, file_reader->total_size);
     
@@ -186,21 +185,18 @@ int FRead(size_t *result, void *ptr, FileReader *file_reader, size_t size, size_
             fragment_remote_offset = file_reader->header_length;
             ntoread = min(nlefttoread, fragment.content_size);
         }
-        if (ReadFragment(&read, &stopped_on_term_char, file_reader->storage_type, fragment.url, fragment.version, fragment_remote_offset, ntoread) != 0) {
+        if (ReadFragmentToBuffer(&nread, file_reader->storage_type, fragment.url, fragment.version, fragment_remote_offset, ntoread, output_buffer + ntotalread) != 0) {
             GetLogger()->error("Failed to read.");
             return -1;
         }
-        nread = read.size();
         GetLogger()->trace("File fragment #{} (absolute #{}): read {} bytes.", relative_fragment_index, absolute_fragment_index, nread);
         if (nread != ntoread) { GetLogger()->error("Number of bytes read does not match number of bytes to read."); return -1; }
         ntotalread += nread;
-        globalread.append(read);
         nlefttoread -= nread;
         file_reader->current_position += nread;
     }
 
     *result = ntotalread;
-    memcpy(ptr, globalread.data(), ntotalread);
     return 0;
 }
 
