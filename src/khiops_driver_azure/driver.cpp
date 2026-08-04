@@ -38,6 +38,61 @@ using namespace std;
 using namespace khiops_driver_common;
 using namespace khiops_driver_azure;
 
+namespace {
+
+vector<string> ListBlobPrefixUrls(const Azure::Core::Url &azure_url) {
+    string service_url;
+    string blob_container;
+    string blob_prefix;
+
+    if (::khiops_driver_azure::GetState()->is_emulated_storage) {
+        string account_name;
+        if (EmulatedBlobPathFromString(&account_name, &blob_container, &blob_prefix, azure_url.GetPath())) return {};
+        service_url = BuildEmulatedServiceUrl(azure_url, account_name);
+    } else {
+        if (BlobPathFromString(&blob_container, &blob_prefix, azure_url.GetPath())) return {};
+        service_url = BuildServiceUrl(azure_url);
+    }
+
+    Azure::Storage::Blobs::ListBlobsOptions opts;
+    opts.Prefix = blob_prefix;
+    vector<string> matches;
+    Azure::Storage::Blobs::BlobContainerClient container_client = GetBlobContainerClient(service_url, blob_container);
+    for (auto paged_blob_list = container_client.ListBlobs(opts);
+         paged_blob_list.HasPage(); paged_blob_list.MoveToNextPage()) {
+        for (const auto &blob_item : paged_blob_list.Blobs) {
+            if (!blob_item.IsDeleted) {
+                matches.push_back(container_client.GetUrl() + "/" + blob_item.Name);
+            }
+        }
+    }
+    return matches;
+}
+
+int CreateBlobDirectoryMarker(const char *pathname) {
+    void *handle = nullptr;
+    if (FOpenForWriting(&handle, pathname, BLOB)) return -1;
+    if (FClose(static_cast<FileWriter *>(handle))) return -1;
+    return 0;
+}
+
+void CollectShareTreeUrls(const Azure::Storage::Files::Shares::ShareDirectoryClient &dir_client,
+                          vector<string> *file_urls,
+                          vector<string> *dir_urls) {
+    for (auto paged_response = dir_client.ListFilesAndDirectories();
+         paged_response.HasPage(); paged_response.MoveToNextPage()) {
+        for (const auto &file_item : paged_response.Files) {
+            file_urls->push_back(dir_client.GetFileClient(file_item.Name).GetUrl());
+        }
+        for (const auto &dir_item : paged_response.Directories) {
+            CollectShareTreeUrls(dir_client.GetSubdirectoryClient(dir_item.Name), file_urls, dir_urls);
+        }
+    }
+    dir_urls->push_back(dir_client.GetUrl());
+}
+
+}
+
 const char *driver_getDriverName() {
     const char *const KO = nullptr;
     CATCH_ALL(
@@ -189,7 +244,7 @@ int driver_dirExists(const char *sFilePathName) {
         StorageType storage_type;
         if (StorageTypeFromHost(&storage_type, azure_url.GetHost())) return KO;
         if (storage_type == BLOB) {
-            return kTrue;  // There is no such concept as a directory when dealing with blob services.
+            return ListBlobPrefixUrls(azure_url).empty() ? kFalse : kTrue;
         } else /* FILE_SHARE */ {
             string file_share; vector<string> file_path;
             if (FileSharePathFromString(&file_share, &file_path, azure_url.GetPath())) return KO;
@@ -334,7 +389,14 @@ int driver_mkdir(const char *pathname) {
         StorageType storage_type;
         if (StorageTypeFromHost(&storage_type, azure_url.GetHost())) return KO;
         if (storage_type == BLOB) {
-            GetLogger()->info("Making a directory for a blob storage does nothing.");
+            if (!ListBlobPrefixUrls(azure_url).empty()) {
+                GetLogger()->error("Cannot make directory: directory already exists.");
+                return KO;
+            }
+            if (CreateBlobDirectoryMarker(pathname)) {
+                GetLogger()->error("Failed to make directory.");
+                return KO;
+            }
             return kOtherSuccess;
         } else /* FILE SHARE */ {
             string file_share; vector<string> file_path;
@@ -370,7 +432,15 @@ int driver_rmdir(const char *pathname) {
         StorageType storage_type;
         if (StorageTypeFromHost(&storage_type, azure_url.GetHost())) return KO;
         if (storage_type == BLOB) {
-            GetLogger()->info("Removing a directory with a blob storage does nothing.");
+            vector<string> blob_urls = ListBlobPrefixUrls(azure_url);
+            if (blob_urls.empty()) {
+                GetLogger()->error("No directory matches URL {}.", pathname);
+                return KO;
+            }
+            if (Remove(blob_urls, BLOB)) {
+                GetLogger()->error("Failed to delete directory {}.", pathname);
+                return KO;
+            }
             return kOtherSuccess;
         } else /* SHARE */ {
             string file_share; vector<string> file_path;
@@ -380,7 +450,23 @@ int driver_rmdir(const char *pathname) {
                 GetLogger()->error("No directory matches URL {}.", pathname);
                 return KO;
             }
+            vector<string> file_urls;
+            vector<string> dir_urls;
             for (const auto &url : dirs) {
+                CollectShareTreeUrls(GetDirClient(url), &file_urls, &dir_urls);
+            }
+            for (const auto &url : file_urls) {
+                Azure::Storage::Files::Shares::ShareFileClient file_client("");
+                if (GetFileClient(&file_client, url)) {
+                    GetLogger()->error("Failed to build file client for {}.", url);
+                    return KO;
+                }
+                if (!file_client.Delete().Value.Deleted) {
+                    GetLogger()->error("Failed to delete file {}.", url);
+                    return KO;
+                }
+            }
+            for (const auto &url : dir_urls) {
                 if (!GetDirClient(url).Delete().Value.Deleted) {
                     GetLogger()->error("Failed to delete directory {}.", url);
                     return KO;
