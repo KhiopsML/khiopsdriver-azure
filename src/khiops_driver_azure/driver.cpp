@@ -315,7 +315,8 @@ long long int driver_fread(void *ptr, size_t size, size_t count, void *stream) {
         if (Check_driver_fread(ptr, size, count, stream)) return KO;
         size_t nread;
         if (FRead(&nread, ptr, static_cast<FileReader *>(stream), size, count)) return KO;
-        return static_cast<long long int>(nread);
+        // Match C stdlib semantics: return the number of complete elements read.
+        return size == 0 ? 0LL : static_cast<long long int>(nread / size);
     );
 }
 
@@ -344,7 +345,8 @@ long long int driver_fwrite(const void *ptr, size_t size, size_t count, void *st
         if (Check_driver_fwrite(ptr, size, count, stream)) return KO;
         size_t nwritten;
         if (FWrite(&nwritten, static_cast<FileWriter *>(stream), ptr, size, count)) return KO;
-        return static_cast<long long int>(nwritten);
+        // Match C stdlib semantics: return the number of complete elements written.
+        return size == 0 ? 0LL : static_cast<long long int>(nwritten / size);
     );
 }
 
