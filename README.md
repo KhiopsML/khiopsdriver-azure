@@ -1,5 +1,7 @@
-khiopsdriver-azure
-==================
+[DEPRECATED] khiopsdriver-azure
+===============================
+
+__This repo is deprecated: see the new repo unifying all Khiops cloud storage drivers at: <https://github.com/KhiopsML/khiops-drivers>.__
 
 [Khiops] driver to enable Azure cloud storage access.
 *khiopsdriver-azure* is a cross-platform C++ library.
